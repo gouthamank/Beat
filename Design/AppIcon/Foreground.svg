@@ -1,0 +1,8 @@
+<!-- Icon Composer foreground layer: the note alone on a transparent 1024 canvas that maps to the full icon shape.
+     Background in Icon Composer: linear gradient #2A2A2E (top) to #121214 (bottom). -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <g fill="none" stroke="#F1ECE0" stroke-width="54.58" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="387.6" cy="726.6" r="130.4"/>
+    <path d="M518 726.6 V 188.4 C 566.5 324.8, 763.6 355.2, 733.2 552.1"/>
+  </g>
+</svg>

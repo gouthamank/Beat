@@ -1,0 +1,60 @@
+name: Beat
+options:
+  bundleIdPrefix: dev.gouthaman
+  deploymentTarget:
+    macOS: "15.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MACOSX_DEPLOYMENT_TARGET: "15.0"
+    # Self-signed certificate in the login keychain: one identity for every build, so macOS keeps
+    # Beat's Music and Keychain permissions across rebuilds (ad-hoc signing changed it each time).
+    CODE_SIGN_IDENTITY: "Beat Local Signing"
+    CODE_SIGN_STYLE: Manual
+    ENABLE_HARDENED_RUNTIME: NO
+targets:
+  Beat:
+    type: application
+    platform: macOS
+    sources: [Beat]
+    info:
+      path: Beat/Info.plist
+      properties:
+        CFBundleDisplayName: Beat
+        NSHumanReadableCopyright: © 2026 Gouthaman Kumar. MIT License.
+        # `make` fills both from git (commit count, short hash); builds from Xcode keep the defaults below.
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        BeatCommit: $(BEAT_COMMIT)
+        LSApplicationCategoryType: public.app-category.music
+        NSAppleMusicUsageDescription: Beat reads your Music library to browse and play your songs. It never changes your library.
+    entitlements:
+      path: Beat/Beat.entitlements
+      properties: {}
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.gouthaman.Beat
+        CURRENT_PROJECT_VERSION: "1"
+        BEAT_COMMIT: dev
+        GENERATE_INFOPLIST_FILE: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    dependencies:
+      - sdk: iTunesLibrary.framework
+  BeatTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources: [BeatTests]
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: dev.gouthaman.BeatTests
+    dependencies:
+      - target: Beat
+schemes:
+  Beat:
+    build:
+      targets:
+        Beat: all
+        BeatTests: [test]
+    test:
+      targets: [BeatTests]
