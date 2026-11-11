@@ -51,6 +51,7 @@ struct BeatApp: App {
                 .onAppear {
                     SpaceBarMonitor.install(queue: queue)
                     SidebarReclickMonitor.install(navigator: navigator)
+                    SearchFocusMonitor.install()
                     SwipeBackMonitor.install(navigator: navigator)
                 }
         }

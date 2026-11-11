@@ -5,6 +5,39 @@ import SwiftUI
 // and the trackpad swipe back. Both look at the event before SwiftUI does and let it through unless
 // they've handled it.
 
+/// A search field keeps keyboard focus after you've searched, so Space typed spaces instead of playing and
+/// pausing. Pressing Return, or clicking anywhere outside the field, now ends editing; the results stay.
+@MainActor
+enum SearchFocusMonitor {
+    private static var monitor: Any?
+
+    static func install() {
+        guard monitor == nil else { return }
+        monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .leftMouseDown]) { event in
+            MainActor.assumeIsolated { handle(event) }
+            return event
+        }
+    }
+
+    private static func handle(_ event: NSEvent) {
+        guard let window = event.window, let editor = window.firstResponder as? NSTextView, editor.isFieldEditor,
+              let field = editor.delegate as? NSSearchField else { return }
+        switch event.type {
+        case .keyDown where event.keyCode == 36 || event.keyCode == 76: // Return, Enter
+            // After the field has handled Return (and SwiftUI its submit).
+            Task { @MainActor in
+                await Task.yield()
+                if window.firstResponder === editor { window.makeFirstResponder(nil) }
+            }
+        case .leftMouseDown:
+            if let hit = NavigationEvents.hitView(event), hit.isDescendant(of: field) { return }
+            window.makeFirstResponder(nil)
+        default:
+            break
+        }
+    }
+}
+
 /// Clicking the selected sidebar page again goes back to its top level (or scrolls it to the top).
 /// SwiftUI's `List` reports no change for a click on the selected row, and tagged sidebar rows can't take
 /// gestures without breaking selection, so the click is spotted here instead.
