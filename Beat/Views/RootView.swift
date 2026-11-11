@@ -121,6 +121,9 @@ struct RootView: View {
     }
 
 
+    /// The narrowest the page column gets, on every page (root or pushed).
+    static let detailMinWidth: CGFloat = 680
+
     var body: some View {
         @Bindable var navigator = navigator
         NavigationSplitView {
@@ -131,13 +134,16 @@ struct RootView: View {
                 detail
                     .nowPlayingBarHost()
                     .navigationDestination(for: Route.self) { route in
-                        destination(route).nowPlayingBarHost()
+                        // Pushed pages are hosted separately and set the window's minimum themselves: without
+                        // their own, an album page let the window shrink below the page underneath, which
+                        // then overflowed the column and shifted everything sideways.
+                        destination(route).nowPlayingBarHost().frame(minWidth: Self.detailMinWidth)
                     }
             }
             .id(selection)
             // The window's minimum width lives here, not on the window's root view: a root `minWidth` cut
             // the sidebar's expand animation short (the page slid halfway, then snapped).
-            .frame(minWidth: 680)
+            .frame(minWidth: Self.detailMinWidth)
         }
         // Full-window views cover the window, so Tab (and VoiceOver) must stay inside them rather than
         // reach the sidebar and page underneath.
