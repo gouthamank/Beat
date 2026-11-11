@@ -72,3 +72,18 @@ and `skipped date` are writable, and tracks match by persistent ID. Costs:
 
 Options: A keep them separate; B opt-in automatic sync (off by default, batched, only while Music runs);
 C a manual "Send Beat's plays to Music" button. Leaning B plus C's button for plays already recorded.
+
+## Faster search results (noted Nov 2026)
+On Library ▸ Songs there's a visible gap between typing a search and the results appearing; other pages may
+feel the same. Each keystroke (`SongsModel.update` in `SongsTableView.swift`) waits 150 ms for typing to stop,
+then in a background task folds every song's "title artist albumArtist album" (`SearchText.fold`, ~20k songs,
+redone on every search), filters, groups by album and artist, and finally rebuilds the whole
+`AlbumSongsLayout` and reloads the table on the main thread.
+
+Plan:
+- Measure first: a Time Profiler run while typing on Songs, to see where the time actually goes.
+- Fold each song's search text once per library load and reuse it, so a keystroke is only substring checks.
+- Build `AlbumSongsLayout` in the background task with the filtering; the main thread only swaps it in.
+- Only if it's still noticeably slow: a small spinner (search field or subtitle) shown after ~250 ms, so quick
+  searches don't flicker.
+- Check Albums, Artists and Genres searches the same way.
