@@ -16,6 +16,7 @@ struct SettingsArchive: Codable {
         SidebarTint.key,
         "lyrics.online",
         ArtistInfoSettings.onlineKey,
+        LastFMSettings.enabledKey,
         LibraryPage.hiddenKey,
         ArtistSorts.storageKey,
         NewElementDefaults.key,

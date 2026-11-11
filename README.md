@@ -13,12 +13,13 @@ A native macOS music player for the library you already keep in the Music app. B
 - **Now Playing.** Full-window view with synced lyrics and a visualizer.
 - **Lyrics.** Embedded lyrics, `.lrc` files beside the track, and optional lookups on [LRCLIB](https://lrclib.net). Timestamped tracklists in DJ mixes work too.
 - **Artist info.** Optional bios and photos from [Discogs](https://www.discogs.com), using your own Discogs token.
+- **Last.fm scrobbling.** Optional: shows what's playing on your profile and scrobbles every song you play past halfway, including plays made offline.
 - **Liquid Glass** on macOS 26, with frosted materials on macOS 15.
 
 ## Privacy
 
 - **Your Music library is read-only.** Beat reads it through Apple's `iTunesLibrary` framework and never writes to it. Play counts and skips are kept in Beat's own file (`~/Library/Application Support/Beat`).
-- **No network by default.** Lyrics and artist lookups are off until you turn them on in Settings. With them off, Beat makes no network requests.
+- **No network by default.** Lyrics, artist lookups and Last.fm scrobbling are off until you turn them on in Settings. With them off, Beat makes no network requests.
 - **Local, DRM-free files only.** Apple Music streaming and cloud-only tracks are skipped.
 
 ## Requirements
@@ -41,6 +42,16 @@ Beat is signed with a self-signed certificate named **Beat Local Signing**, so m
 
 Or use a certificate you already have by changing `CODE_SIGN_IDENTITY` in `project.yml`.
 
+### Last.fm (optional)
+
+Scrobbling needs a Last.fm API account of your own. It's kept out of the repository:
+
+1. Create an API account at [last.fm/api/account/create](https://www.last.fm/api/account/create).
+2. Copy `Config/Secrets.xcconfig.example` to `Config/Secrets.xcconfig` (git-ignored) and fill in the API key and shared secret.
+3. Build, then turn it on in **Settings ▸ Last.fm** and click **Connect**.
+
+Without a key (or with the example's placeholder values) Beat builds and runs normally, with scrobbling off and no Last.fm tab in Settings.
+
 ### Build and install
 
 ```sh
@@ -62,10 +73,12 @@ On first launch, allow access to **Media & Apple Music**.
 | `Beat/SmartFilters`, `Beat/Pages` | Smart-filter engine, the page tree, settings export |
 | `Beat/Playback` | Queue, audio, Now Playing, AirPlay, visualizer analysis |
 | `Beat/Lyrics`, `Beat/ArtistInfo` | Lyrics and Discogs artist info |
+| `Beat/Scrobbling` | Last.fm sign-in, requests and the scrobble queue |
 | `Beat/Views` | SwiftUI views |
 | `Beat/DesignSystem` | Glass, artwork, backdrops, shadows |
 | `BeatTests` | Unit tests |
 | `Design/AppIcon` | App icon source and renderer |
+| `Config` | Build settings; your Last.fm keys go in `Secrets.xcconfig` |
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for how the pieces fit together.
 

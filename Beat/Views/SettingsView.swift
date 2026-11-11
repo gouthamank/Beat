@@ -11,6 +11,10 @@ struct SettingsView: View {
             Tab("Playback", systemImage: "waveform") { PlaybackSettings() }
             Tab("Lyrics", systemImage: "quote.bubble") { LyricsSettings() }
             Tab("Artist Info", systemImage: "info.circle") { ArtistInfoSettingsPane() }
+            // Only in builds with a Last.fm key (Config/Secrets.xcconfig); see README.
+            if LastFMCredentials.bundled != nil {
+                Tab("Last.fm", systemImage: "dot.radiowaves.up.forward") { LastFMSettingsPane() }
+            }
         }
     }
 }
@@ -227,5 +231,52 @@ private struct ArtistInfoSettingsPane: View {
             }
         }
         .onAppear { discogsToken = Keychain.string(for: ArtistInfoSettings.tokenAccount) ?? "" }
+    }
+}
+
+// MARK: Last.fm
+
+private struct LastFMSettingsPane: View {
+    @AppStorage(LastFMSettings.enabledKey) private var enabled = false
+    @Environment(Scrobbler.self) private var scrobbler
+
+    var body: some View {
+        SettingsPane {
+            Section("Last.fm") {
+                Toggle("Scrobble to Last.fm", isOn: $enabled)
+                LabeledContent("Account") { account }
+                if let status { Text(status).font(.callout).foregroundStyle(.secondary) }
+                Caption("When on, Beat sends each song you play past halfway (or past 4 minutes) to Last.fm: its artist, title, album, track number, length and when you played it, and shows the song playing now on your profile. Plays made offline are sent later. With it off, Beat makes no requests to Last.fm.")
+            }
+        }
+        .onChange(of: enabled) { _, on in if on { scrobbler.flush() } }
+    }
+
+    @ViewBuilder private var account: some View {
+        switch scrobbler.connection {
+        case .disconnected:
+            Button("Connect…") { scrobbler.connect() }
+        case .waitingForApproval:
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text("Waiting for approval in your browser…").foregroundStyle(.secondary)
+                Button("Cancel") { scrobbler.cancelConnect() }
+            }
+        case .connected(let username):
+            HStack(spacing: 8) {
+                Text(username)
+                Button("Disconnect") { scrobbler.disconnect() }
+            }
+        }
+    }
+
+    private var status: String? {
+        let waiting = scrobbler.pendingCount == 1 ? "1 scrobble is waiting to send." : "\(scrobbler.pendingCount) scrobbles are waiting to send."
+        switch scrobbler.status {
+        case .idle, .sending: return scrobbler.pendingCount > 0 ? waiting : nil
+        case .retrying(let message): return "\(message) \(waiting) Beat will try again shortly."
+        case .needsReconnect: return "Last.fm signed Beat out. Connect again to keep scrobbling; your plays are saved meanwhile."
+        case .failed(let message): return message
+        }
     }
 }

@@ -13,6 +13,10 @@ settings:
     CODE_SIGN_IDENTITY: "Beat Local Signing"
     CODE_SIGN_STYLE: Manual
     ENABLE_HARDENED_RUNTIME: NO
+# Shown in Xcode's sidebar for editing, not built into any target. Lists whatever is in Config when the
+# project is generated, so Secrets.xcconfig appears once it exists (regenerate after creating it).
+fileGroups:
+  - Config
 targets:
   Beat:
     type: application
@@ -26,8 +30,14 @@ targets:
         # `make` fills both from git (commit count, short hash); builds from Xcode keep the defaults below.
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         BeatCommit: $(BEAT_COMMIT)
+        # From Config/Secrets.xcconfig (git-ignored); empty in a build without one.
+        LastFMAPIKey: $(LASTFM_API_KEY)
+        LastFMSharedSecret: $(LASTFM_SHARED_SECRET)
         LSApplicationCategoryType: public.app-category.music
         NSAppleMusicUsageDescription: Beat reads your Music library to browse and play your songs. It never changes your library.
+    configFiles:
+      Debug: Config/Beat.xcconfig
+      Release: Config/Beat.xcconfig
     entitlements:
       path: Beat/Beat.entitlements
       properties: {}

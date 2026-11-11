@@ -12,15 +12,18 @@ struct BeatApp: App {
     @State private var lyrics = LyricsProvider()
     @State private var artistInfo = ArtistInfoProvider()
     @State private var artistImages = ArtistImages()
+    @State private var scrobbler: Scrobbler
 
     init() {
         let library = LibraryStore()
         let artwork = ArtworkCache(loader: library.loader)
         let history = PlayHistoryStore()
+        let scrobbler = Scrobbler()
+        _scrobbler = State(initialValue: scrobbler)
         _library = State(initialValue: library)
         _artwork = State(initialValue: artwork)
         _history = State(initialValue: history)
-        _queue = State(initialValue: PlaybackQueue(history: history, artwork: artwork))
+        _queue = State(initialValue: PlaybackQueue(history: history, artwork: artwork, scrobbler: scrobbler))
         let navigator = AppNavigator()
         let hero = HeroTransition()
         navigator.hero = hero
@@ -42,6 +45,7 @@ struct BeatApp: App {
                 .environment(\.lyricsProvider, lyrics)
                 .environment(\.artistInfoProvider, artistInfo)
                 .environment(artistImages)
+                .environment(scrobbler)
                 // Minimum width is set on RootView's detail column (see there).
                 .frame(minHeight: 560)
                 .onAppear {
@@ -84,6 +88,7 @@ struct BeatApp: App {
                 .environment(\.lyricsProvider, lyrics)
                 .environment(\.artistInfoProvider, artistInfo)
                 .environment(artistImages)
+                .environment(scrobbler)
         }
     }
 }

@@ -30,12 +30,16 @@ final class PlaybackQueue {
     @ObservationIgnored private var nowPlaying: NowPlayingController!
     /// Whether the current item has already been counted as a play.
     @ObservationIgnored private var countedCurrent = false
+    @ObservationIgnored private let scrobbler: Scrobbler?
+    /// Whether Last.fm has been told the current item is playing.
+    @ObservationIgnored private var announcedCurrent = false
 
-    init(history: PlayHistoryStore, artwork: ArtworkCache) {
+    init(history: PlayHistoryStore, artwork: ArtworkCache, scrobbler: Scrobbler? = nil) {
         let player = AudioPlayer()
         self.player = player
         output = OutputRoute(player: player.outputPlayer)
         self.history = history
+        self.scrobbler = scrobbler
         self.volume = UserDefaults.standard.object(forKey: "volume") as? Float ?? 0.8
         player.volume = volume
         player.onTime = { [weak self] in self?.timeChanged($0) }
@@ -110,6 +114,7 @@ final class PlaybackQueue {
         player.play()
         isPlaying = true
         publishNowPlaying()
+        announce()
     }
 
     func pause() {
@@ -171,8 +176,10 @@ final class PlaybackQueue {
         player.load(track.location, upcoming: upcomingURL(), autoplay: autoplay)
         isPlaying = autoplay
         countedCurrent = false
+        announcedCurrent = false
         currentTime = 0
         publishNowPlaying()
+        announce()
     }
 
     private func upcomingURL() -> URL? {
@@ -189,14 +196,19 @@ final class PlaybackQueue {
         guard let i = state.index, let j = state.index(after: i, manual: false, isPlayable: Self.isPlayable) else { return }
         state.move(to: j)
         countedCurrent = false
+        announcedCurrent = false
         currentTime = 0
         refreshUpcoming()
         publishNowPlaying()
+        announce()
     }
 
     private func finished() {
         isPlaying = false
         currentTime = 0
+        // Playing it again from the start is a new play.
+        countedCurrent = false
+        announcedCurrent = false
         // Leave the last track loaded at the start, like Music does.
         if let track = state.current { player.load(track.location, upcoming: nil, autoplay: false) }
         publishNowPlaying()
@@ -209,7 +221,15 @@ final class PlaybackQueue {
         if seconds >= min(track.duration * 0.5, 240) {
             countedCurrent = true
             history.recordPlay(track.id)
+            scrobbler?.played(track, startedAt: .now - seconds)
         }
+    }
+
+    /// Tells Last.fm once per track, when it actually starts playing (not when loaded paused).
+    private func announce() {
+        guard isPlaying, !announcedCurrent, let track = state.current else { return }
+        announcedCurrent = true
+        scrobbler?.nowPlaying(track)
     }
 
     private func publishNowPlaying() {

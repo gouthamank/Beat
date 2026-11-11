@@ -23,6 +23,7 @@
  PlaybackQueue (@Observable) ── QueueState (pure logic)
             │                └─ AudioPlayer (AVQueuePlayer, current + 1 preloaded item)
             ├─ PlayHistoryStore.recordPlay / recordSkip
+            ├─ Scrobbler.nowPlaying / played (opt-in Last.fm; queue on disk, LastFMClient actor)
             └─ NowPlayingController (MPNowPlayingInfoCenter, MPRemoteCommandCenter)
 ```
 
@@ -62,6 +63,9 @@ There are no singletons apart from the system's MediaPlayer centers.
 - **`PlayHistoryStore`:** `[PersistentID: Stats]` of Beat-recorded plays and skips, written atomically in the background.
   - A play counts at 50% of the track or 4 minutes. A skip is a manual "next" between 2 and 20 seconds in.
   - These stats are merged into Music's counts only inside `PreparedLibrary`, never written back.
+- **`Scrobbler`:** opt-in Last.fm scrobbling, fed by `PlaybackQueue`. It announces a track when it starts playing and queues a `Scrobble` when the play counts (the same rule as above). `ScrobbleQueue` (pure, tested) is saved to `scrobbles.json` and sent in batches of 50 by `flush()`, which backs off from 1 to 30 minutes while Last.fm is unreachable. A revoked session keeps the queue and asks the user to connect again.
+  - Sign-in is Last.fm's desktop flow: `auth.getToken`, the approval page in the browser, then polling `auth.getSession`. The session key goes in the Keychain.
+  - `LastFMRequest` (pure, tested) signs calls with the API key and secret compiled in from `Config/Secrets.xcconfig`. Having a key is the feature switch: builds without one (or with the example placeholders) have no Last.fm tab and a scrobbler that does nothing.
 
 ## Playback layer
 
@@ -179,6 +183,8 @@ PageTree.nodes: [SidebarNode]                 the user's sidebar, top level
 | File | Owner | Contents |
 |---|---|---|
 | `~/Library/Application Support/Beat/history.json` | `PlayHistoryStore` | Beat-recorded plays/skips per track |
+| `~/Library/Application Support/Beat/scrobbles.json` | `Scrobbler` | Plays waiting to be sent to Last.fm |
+| Keychain `lastfm-session`, `UserDefaults` `lastfm.enabled`, `lastfm.username` | `Scrobbler`, Settings | Last.fm session, switch and account name |
 | `~/Library/Application Support/Beat/pages.json` | `PageStore` | The sidebar tree: folders, pages, elements (each with its smart filter and appearance) |
 | `~/Library/Application Support/Beat/filters.json` | (none) | Legacy smart filters from before pages; left on disk, no longer read |
 | `UserDefaults` `volume` | `PlaybackQueue` | Last volume |

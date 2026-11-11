@@ -1,0 +1,8 @@
+// Settings for the Beat app target. Committed; secrets live in the git-ignored Secrets.xcconfig.
+
+// Last.fm API account for scrobbling (see README). Empty here, so a fresh clone builds without one.
+// Having a key is the feature switch: without one, scrobbling is off and Settings has no Last.fm tab.
+LASTFM_API_KEY =
+LASTFM_SHARED_SECRET =
+
+#include? "Secrets.xcconfig"

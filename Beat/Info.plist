@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>BeatCommit</key>
+	<string>$(BEAT_COMMIT)</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
@@ -17,11 +19,15 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0</string>
+	<string>1.0.1</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.music</string>
+	<key>LastFMAPIKey</key>
+	<string>$(LASTFM_API_KEY)</string>
+	<key>LastFMSharedSecret</key>
+	<string>$(LASTFM_SHARED_SECRET)</string>
 	<key>NSAppleMusicUsageDescription</key>
 	<string>Beat reads your Music library to browse and play your songs. It never changes your library.</string>
 	<key>NSHumanReadableCopyright</key>

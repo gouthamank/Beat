@@ -7,7 +7,8 @@ See `ARCHITECTURE.md` for how the pieces fit together.
 ## Hard rules
 - **Never write to the Music library.** Reading goes through `iTunesLibrary.framework`, which is read-only by design. Beat's own play counts and skips go to `PlayHistoryStore` (`~/Library/Application Support/Beat/history.json`), never to Music.
 - **Liquid Glass branching lives only in `Beat/DesignSystem/Glass.swift`.** Views call `beatGlass(in:)`, `beatGlassButtonStyle()` and `BeatGlassContainer`, and never use `#available(macOS 26, *)` directly. Deployment target is macOS 15.0 and the dev machine runs 15.x, so every glass call needs a material fallback.
-- **Online lookups are opt-in only.** Lyrics (`lyrics.online`) and artist info from Discogs (`artistInfo.online`, plus the user's own token in the Keychain) are off by default; with them off, Beat makes no network requests. Lyrics are never written back to files or to Music.
+- **Online features are opt-in only.** Lyrics (`lyrics.online`), artist info from Discogs (`artistInfo.online`, plus the user's own token in the Keychain) and Last.fm scrobbling (`lastfm.enabled`, session key in the Keychain) are off by default; with them off, Beat makes no network requests. Lyrics are never written back to files or to Music.
+- **No secrets in the repo.** The Last.fm API key and secret come from the git-ignored `Config/Secrets.xcconfig` (included by `Config/Beat.xcconfig`, surfaced as `LastFMAPIKey`/`LastFMSharedSecret` in Info.plist). User credentials (Discogs token, Last.fm session) live in the Keychain.
 - **Local, DRM-free files only.** Apple Music streaming and cloud-only tracks are out of scope; tracks without a file `location` are skipped at load.
 
 ## Build and test
@@ -30,7 +31,7 @@ The `Makefile` wraps these for the user: `make install` (Release build into `/Ap
 
 ## Working agreements
 - **Verification is manual, by the user.** The user builds, runs and tests from Xcode, so never run `xcodebuild` or `xcodegen` yourself. After each change, say whether files were added or removed (they then run `xcodegen generate`) and which tests cover it, then give a plain-English, numbered verification script (what to click, what they should see). Don't drive the app with AppleScript UI scripting to verify. Screenshots are fine for quick sanity checks while debugging a reported issue.
-- Pure logic gets unit tests. That means `QueueState`, `SmartFilterEngine`, `LibrarySnapshot.build`, `PageTree`, `PageStore` persistence, `CustomField` extraction, `ArtworkPalette` picking, `LRC`/`LyricsResolver`, `SongsQuery`, `SpectrumAnalyzer`/`Smoother`, `LibraryWatcher.isRelevant`, `LibraryPage` visibility storage, `AlbumSongsLayout`, `GridNavigation`, `SettingsArchive` and the `EditableFilter` conversions. Use the `Track.fixture(...)` helper in `BeatTests/LibrarySnapshotTests.swift`, `SeededRNG` for anything random, and inject `now`/`calendar` into `PreparedLibrary` for date rules.
+- Pure logic gets unit tests. That means `QueueState`, `SmartFilterEngine`, `LibrarySnapshot.build`, `PageTree`, `PageStore` persistence, `CustomField` extraction, `ArtworkPalette` picking, `LRC`/`LyricsResolver`, `SongsQuery`, `SpectrumAnalyzer`/`Smoother`, `LibraryWatcher.isRelevant`, `LibraryPage` visibility storage, `AlbumSongsLayout`, `GridNavigation`, `SettingsArchive`, the `EditableFilter` conversions, and `ScrobbleQueue`/`LastFMRequest` (signing, batches, answers). Use the `Track.fixture(...)` helper in `BeatTests/LibrarySnapshotTests.swift`, `SeededRNG` for anything random, and inject `now`/`calendar` into `PreparedLibrary` for date rules.
 - Match existing style: `@MainActor @Observable` stores injected with `.environment(...)`, small focused views, terse doc comments that explain *why*.
 
 ## Gotchas (learned the hard way)
@@ -70,9 +71,10 @@ Done:
 - **Phase 7 polish (Nov 2026):** library file watcher, full Now Playing view with morph (Playing Next list was tried and removed as clutter), cover-coloured album pages and Now Playing, album zoom transition.
 - **Songs and covers (Nov 2026):** Library ▸ Songs is Album by Artist only (pinned album-artist headers, resizable cover column, optional columns); playlists removed entirely (no longer read from Music); full-window cover viewer from album pages.
 - **Visualizer (Nov 2026):** audio tap, FFT analysis, four styles in a full-view visualizer mode.
+- **Last.fm scrobbling (Nov 2026):** opt-in; browser sign-in, now-playing updates, plays (same 50%/4 min rule as `PlayHistoryStore`) queued on disk and sent in batches, retried while offline.
 - **Lyrics, output and settings (Nov 2026):** lyrics in Now Playing (embedded, `.lrc`, opt-in LRCLIB), AirPlay/output picker (`AVRoutePickerView`), a Settings window with Cover Colours / Plain appearance.
 - **Pages:** free-form sidebar tree of folders and pages, page elements with per-element appearance, `pages.json` with corrupt-file protection (Nov 2026). This replaced Home sections and pinned filters.
 
 Pending:
 - **Smart-filter editor UX:** done so far (Nov 2026): Rules / Appearance tabs, "Find [kind] in [source]" on Rules, live page-accurate preview below, custom sort fields, list layout with columns, no element icons. Not picked yet, so ask before doing them: sentence-style rule rows, per-step counts, a fixed-section pipeline.
-- **Later ideas:** Cover Flow style, AVAudioEngine gapless/crossfade, mini player, menu bar controller, last.fm scrobbling.
+- **Later ideas:** Cover Flow style, AVAudioEngine gapless/crossfade, mini player, menu bar controller.
