@@ -131,52 +131,52 @@ struct ElementView: View {
         switch (result.kind, look.layout) {
         case (.songs, .list):
             let tracks = result.tracks
-            ColumnList(count: tracks.count, rows: look.rows, columns: look.columns, spacing: gap) { i in
+            ColumnList(count: tracks.count, rows: look.rows, columns: look.columns, fill: look.effectiveFill, spacing: gap) { i in
                 SongCell(track: tracks[i], context: tracks, index: i)
             }
         case (.songs, _):
             let tracks = result.tracks
-            Shelf(count: tracks.count, rows: look.rows, spacing: gap, rowSpacing: 4) { i in
+            Shelf(count: tracks.count, rows: look.rows, fill: look.effectiveFill, spacing: gap, rowSpacing: 4) { i in
                 SongCell(track: tracks[i], context: tracks, index: i).frame(width: width)
             }
         case (.albums, .list):
             let albums = result.albums
-            ColumnList(count: albums.count, rows: look.rows, columns: look.columns, spacing: gap) { AlbumListCell(album: albums[$0]) }
+            ColumnList(count: albums.count, rows: look.rows, columns: look.columns, fill: look.effectiveFill, spacing: gap) { AlbumListCell(album: albums[$0]) }
         case (.artists, .list):
             let artists = result.artists
-            ColumnList(count: artists.count, rows: look.rows, columns: look.columns, spacing: gap) { ArtistListCell(artist: artists[$0]) }
+            ColumnList(count: artists.count, rows: look.rows, columns: look.columns, fill: look.effectiveFill, spacing: gap) { ArtistListCell(artist: artists[$0]) }
         case (.genres, .list):
             let genres = result.genres
-            ColumnList(count: genres.count, rows: look.rows, columns: look.columns, spacing: gap) { GenreListCell(genre: genres[$0]) }
+            ColumnList(count: genres.count, rows: look.rows, columns: look.columns, fill: look.effectiveFill, spacing: gap) { GenreListCell(genre: genres[$0]) }
         case (.albums, .grid):
             let albums = result.albums
-            TileGrid(count: albums.count, rows: look.rows, minimum: width, spacing: gap, rowSpacing: tileRowGap) { i in
+            TileGrid(count: albums.count, rows: look.rows, fill: look.effectiveFill, minimum: width, spacing: gap, rowSpacing: tileRowGap) { i in
                 AlbumTile(album: albums[i], showsFooter: footer)
             }
         case (.albums, _):
             let albums = result.albums
-            Shelf(count: albums.count, rows: look.rows, spacing: gap, rowSpacing: tileRowGap) { i in
+            Shelf(count: albums.count, rows: look.rows, fill: look.effectiveFill, spacing: gap, rowSpacing: tileRowGap) { i in
                 AlbumTile(album: albums[i], showsFooter: footer)
                     .frame(width: width)
             }
         case (.artists, .grid):
             let artists = result.artists
-            TileGrid(count: artists.count, rows: look.rows, minimum: width, spacing: gap, rowSpacing: tileRowGap) {
+            TileGrid(count: artists.count, rows: look.rows, fill: look.effectiveFill, minimum: width, spacing: gap, rowSpacing: tileRowGap) {
                 ArtistTile(artist: artists[$0], showsFooter: footer)
             }
         case (.artists, _):
             let artists = result.artists
-            Shelf(count: artists.count, rows: look.rows, spacing: gap, rowSpacing: tileRowGap) {
+            Shelf(count: artists.count, rows: look.rows, fill: look.effectiveFill, spacing: gap, rowSpacing: tileRowGap) {
                 ArtistTile(artist: artists[$0], showsFooter: footer).frame(width: width)
             }
         case (.genres, .grid):
             let genres = result.genres
-            TileGrid(count: genres.count, rows: look.rows, minimum: width, spacing: gap, rowSpacing: gap) {
+            TileGrid(count: genres.count, rows: look.rows, fill: look.effectiveFill, minimum: width, spacing: gap, rowSpacing: gap) {
                 GenreTile(genre: genres[$0], showsFooter: footer)
             }
         case (.genres, _):
             let genres = result.genres
-            Shelf(count: genres.count, rows: look.rows, spacing: gap, rowSpacing: gap) {
+            Shelf(count: genres.count, rows: look.rows, fill: look.effectiveFill, spacing: gap, rowSpacing: gap) {
                 GenreTile(genre: genres[$0], showsFooter: footer).frame(width: width)
             }
         }
@@ -219,10 +219,12 @@ extension ElementAppearance.Spacing {
 
 // MARK: Building blocks
 
-/// Items in `rows` rows that scroll sideways together, filled column by column like Apple Music's shelves.
+/// Items in `rows` rows that scroll sideways together, like Apple Music's shelves. Across (the default) runs
+/// each row all the way along; Down fills column by column.
 private struct Shelf<Cell: View>: View {
     let count: Int
     let rows: Int
+    let fill: ElementAppearance.Fill
     let spacing: CGFloat
     let rowSpacing: CGFloat
     @ViewBuilder let cell: (Int) -> Cell
@@ -230,11 +232,12 @@ private struct Shelf<Cell: View>: View {
 
     var body: some View {
         let rows = max(1, min(rows, count))
+        let columns = ElementPaging.columns(count: count, rows: rows, fill: fill)
         ScrollView(.horizontal, showsIndicators: false) {
-            VStack(alignment: .leading, spacing: rowSpacing) {
-                ForEach(0..<rows, id: \.self) { row in
-                    LazyHStack(alignment: .top, spacing: spacing) {
-                        ForEach(Array(stride(from: row, to: count, by: rows)), id: \.self) {
+            LazyHStack(alignment: .top, spacing: spacing) {
+                ForEach(columns.indices, id: \.self) { column in
+                    VStack(alignment: .leading, spacing: rowSpacing) {
+                        ForEach(columns[column], id: \.self) {
                             cell($0).allowsHitTesting(!previewing).keyboardGridItem($0)
                         }
                     }
@@ -243,16 +246,15 @@ private struct Shelf<Cell: View>: View {
             .padding(.horizontal, 24)
             .padding(.vertical, 6)
         }
-        // Filled column by column, so arrow keys move that way too.
-        .keyboardGrid(count: count, layout: .order(.columns(rows: rows)))
+        .keyboardGrid(count: count, layout: .order(.slots(columns)))
     }
 }
 
-/// Columns of `rows` items that scroll sideways and snap to a column, for capped grids and lists:
-/// rows × columns is one screenful, and the rest continue to the right.
+/// Columns of items that scroll sideways and snap to a column, for capped grids and lists: rows × columns is
+/// one screenful, and the rest continue to the right. `columns` comes from `ElementPaging.columns`.
 private struct PagedColumns<Cell: View>: View {
     let count: Int
-    let rows: Int
+    let columns: [[Int]]
     let columnWidth: CGFloat
     let columnSpacing: CGFloat
     let rowSpacing: CGFloat
@@ -260,12 +262,11 @@ private struct PagedColumns<Cell: View>: View {
     @Environment(\.elementPreview) private var previewing
 
     var body: some View {
-        let rows = max(1, rows)
         ScrollView(.horizontal, showsIndicators: false) {
             LazyHStack(alignment: .top, spacing: columnSpacing) {
-                ForEach(0..<ElementPaging.columnsNeeded(count: count, rows: rows), id: \.self) { column in
+                ForEach(columns.indices, id: \.self) { column in
                     VStack(spacing: rowSpacing) {
-                        ForEach(column * rows..<min(count, (column + 1) * rows), id: \.self) {
+                        ForEach(columns[column], id: \.self) {
                             cell($0).allowsHitTesting(!previewing).keyboardGridItem($0)
                         }
                     }
@@ -276,7 +277,39 @@ private struct PagedColumns<Cell: View>: View {
         }
         .contentMargins(.horizontal, 24, for: .scrollContent)
         .scrollTargetBehavior(.viewAligned)
-        .keyboardGrid(count: count, layout: .order(.columns(rows: rows)))
+        .keyboardGrid(count: count, layout: .order(.slots(columns)))
+    }
+}
+
+/// Fixed columns that share the row evenly, each a `VStack` of its items: grids and lists that fit, filled down.
+private struct FittedColumns<Cell: View>: View {
+    let count: Int
+    let columns: [[Int]]
+    /// How many columns the row is divided into, even when fewer are used.
+    let columnCount: Int
+    let columnSpacing: CGFloat
+    let rowSpacing: CGFloat
+    @ViewBuilder let cell: (Int) -> Cell
+    @Environment(\.elementPreview) private var previewing
+
+    var body: some View {
+        HStack(alignment: .top, spacing: columnSpacing) {
+            ForEach(0..<max(columnCount, columns.count), id: \.self) { column in
+                if column < columns.count {
+                    VStack(spacing: rowSpacing) {
+                        ForEach(columns[column], id: \.self) {
+                            cell($0).allowsHitTesting(!previewing).keyboardGridItem($0)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .top)
+                } else {
+                    // Keep column widths fixed when the last columns are empty.
+                    Color.clear.frame(maxWidth: .infinity, maxHeight: 0)
+                }
+            }
+        }
+        .padding(.horizontal, 24)
+        .keyboardGrid(count: count, layout: .order(.slots(columns)))
     }
 }
 
@@ -285,6 +318,7 @@ private struct PagedColumns<Cell: View>: View {
 private struct TileGrid<Cell: View>: View {
     let count: Int
     let rows: Int
+    let fill: ElementAppearance.Fill
     let minimum: CGFloat
     let spacing: CGFloat
     let rowSpacing: CGFloat
@@ -298,7 +332,13 @@ private struct TileGrid<Cell: View>: View {
             if rows != ElementAppearance.allRows, ElementPaging.isCapped(count: count, rows: rows, columns: columns) {
                 // Tiles sized so a screenful holds exactly `columns` of them.
                 let tile = max(minimum, (width - 48 - spacing * CGFloat(columns - 1)) / CGFloat(columns))
-                PagedColumns(count: count, rows: rows, columnWidth: tile, columnSpacing: spacing, rowSpacing: rowSpacing, cell: cell)
+                PagedColumns(count: count, columns: ElementPaging.columns(count: count, rows: rows, fill: fill),
+                             columnWidth: tile, columnSpacing: spacing, rowSpacing: rowSpacing, cell: cell)
+            } else if fill == .down, width > 0 {
+                FittedColumns(count: count,
+                              columns: ElementPaging.columns(count: count, rows: ElementPaging.rowsNeeded(count: count, columns: columns),
+                                                             fill: .down),
+                              columnCount: columns, columnSpacing: spacing, rowSpacing: rowSpacing, cell: cell)
             } else {
                 // The measured column count, each column flexible: tiles share the row evenly and start under
                 // the heading. An adaptive grid capped each tile's growth and centred what was left, so a
@@ -318,48 +358,40 @@ private struct TileGrid<Cell: View>: View {
     }
 }
 
-/// Items in equal-width columns, filled top to bottom then left to right. With more than rows × columns
-/// it scrolls sideways a column at a time; with Rows set to All it grows to fit everything.
+/// Items in equal-width columns, across each row (the default) or down each column. With more than
+/// rows × columns it scrolls sideways a column at a time; with Rows set to All it grows to fit everything.
 private struct ColumnList<Cell: View>: View {
     let count: Int
     let rows: Int
     let columns: Int
+    let fill: ElementAppearance.Fill
     let spacing: CGFloat
     @ViewBuilder let cell: (Int) -> Cell
     @State private var width: CGFloat = 0
-    @Environment(\.elementPreview) private var previewing
 
     var body: some View {
         let perColumn = rows == ElementAppearance.allRows ? max(1, ElementPaging.rowsNeeded(count: count, columns: columns)) : rows
         let columnGap = spacing + 6
         let rowGap = max(2, spacing / 6)
+        let capped = ElementPaging.isCapped(count: count, rows: perColumn, columns: columns)
+        // Across in a list that fits reads across its columns: just enough rows to fill them.
+        let laidOut = ElementPaging.columns(count: count, rows: fill == .across && !capped
+                                                ? ElementPaging.rowsNeeded(count: count, columns: columns) : perColumn,
+                                            fill: fill)
         Group {
-            if ElementPaging.isCapped(count: count, rows: perColumn, columns: columns) {
+            if capped {
                 let columnWidth = max(160, (width - 48 - columnGap * CGFloat(columns - 1)) / CGFloat(columns))
-                PagedColumns(count: count, rows: perColumn, columnWidth: columnWidth, columnSpacing: columnGap, rowSpacing: rowGap, cell: cell)
+                PagedColumns(count: count, columns: laidOut, columnWidth: columnWidth, columnSpacing: columnGap,
+                             rowSpacing: rowGap, cell: cell)
             } else {
-                let used = max(1, min(columns, ElementPaging.columnsNeeded(count: count, rows: perColumn)))
-                HStack(alignment: .top, spacing: columnGap) {
-                    ForEach(0..<used, id: \.self) { column in
-                        VStack(spacing: rowGap) {
-                            ForEach(column * perColumn..<min(count, (column + 1) * perColumn), id: \.self) {
-                                cell($0).allowsHitTesting(!previewing).keyboardGridItem($0)
-                            }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .top)
-                    }
-                    // Keep column widths fixed when the last columns are empty.
-                    ForEach(used..<max(used, columns), id: \.self) { _ in Color.clear.frame(maxWidth: .infinity, maxHeight: 0) }
-                }
-                .padding(.horizontal, 24)
-                .keyboardGrid(count: count, layout: .order(.columns(rows: perColumn)))
+                FittedColumns(count: count, columns: laidOut, columnCount: columns, columnSpacing: columnGap,
+                              rowSpacing: rowGap, cell: cell)
             }
         }
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
     }
 }
 
-/// A compact album row for list layouts.
 private struct AlbumListCell: View {
     let album: Album
     @Environment(LibraryStore.self) private var library

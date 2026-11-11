@@ -34,6 +34,8 @@ struct ElementAppearance: Codable, Hashable, Sendable {
     enum Layout: String, Codable, CaseIterable, Sendable { case shelf, grid, list }
     enum Size: String, Codable, CaseIterable, Sendable { case small, medium, large }
     enum Spacing: String, Codable, CaseIterable, Sendable { case compact, regular, roomy }
+    /// The order items take with more than one row (or list column): along each row, or down each column.
+    enum Fill: String, Codable, CaseIterable, Sendable { case across, down }
 
     var layout: Layout = .shelf
     var size: Size = .medium
@@ -42,6 +44,8 @@ struct ElementAppearance: Codable, Hashable, Sendable {
     /// List only: items fill each column top to bottom, then the next column.
     var columns = 1
     var spacing: Spacing = .regular
+    /// The fill chosen in Appearance; nil follows the layout (`effectiveFill`).
+    var fill: Fill?
     var showHeader = true
     var showPlayButtons = true
     /// The title (and subtitle) under each tile; off shows art alone. Lists and songs keep their text.
@@ -53,6 +57,18 @@ struct ElementAppearance: Codable, Hashable, Sendable {
 
     /// Whether this layout can show every item (Rows set to All).
     static func allowsAllRows(_ layout: Layout) -> Bool { layout != .shelf }
+
+    /// Fill makes a difference only with more than one row, or, for a list, more than one column.
+    var fillApplies: Bool { layout == .list ? columns > 1 : rows != 1 }
+
+    /// Covers read like a shelf, along each row; lists read like a tracklist, down each column.
+    static func defaultFill(for layout: Layout) -> Fill { layout == .list ? .down : .across }
+
+    /// The fill in use: the one chosen, else the layout's default, so switching layouts follows it.
+    var effectiveFill: Fill { fill ?? Self.defaultFill(for: layout) }
+
+    /// Choosing the layout's own default goes back to following the layout.
+    mutating func setFill(_ value: Fill) { fill = value == Self.defaultFill(for: layout) ? nil : value }
 
     init() {}
 
@@ -105,6 +121,7 @@ struct ElementAppearance: Codable, Hashable, Sendable {
         rows = try c.decodeIfPresent(Int.self, forKey: .rows) ?? 1
         columns = try c.decodeIfPresent(Int.self, forKey: .columns) ?? 1
         spacing = try c.decodeIfPresent(Spacing.self, forKey: .spacing) ?? .regular
+        fill = try c.decodeIfPresent(Fill.self, forKey: .fill)
         showHeader = try c.decodeIfPresent(Bool.self, forKey: .showHeader) ?? true
         showPlayButtons = try c.decodeIfPresent(Bool.self, forKey: .showPlayButtons) ?? true
         showFooter = try c.decodeIfPresent(Bool.self, forKey: .showFooter) ?? true
@@ -125,6 +142,19 @@ enum ElementPaging {
     /// More items than one screenful of rows × columns, so the rest scroll sideways.
     static func isCapped(count: Int, rows: Int, columns: Int) -> Bool {
         rows > 0 && count > rows * columns
+    }
+
+    /// Item indices grouped into on-screen columns, each top to bottom. Down: runs of `rows`, column after
+    /// column. Across: each row runs all the way along, the first holding the first ⌈count / rows⌉ items, the
+    /// next row the next ones, and they scroll sideways together.
+    static func columns(count: Int, rows: Int, fill: ElementAppearance.Fill) -> [[Int]] {
+        let rows = max(rows, 1)
+        guard count > 0 else { return [] }
+        if fill == .down || rows == 1 {
+            return stride(from: 0, to: count, by: rows).map { Array($0..<min($0 + rows, count)) }
+        }
+        let width = columnsNeeded(count: count, rows: rows)
+        return (0..<width).map { Array(stride(from: $0, to: count, by: width)) }
     }
 }
 

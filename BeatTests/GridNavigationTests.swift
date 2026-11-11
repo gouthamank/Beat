@@ -51,4 +51,24 @@ final class GridNavigationTests: XCTestCase {
         XCTAssertEqual(GridNavigation.adaptiveColumns(width: 800, minimum: 160, spacing: 22, inset: 24), 4)
         XCTAssertEqual(GridNavigation.adaptiveColumns(width: 0, minimum: 160, spacing: 22, inset: 24), 1, "never fewer than one")
     }
+
+    // MARK: Slots (page elements, filled across)
+
+    // 2 rows, 9 items: 0 1 2 3 4
+    //                  5 6 7 8
+    private let slots = GridOrder.slots([[0, 5], [1, 6], [2, 7], [3, 8], [4]])
+
+    func testSlotsMoveToWhatsAdjacentOnScreen() {
+        XCTAssertEqual(GridNavigation.move(.right, from: 0, count: 9, order: slots), 1, "along the row")
+        XCTAssertEqual(GridNavigation.move(.down, from: 1, count: 9, order: slots), 6)
+        XCTAssertEqual(GridNavigation.move(.up, from: 6, count: 9, order: slots), 1)
+        XCTAssertEqual(GridNavigation.move(.left, from: 7, count: 9, order: slots), 6)
+    }
+
+    func testSlotsClampAtEdgesAndShortColumns() {
+        XCTAssertEqual(GridNavigation.move(.right, from: 8, count: 9, order: slots), 4, "no second row there: its top")
+        XCTAssertEqual(GridNavigation.move(.down, from: 4, count: 9, order: slots), 4, "nothing below")
+        XCTAssertEqual(GridNavigation.move(.right, from: 4, count: 9, order: slots), 4, "last column")
+        XCTAssertEqual(GridNavigation.move(.left, from: 0, count: 9, order: slots), 0, "first column")
+    }
 }

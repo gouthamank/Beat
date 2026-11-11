@@ -30,6 +30,15 @@ struct FilterAppearanceForm: View {
                         LabeledContent("Columns", value: "\(appearance.columns)")
                     }
                 }
+                // Only where it makes a difference: with one row (or one list column) both orders look the same.
+                if appearance.fillApplies {
+                    Picker("Fill", selection: Binding(get: { appearance.effectiveFill }, set: { appearance.setFill($0) })) {
+                        Text("Across").tag(ElementAppearance.Fill.across)
+                        Text("Down").tag(ElementAppearance.Fill.down)
+                    }
+                    .pickerStyle(.segmented)
+                    .help("Across fills each row before the next; Down fills each column first. Grids and shelves default to Across, lists to Down.")
+                }
             }
 
             Section("Style") {

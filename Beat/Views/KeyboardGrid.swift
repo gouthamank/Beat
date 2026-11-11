@@ -8,8 +8,11 @@ import SwiftUI
 enum GridOrder: Equatable, Sendable {
     /// Left to right, then the next row: the Library grids, and element grids showing every row.
     case rows(columns: Int)
-    /// Top to bottom, then the next column: shelves, paged grids and list columns.
+    /// Top to bottom, then the next column.
     case columns(rows: Int)
+    /// Exactly as laid out: item indices per on-screen column, each top to bottom (`ElementPaging.columns`),
+    /// for page elements, which fill across or down.
+    case slots([[Int]])
 }
 
 enum GridMove: Sendable {
@@ -41,6 +44,16 @@ enum GridNavigation {
             case .down: target = index % rows == rows - 1 ? index : index + 1
             case .left: target = index - rows
             case .right: target = (index / rows + 1) * rows < count ? min(index + rows, count - 1) : index
+            }
+        case .slots(let columns):
+            guard let column = columns.firstIndex(where: { $0.contains(index) }),
+                  let row = columns[column].firstIndex(of: index) else { return index }
+            switch direction {
+            // Up and down stay in the column; left and right keep the row, or the nearest one in a shorter column.
+            case .up: target = row > 0 ? columns[column][row - 1] : index
+            case .down: target = row + 1 < columns[column].count ? columns[column][row + 1] : index
+            case .left: target = column > 0 ? columns[column - 1][min(row, columns[column - 1].count - 1)] : index
+            case .right: target = column + 1 < columns.count ? columns[column + 1][min(row, columns[column + 1].count - 1)] : index
             }
         }
         return (0..<count).contains(target) ? target : index
