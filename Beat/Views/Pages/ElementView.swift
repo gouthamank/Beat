@@ -528,7 +528,16 @@ struct SongCell: View {
         .keyboardHighlight(gridItem.highlighted, cornerRadius: 4)
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
-        .onTapGesture(count: 2) { queue.play(context, startAt: index) }
+        // The whole row is the play button the hover icon on the art shows: a click plays the song, or on
+        // the playing song pauses and resumes. A double-click just plays, rather than playing on the first
+        // click and pausing on the second.
+        .gesture(
+            TapGesture(count: 2).onEnded { queue.play(context, startAt: index) }
+                .exclusively(before: TapGesture().onEnded {
+                    isCurrent ? queue.togglePlayPause() : queue.play(context, startAt: index)
+                })
+        )
+        .help(isCurrent && queue.isPlaying ? "Pause" : "Play")
         // Space or Return on the highlighted song plays it, like a double-click.
         .onChange(of: gridItem.activation) { _, serial in if serial != nil { queue.play(context, startAt: index) } }
         .contextMenu { TrackContextMenu(tracks: [track]) }
