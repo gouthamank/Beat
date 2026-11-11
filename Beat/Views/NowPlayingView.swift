@@ -113,6 +113,13 @@ struct NowPlayingView: View {
                 .animation(.spring(duration: 0.45, bounce: 0.1), value: showLyrics)
                 .padding(48)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                // Dragging down anywhere that isn't a control closes it. A click does nothing.
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 10, coordinateSpace: .global).onEnded { value in
+                        if NowPlayingDrag.passes(value, upward: false) { navigator.showingNowPlaying = false }
+                    }
+                )
                 .overlay(alignment: .topLeading) { closeButton }
                 .transition(.opacity)
             }
@@ -194,8 +201,17 @@ struct NowPlayingView: View {
             VisualizerView(track: track, palette: palette, style: style)
             VStack {
                 HStack {
-                    circleButton("chevron.left", help: "Leave Visualizer (Esc)") { visualizing = false }
+                    circleButton("chevron.left", help: "Leave Visualizer (Esc or ⇧⌘V)") { visualizing = false }
                         .keyboardShortcut(.cancelAction)
+                        // ⇧⌘V leaves too, as it entered; a view takes one shortcut, so it gets a hidden button.
+                        .background {
+                            Button("Leave Visualizer") { visualizing = false }
+                                .keyboardShortcut("v", modifiers: [.command, .shift])
+                                // Invisible but present: a `.hidden()` button can lose its shortcut.
+                                .opacity(0)
+                                .frame(width: 0, height: 0)
+                                .accessibilityHidden(true)
+                        }
                     Spacer()
                     Picker("Style", selection: $visualizerStyle) {
                         ForEach(VisualizerStyle.allCases, id: \.self) { Text($0.title).tag($0.rawValue) }
@@ -204,15 +220,15 @@ struct NowPlayingView: View {
                     .labelsHidden()
                     .frame(width: 340)
                     Spacer()
-                    circleButton("waveform", help: "Leave Visualizer (⇧⌘V)") { visualizing = false }
-                        .keyboardShortcut("v", modifiers: [.command, .shift])
+                    // The chevron's width, so the style picker stays centred.
+                    Color.clear.frame(width: 36, height: 36)
                 }
                 Spacer()
                 HStack(alignment: .bottom, spacing: 24) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(track.title).font(.headline).foregroundStyle(primary).lineLimit(1)
                         Text(track.displayArtist).font(.subheadline).foregroundStyle(secondary).lineLimit(1)
-                        if queue.outputPlayer.isExternalPlaybackActive {
+                        if queue.output.isExternal {
                             Text("Out of sync on AirPlay").font(.caption).foregroundStyle(secondary)
                         }
                     }

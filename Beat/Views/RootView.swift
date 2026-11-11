@@ -124,27 +124,34 @@ struct RootView: View {
     /// The narrowest the page column gets, on every page (root or pushed).
     static let detailMinWidth: CGFloat = 680
 
-    var body: some View {
+    /// The sidebar, the page column and the window's now-playing bar. Split out of `body`, which grew too
+    /// long for the compiler to type-check in reasonable time.
+    private var splitView: some View {
         @Bindable var navigator = navigator
-        NavigationSplitView {
+        return NavigationSplitView {
             SidebarView(selection: $navigator.selection)
                 .navigationSplitViewColumnWidth(min: 180, ideal: 220, max: 300)
         } detail: {
             NavigationStack(path: navigator.pathBinding(for: selection)) {
                 detail
-                    .nowPlayingBarHost()
+                    .nowPlayingBarSpace()
                     .navigationDestination(for: Route.self) { route in
                         // Pushed pages are hosted separately and set the window's minimum themselves: without
                         // their own, an album page let the window shrink below the page underneath, which
                         // then overflowed the column and shifted everything sideways.
-                        destination(route).nowPlayingBarHost().frame(minWidth: Self.detailMinWidth)
+                        destination(route).nowPlayingBarSpace().frame(minWidth: Self.detailMinWidth)
                     }
             }
             .id(selection)
+            // Where the window's now-playing bar goes (see WindowNowPlayingBar).
+            .background { DetailColumnReader(navigator: navigator) }
             // The window's minimum width lives here, not on the window's root view: a root `minWidth` cut
             // the sidebar's expand animation short (the page slid halfway, then snapped).
             .frame(minWidth: Self.detailMinWidth)
         }
+        // One bar for the window, above pushed pages. Before `.disabled`, so it's disabled with the rest of the
+        // window behind full-window views, and before the overlays that must draw over it.
+        .overlay { WindowNowPlayingBar() }
         // Full-window views cover the window, so Tab (and VoiceOver) must stay inside them rather than
         // reach the sidebar and page underneath.
         .disabled(navigator.showingNowPlaying || navigator.artViewer != nil)
@@ -157,6 +164,11 @@ struct RootView: View {
                 NSApp.keyWindow?.makeFirstResponder(nil)
             }
         }
+    }
+
+    var body: some View {
+        @Bindable var navigator = navigator
+        splitView
         // While an album or artist page shows its colours, the whole window (toolbar, divider, sidebar
         // material) takes the cover's lightness. Otherwise the system's own Light or Dark, set explicitly:
         // `preferredColorScheme(nil)` doesn't restore a window that was given a scheme, so after a pale cover

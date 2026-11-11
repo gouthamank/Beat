@@ -32,6 +32,9 @@ struct PlaybackCommands: Commands {
             Button("Decrease Volume") { queue.volume = max(queue.volume - 0.1, 0) }
                 .keyboardShortcut(.downArrow, modifiers: .command)
                 .disabled(queue.output.isExternal)
+            Button(queue.isMuted ? "Unmute" : "Mute", action: queue.toggleMute)
+                .keyboardShortcut(.downArrow, modifiers: [.option, .command])
+                .disabled(queue.output.isExternal)
         }
     }
 }

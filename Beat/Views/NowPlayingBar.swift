@@ -7,22 +7,22 @@ struct NowPlayingBar: View {
     @Environment(PlaybackQueue.self) private var queue
     @Environment(AppNavigator.self) private var navigator
     @State private var probe = FrameProbe()
+    /// How far the bar has lifted while being dragged up: a hint that the drag is noticed, not tracking.
+    @State private var lift: CGFloat = 0
 
     var body: some View {
         if let track = queue.current {
             BeatGlassContainer(spacing: 12) {
                 HStack(spacing: 16) {
-                    // A button, not a tap gesture, so Tab reaches it and Space opens Now Playing.
-                    Button {
-                        navigator.barProbe = probe
-                        navigator.showingNowPlaying = true
-                    } label: {
+                    // A button so Tab reaches it and Space opens Now Playing; mouse clicks and drags on it go to
+                    // the bar's gesture, like everywhere else on the bar.
+                    Button(action: open) {
                         TrackSummary(track: track)
                             .frame(width: 210, alignment: .leading)
                             .contentShape(Rectangle())
+                            .gesture(openGesture)
                     }
                     .buttonStyle(.plain)
-                    .help("Show Now Playing")
                     VStack(spacing: 4) {
                         TransportControls()
                         Scrubber(duration: track.duration)
@@ -33,41 +33,152 @@ struct NowPlayingBar: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
                 .frameProbe(probe)
+                // The whole bar opens Now Playing, by a click or a drag up. Controls take their own clicks and
+                // drags first, so this only gets the glass between them.
+                .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .gesture(openGesture)
+                .help("Show Now Playing")
                 .beatGlass(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
             }
+            .offset(y: lift)
             .frame(maxWidth: 880)
             .padding(.horizontal, 20)
             .padding(.bottom, 14)
-            // The topmost page's bar appears last, so ⌘L morphs from the bar that's actually visible.
             .onAppear { navigator.barProbe = probe }
             .transition(.move(edge: .bottom).combined(with: .opacity))
         }
     }
+
+    private func open() {
+        navigator.barProbe = probe
+        navigator.showingNowPlaying = true
+    }
+
+    /// A click, or a drag up past `NowPlayingDrag.threshold`. Global coordinates, because the lift moves the
+    /// bar under the pointer.
+    private var openGesture: some Gesture {
+        DragGesture(minimumDistance: 0, coordinateSpace: .global)
+            .onChanged { value in lift = max(-12, min(0, value.translation.height * 0.25)) }
+            .onEnded { value in
+                withAnimation(.spring(duration: 0.3)) { lift = 0 }
+                if NowPlayingDrag.isClick(value) || NowPlayingDrag.passes(value, upward: true) { open() }
+            }
+    }
 }
 
-extension View {
-    /// Floats the now-playing bar over this page and lets its scrolling content clear the bar.
-    /// Every navigation page hosts its own bar: on macOS a pushed page is layered above anything
-    /// attached to the NavigationStack itself, so a single shared overlay gets covered.
-    func nowPlayingBarHost() -> some View { modifier(NowPlayingBarHost()) }
+/// Dragging the bar up opens Now Playing; dragging Now Playing down closes it. Not finger-tracking: past the
+/// threshold the usual morph runs.
+enum NowPlayingDrag {
+    /// How far a drag has to go. Tune here.
+    static let threshold: CGFloat = 50
+    /// Less movement than this is a click.
+    static let clickSlop: CGFloat = 5
+
+    static func isClick(_ value: DragGesture.Value) -> Bool {
+        hypot(value.translation.width, value.translation.height) < clickSlop
+    }
+
+    /// Far enough, or flicked: the predicted end of a quick flick counts at twice the threshold.
+    static func passes(_ value: DragGesture.Value, upward: Bool) -> Bool {
+        let sign: CGFloat = upward ? -1 : 1
+        return sign * value.translation.height > threshold || sign * value.predictedEndTranslation.height > threshold * 2
+    }
 }
 
-private struct NowPlayingBarHost: ViewModifier {
+/// The window's one now-playing bar, drawn over the split view and placed over the page column. Pushed
+/// `NavigationStack` pages are layered above anything attached to the stack, so the bar can't live there;
+/// over the split view it stays above them (like `HeroOverlay`), holds still while pages slide in and out,
+/// and is the only copy updating. The column's frame comes from `DetailColumnReader`.
+struct WindowNowPlayingBar: View {
     @Environment(PlaybackQueue.self) private var queue
     @Environment(AppNavigator.self) private var navigator
     @Environment(\.colorScheme) private var colorScheme
+    @State private var origin = FrameProbe()
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            Color.clear.allowsHitTesting(false)
+            // Hidden until the column has been measured, so it never shows over the wrong place.
+            if let column = navigator.detailColumnFrame {
+                let base = origin.windowRect?.origin ?? .zero
+                NowPlayingBar()
+                    // Over an album page's colours the bar's glass follows the cover's lightness, like the page does.
+                    .environment(\.colorScheme, navigator.coverTint.current.map { $0.palette.isDark ? .dark : .light } ?? colorScheme)
+                    .frame(width: column.width, height: column.height, alignment: .bottom)
+                    .offset(x: column.minX - base.x, y: column.minY - base.y)
+            }
+        }
+        .background { Color.clear.frameProbe(origin) }
+        .ignoresSafeArea()
+        .animation(.spring(duration: 0.4), value: queue.current == nil)
+    }
+}
+
+extension View {
+    /// Room at the bottom of a page for the window's now-playing bar, so scrolling content clears it, and the
+    /// swipe-back chevron. Per page: an overlay on the stack would sit under pushed pages.
+    func nowPlayingBarSpace() -> some View { modifier(NowPlayingBarSpace()) }
+}
+
+private struct NowPlayingBarSpace: ViewModifier {
+    @Environment(PlaybackQueue.self) private var queue
 
     func body(content: Content) -> some View {
         content
             .contentMargins(.bottom, queue.current == nil ? 0 : NowPlayingBar.reservedHeight, for: .scrollContent)
-            // Over an album page's colours the bar's glass follows the cover's lightness, like the page does.
-            .overlay(alignment: .bottom) {
-                NowPlayingBar()
-                    .environment(\.colorScheme, navigator.coverTint.current.map { $0.palette.isDark ? .dark : .light } ?? colorScheme)
-            }
-            // Per page for the same reason as the bar: an overlay on the stack would sit under pushed pages.
             .overlay(alignment: .leading) { SwipeBackIndicator() }
             .animation(.spring(duration: 0.4), value: queue.current == nil)
+    }
+}
+
+/// Reports the page column's frame in window coordinates (top-left origin) whenever it moves or resizes:
+/// window resizes, sidebar drags and the sidebar's collapse animation. Feeds `WindowNowPlayingBar`.
+struct DetailColumnReader: NSViewRepresentable {
+    let navigator: AppNavigator
+
+    func makeNSView(context: Context) -> DetailColumnView {
+        let view = DetailColumnView()
+        view.report = { [weak navigator] in navigator?.detailColumnFrame = $0 }
+        return view
+    }
+
+    func updateNSView(_ view: DetailColumnView, context: Context) {}
+}
+
+final class DetailColumnView: NSView {
+    var report: ((CGRect) -> Void)?
+    private var observers: [NSObjectProtocol] = []
+    private var last: CGRect?
+
+    /// Never takes clicks; it only measures.
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    override func layout() {
+        super.layout()
+        measure()
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        observers.forEach(NotificationCenter.default.removeObserver)
+        observers = []
+        guard let window else { return }
+        // The column can move without resizing (the sidebar's divider), which doesn't lay this view out.
+        for (name, object) in [(NSSplitView.didResizeSubviewsNotification, nil as Any?), (NSWindow.didResizeNotification, window)] {
+            observers.append(NotificationCenter.default.addObserver(forName: name, object: object, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.measure() }
+            })
+        }
+        measure()
+    }
+
+    private func measure() {
+        guard let window, let content = window.contentView else { return }
+        let r = convert(bounds, to: nil)
+        let rect = CGRect(x: r.minX, y: content.bounds.height - r.maxY, width: r.width, height: r.height)
+        guard rect != last else { return }
+        last = rect
+        report?(rect)
     }
 }
 
@@ -170,10 +281,21 @@ struct ModeControls: View {
             .help("Repeat: \(queue.repeatMode.rawValue.capitalized)")
             QueueButton()
             HStack(spacing: 4) {
-                Image(systemName: "speaker.fill").font(.caption2).foregroundStyle(.secondary)
+                // Click to mute and unmute. The waves follow the level, like the menu bar's volume icon.
+                Button(action: queue.toggleMute) {
+                    Image(systemName: queue.isMuted ? "speaker.slash.fill" : "speaker.wave.3.fill",
+                          variableValue: queue.isMuted ? nil : Double(queue.volume))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 18, alignment: .leading)
+                        .contentShape(Rectangle())
+                }
+                .focusable(false)
+                .disabled(queue.output.isExternal)
+                .help(queue.isMuted ? "Unmute" : "Mute")
                 Slider(value: $queue.volume, in: 0...1)
                     .disabled(queue.output.isExternal)
-                    .help(queue.output.isExternal ? "AirPlay volume is set from the speaker or the menu bar" : "Volume")
+                    .help(queue.output.isExternal ? "On AirPlay, set the volume in the AirPlay menu or on the speaker" : "Volume")
                     .controlSize(.mini)
                     .frame(width: 80)
             }

@@ -12,8 +12,10 @@ final class PlaybackQueue {
         didSet {
             player.volume = volume
             UserDefaults.standard.set(volume, forKey: "volume")
+            if !togglingMute { mute.changedManually() }
         }
     }
+    var isMuted: Bool { volume == 0 }
 
     var current: Track? { state.current }
     /// For the output (AirPlay) picker, which routes Beat's player without changing the system output.
@@ -28,6 +30,8 @@ final class PlaybackQueue {
     @ObservationIgnored let output: OutputRoute
     @ObservationIgnored private let history: PlayHistoryStore
     @ObservationIgnored private var nowPlaying: NowPlayingController!
+    @ObservationIgnored private var mute = VolumeMute()
+    @ObservationIgnored private var togglingMute = false
     /// Whether the current item has already been counted as a play.
     @ObservationIgnored private var countedCurrent = false
     @ObservationIgnored private let scrobbler: Scrobbler?
@@ -108,6 +112,13 @@ final class PlaybackQueue {
     // MARK: Transport
 
     func togglePlayPause() { isPlaying ? pause() : play() }
+
+    /// The speaker button: mutes, or goes back to the volume from before muting.
+    func toggleMute() {
+        togglingMute = true
+        volume = mute.toggled(current: volume)
+        togglingMute = false
+    }
 
     func play() {
         guard state.current != nil else { return }
@@ -239,4 +250,26 @@ final class PlaybackQueue {
     private static func isPlayable(_ track: Track) -> Bool {
         FileManager.default.fileExists(atPath: track.location.path)
     }
+}
+
+/// Mute that remembers the level to come back to.
+struct VolumeMute: Equatable, Sendable {
+    /// Unmuting from silence that wasn't a mute (the slider dragged to zero) comes back to this.
+    static let fallback: Float = 0.5
+
+    /// The level before muting; nil when there's nothing to go back to.
+    private(set) var saved: Float?
+
+    /// The volume after the speaker button: silence (remembering `current`), or the remembered level.
+    mutating func toggled(current: Float) -> Float {
+        if current > 0 {
+            saved = current
+            return 0
+        }
+        defer { saved = nil }
+        return saved ?? Self.fallback
+    }
+
+    /// The volume was set some other way (slider, ⌘↑/↓), so a later unmute shouldn't jump back to an old level.
+    mutating func changedManually() { saved = nil }
 }

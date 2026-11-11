@@ -95,6 +95,9 @@ final class AppNavigator {
     var showingNowPlaying = false
     /// The now-playing bar's frame, read when Now Playing opens and closes so it can morph from and to it.
     @ObservationIgnored var barProbe: FrameProbe?
+    /// The page column's frame in window coordinates (top-left origin), from `DetailColumnReader`, for the
+    /// window's one now-playing bar. Nil until measured.
+    var detailColumnFrame: CGRect?
     /// The cover shown full-window, opened from an album page's header.
     var artViewer: ArtViewerRequest?
     /// The element being created or edited, if the editor is open.

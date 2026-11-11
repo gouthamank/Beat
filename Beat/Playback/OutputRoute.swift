@@ -1,5 +1,4 @@
 import AVKit
-import Combine
 import Observation
 
 /// Beat's one output (AirPlay) picker. Every `AVRoutePickerView` given a player attaches a fresh output
@@ -9,8 +8,9 @@ import Observation
 @MainActor
 @Observable
 final class OutputRoute {
-    /// Playing to AirPlay. Beat's own volume doesn't reach the speaker then, and macOS offers apps no
-    /// public way to set the speaker's volume, so the slider steps aside.
+    /// Beat is playing to AirPlay through this picker. Beat's own volume doesn't reach the speaker then, and
+    /// macOS offers apps no public way to set the speaker's volume, so the slider steps aside. (When the Mac's
+    /// whole output is set to an AirPlay speaker, Beat's volume does apply, and this stays false.)
     private(set) var isExternal = false
     /// The picker's button has keyboard focus. AppKit's own focus ring would draw outside the picker's small
     /// slot and is clipped, so the bar draws one from this.
@@ -18,7 +18,7 @@ final class OutputRoute {
 
     @ObservationIgnored let picker = SingleStopRoutePicker()
     @ObservationIgnored private var hosts: [Host] = []
-    @ObservationIgnored private var externalWatch: AnyCancellable?
+    @ObservationIgnored private var airPlayCheck: Timer?
 
     private struct Host {
         weak var view: NSView?
@@ -31,10 +31,41 @@ final class OutputRoute {
         picker.setRoutePickerButtonColor(.controlAccentColor, for: .active)
         picker.setRoutePickerButtonColor(.controlAccentColor, for: .activeHighlighted)
         picker.player = player
-        // Delivered on the main queue, so the main-actor closure is safe.
-        externalWatch = player.publisher(for: \.isExternalPlaybackActive)
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] active in self?.isExternal = active }
+        // Twice a second is plenty for a setting changed by hand, and the check is a few property reads.
+        airPlayCheck = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.checkAirPlay() }
+        }
+    }
+
+    /// Whether the picker is routing to AirPlay. `AVPlayer.isExternalPlaybackActive` is for video only and stays
+    /// false for audio, and nothing else public reports Beat's own route; but the picker draws its icon in the
+    /// `.active` colour set above while a speaker is chosen, so that colour is the signal. Reading the icon's
+    /// shape layer relies on how AppKit draws the picker: if that changes and the layer can't be found, this
+    /// stays false and the slider simply stays enabled, as before.
+    private func checkAirPlay() {
+        guard let fill = Self.firstShapeFill(in: picker.layer) else { return }
+        var active = false
+        picker.effectiveAppearance.performAsCurrentDrawingAppearance {
+            active = Self.sameColor(fill, NSColor.controlAccentColor.cgColor)
+        }
+        if active != isExternal { isExternal = active }
+    }
+
+    private static func firstShapeFill(in layer: CALayer?) -> CGColor? {
+        guard let layer else { return nil }
+        if let shape = layer as? CAShapeLayer, let fill = shape.fillColor { return fill }
+        for sublayer in layer.sublayers ?? [] {
+            if let fill = firstShapeFill(in: sublayer) { return fill }
+        }
+        return nil
+    }
+
+    private static func sameColor(_ a: CGColor, _ b: CGColor) -> Bool {
+        let space = CGColorSpace(name: CGColorSpace.sRGB)!
+        guard let a = a.converted(to: space, intent: .defaultIntent, options: nil)?.components,
+              let b = b.converted(to: space, intent: .defaultIntent, options: nil)?.components,
+              a.count == b.count else { return false }
+        return zip(a, b).allSatisfy { abs($0 - $1) < 0.04 }
     }
 
     /// A bar appeared: it becomes the front host and shows the picker.
