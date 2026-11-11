@@ -125,6 +125,8 @@ struct AlbumSongsTable: NSViewRepresentable {
     @Binding var artWidth: Double
     let currentID: PersistentID?
     let isPlaying: Bool
+    /// The playing cover's colour (`\.playbackAccent`) for the playing row's marker and highlight.
+    let playbackAccent: NSColor
     let bottomInset: CGFloat
     /// Changes when the sidebar's Songs item is clicked again at the top level.
     let scrollToTopToken: Int
@@ -178,6 +180,7 @@ struct AlbumSongsTable: NSViewRepresentable {
         private var extraIDs: [String]?
         private var currentID: PersistentID?
         private var isPlaying = false
+        private var accent = NSColor.controlAccentColor
         private var covers: [PersistentID: NSHostingView<CoverBlock>] = [:]
         private var spareCovers: [NSHostingView<CoverBlock>] = []
         private var lastWidth: CGFloat = 0
@@ -262,10 +265,11 @@ struct AlbumSongsTable: NSViewRepresentable {
                 // Changed outside the header drag (e.g. another window): resize the column to match.
                 setCoverColumnWidth()
             }
-            if parent.currentID != currentID || parent.isPlaying != isPlaying {
+            if parent.currentID != currentID || parent.isPlaying != isPlaying || parent.playbackAccent != accent {
                 let rows = IndexSet([currentID, parent.currentID].compactMap { $0.flatMap { layout.rowOfTrack[$0] } })
                 currentID = parent.currentID
                 isPlaying = parent.isPlaying
+                accent = parent.playbackAccent
                 refresh(rows)
             }
             if scrollToTopToken != parent.scrollToTopToken {
@@ -407,6 +411,7 @@ struct AlbumSongsTable: NSViewRepresentable {
             case .song(let a, let t, _): rowView.kind = .song; rowView.isCurrent = track(a, t).id == currentID
             default: rowView.kind = .spacer
             }
+            rowView.highlight = accent
             if rowView.kind != .song { rowView.isCurrent = false }
             configureGeometry(rowView)
             return rowView
@@ -445,7 +450,7 @@ struct AlbumSongsTable: NSViewRepresentable {
             switch column {
             case "number":
                 let cell = tableView.makeView(withIdentifier: NumberCell.id, owner: nil) as? NumberCell ?? NumberCell()
-                cell.configure(number: track.trackNumber, playing: isCurrent ? isPlaying : nil)
+                cell.configure(number: track.trackNumber, playing: isCurrent ? isPlaying : nil, color: accent)
                 return cell
             case "title":
                 let cell = tableView.makeView(withIdentifier: TitleCell.id, owner: nil) as? TitleCell ?? TitleCell()
@@ -479,6 +484,7 @@ struct AlbumSongsTable: NSViewRepresentable {
                 if let rowView = table.rowView(atRow: row, makeIfNecessary: false) as? SongRowView,
                    case .song(let a, let t, _) = layout.rows[row] {
                     rowView.isCurrent = track(a, t).id == currentID
+                    rowView.highlight = accent
                 }
             }
             table.reloadData(forRowIndexes: rows, columnIndexes: IndexSet(integersIn: 0..<table.numberOfColumns))
@@ -637,6 +643,8 @@ final class SongRowView: NSTableRowView {
 
     var kind = Kind.spacer
     var isCurrent = false { didSet { if isCurrent != oldValue { needsDisplay = true } } }
+    /// The playing row's highlight colour (the playing cover's, see `\.playbackAccent`).
+    var highlight = NSColor.controlAccentColor { didSet { if highlight != oldValue { needsDisplay = true } } }
     var songArea: ClosedRange<CGFloat> = 0...0
     var dividerArea: ClosedRange<CGFloat> = 0...0
 
@@ -656,7 +664,7 @@ final class SongRowView: NSTableRowView {
             NSColor.separatorColor.setFill()
             NSRect(x: dividerArea.lowerBound, y: 0, width: dividerArea.upperBound - dividerArea.lowerBound, height: 1).fill()
         case .song where isCurrent && !isSelected:
-            NSColor.controlAccentColor.withAlphaComponent(0.14).setFill()
+            highlight.withAlphaComponent(0.14).setFill()
             NSBezierPath(roundedRect: highlightRect, xRadius: 6, yRadius: 6).fill()
         default:
             break
@@ -768,14 +776,14 @@ final class NumberCell: FlippedCell {
     required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
 
     /// `playing` is nil for songs that aren't current.
-    func configure(number: Int, playing: Bool?) {
+    func configure(number: Int, playing: Bool?, color: NSColor) {
         label.stringValue = number > 0 ? String(number) : "–"
         label.isHidden = playing != nil
         if let playing {
             if let indicator {
-                indicator.rootView = PlayingIndicator(isAnimating: playing)
+                indicator.rootView = PlayingIndicator(isAnimating: playing, color: Color(nsColor: color))
             } else {
-                let host = NSHostingView(rootView: PlayingIndicator(isAnimating: playing))
+                let host = NSHostingView(rootView: PlayingIndicator(isAnimating: playing, color: Color(nsColor: color)))
                 host.sizingOptions = []
                 addSubview(host)
                 indicator = host

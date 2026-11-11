@@ -501,6 +501,7 @@ struct SongCell: View {
     let index: Int
     @Environment(PlaybackQueue.self) private var queue
     @Environment(\.gridItem) private var gridItem
+    @Environment(\.playbackAccent) private var playbackAccent
     @State private var hovering = false
 
     var body: some View {
@@ -530,7 +531,7 @@ struct SongCell: View {
             Spacer(minLength: 0)
         }
         .padding(5)
-        .background(isCurrent ? AnyShapeStyle(Color.accentColor.opacity(0.16)) : AnyShapeStyle(.primary.opacity(hovering ? 0.06 : 0)),
+        .background(isCurrent ? AnyShapeStyle(playbackAccent.opacity(0.16)) : AnyShapeStyle(.primary.opacity(hovering ? 0.06 : 0)),
                     in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .keyboardHighlight(gridItem.highlighted, cornerRadius: 4)
         .contentShape(Rectangle())

@@ -81,6 +81,7 @@ struct NowPlayingView: View {
     @Environment(AppNavigator.self) private var navigator
     @Environment(ArtworkCache.self) private var artwork
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.playbackAccent) private var playbackAccent
     @AppStorage("appearance.coverColours") private var coverColours = true
     @AppStorage("nowPlaying.showLyrics") private var showLyrics = false
     @AppStorage("visualizer.style") private var visualizerStyle = VisualizerStyle.pulse.rawValue
@@ -129,6 +130,8 @@ struct NowPlayingView: View {
         .background { backdrop }
         // Controls and glass follow the cover's lightness rather than the system's.
         .environment(\.colorScheme, palette.map { $0.isDark ? ColorScheme.dark : .light } ?? colorScheme)
+        // On the cover's own colours, playback controls use the colour chosen to read on them.
+        .environment(\.playbackAccent, palette?.primary.color ?? playbackAccent)
         // The playing track's own art and colours: an album whose tracks carry different art changes with each.
         .task(id: ArtworkSource(track)) {
             if let cached = artwork.cachedPalette(ArtworkSource(track)) {
@@ -175,7 +178,7 @@ struct NowPlayingView: View {
                         ModeControls()
                         Button { showLyrics.toggle() } label: {
                             Image(systemName: "quote.bubble")
-                                .foregroundStyle(showLyrics ? Color.accentColor : .secondary)
+                                .foregroundStyle(showLyrics ? palette?.primary.color ?? playbackAccent : .secondary)
                         }
                         .buttonStyle(.plain)
                         .help(showLyrics ? "Hide Lyrics" : "Show Lyrics")

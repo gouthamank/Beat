@@ -34,6 +34,50 @@ struct RGB: Hashable, Sendable {
     }
 
     var color: Color { Color(.sRGB, red: r, green: g, blue: b) }
+
+    /// HSB saturation, 0 for greys up to 1 for pure colours.
+    var saturation: Double {
+        let high = max(r, g, b)
+        return high == 0 ? 0 : (high - min(r, g, b)) / high
+    }
+}
+
+/// The now-playing bar's progress colour: the cover's more colourful of its background and primary colours.
+/// Nil (the accent colour) when both are nearly grey, so a black-and-white cover doesn't leave a grey line.
+enum BarTint {
+    static let minimumSaturation = 0.15
+
+    static func color(for palette: ArtworkPalette?) -> RGB? {
+        guard let palette else { return nil }
+        let pick = [palette.background, palette.primary].max { $0.saturation < $1.saturation }!
+        return pick.saturation >= minimumSaturation ? pick : nil
+    }
+
+    /// Typical window backgrounds the colour has to read on.
+    static let darkBackground = RGB(r: 0.16, g: 0.16, b: 0.16)
+    static let lightBackground = RGB(r: 0.96, g: 0.96, b: 0.96)
+
+    /// `color` blended towards white (dark mode) or black (light mode), a tenth at a time, until it stands out
+    /// from the window at `ArtworkPalette.secondaryContrast`: a navy cover would vanish in dark mode, a pale
+    /// yellow one in light.
+    static func readable(_ color: RGB, dark: Bool) -> RGB {
+        let background = dark ? darkBackground : lightBackground
+        let toward: RGB = dark ? .white : .black
+        var result = color
+        for step in 0...10 {
+            result = toward.over(color, opacity: Double(step) / 10)
+            if result.contrast(with: background) >= ArtworkPalette.secondaryContrast { break }
+        }
+        return result
+    }
+}
+
+extension EnvironmentValues {
+    /// The colour for everything about what's playing: progress, playing markers, active playback modes.
+    /// The playing song's cover colour, made readable (`BarTint`), or the system accent with Plain appearance or
+    /// a grey cover. Set once at the root (`RootView`); Now Playing overrides it with its own palette. Everything
+    /// not about playback keeps `.accentColor`.
+    @Entry var playbackAccent: Color = .accentColor
 }
 
 /// Colours taken from an album cover, like iTunes 11's album view: a background the page continues from,

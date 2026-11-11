@@ -421,6 +421,7 @@ struct TrackRow: View {
     var play: () -> Void = {}
     @Environment(PlaybackQueue.self) private var queue
     @Environment(\.gridItem) private var gridItem
+    @Environment(\.playbackAccent) private var playbackAccent
     @State private var hovering = false
 
     private var secondaryStyle: AnyShapeStyle {
@@ -432,7 +433,7 @@ struct TrackRow: View {
         HStack(spacing: 14) {
             Group {
                 if isCurrent {
-                    PlayingIndicator(isAnimating: queue.isPlaying, color: palette?.primary.color ?? .accentColor)
+                    PlayingIndicator(isAnimating: queue.isPlaying, color: palette?.primary.color ?? playbackAccent)
                 } else {
                     Text(track.trackNumber > 0 ? "\(track.trackNumber)" : "–")
                         .foregroundStyle(palette.map { AnyShapeStyle($0.secondary.color) } ?? AnyShapeStyle(.tertiary))
@@ -464,7 +465,7 @@ struct TrackRow: View {
     }
 
     private func rowFill(isCurrent: Bool) -> AnyShapeStyle {
-        if isCurrent { return AnyShapeStyle((palette?.primary.color ?? Color.accentColor).opacity(hovering ? 0.22 : 0.16)) }
+        if isCurrent { return AnyShapeStyle((palette?.primary.color ?? playbackAccent).opacity(hovering ? 0.22 : 0.16)) }
         return AnyShapeStyle(.primary.opacity(hovering ? 0.06 : 0))
     }
 }

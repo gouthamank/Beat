@@ -191,6 +191,7 @@ struct RootView: View {
         .overlay { HeroOverlay() }
         .overlay { NowPlayingOverlay() }
         .overlay { ArtViewerOverlay() }
+        .modifier(PlaybackAccent())
         // These full-window views cover the toolbar's area, so its items would only float over them.
         .toolbar(navigator.showingNowPlaying || navigator.artViewer != nil ? .hidden : .automatic, for: .windowToolbar)
         .sheet(item: $navigator.editing) { FilterEditorSheet(draft: $0) }
@@ -285,5 +286,32 @@ struct RootView: View {
         case .idle, .loaded:
             EmptyView()
         }
+    }
+}
+
+/// Sets `\.playbackAccent` for the whole window from the playing song's cover. Only views that read it redraw
+/// when the song changes.
+private struct PlaybackAccent: ViewModifier {
+    @Environment(PlaybackQueue.self) private var queue
+    @Environment(ArtworkCache.self) private var artwork
+    @Environment(\.colorScheme) private var colorScheme
+    @AppStorage("appearance.coverColours") private var coverColours = true
+    @State private var palette: ArtworkPalette?
+
+    private var source: ArtworkSource? { queue.current.map { ArtworkSource($0) } }
+
+    func body(content: Content) -> some View {
+        content
+            .environment(\.playbackAccent, accent)
+            .task(id: source) {
+                guard let source else { palette = nil; return }
+                palette = artwork.cachedPalette(source)
+                if palette == nil { palette = await artwork.palette(source) }
+            }
+    }
+
+    private var accent: Color {
+        guard coverColours, let rgb = BarTint.color(for: palette) else { return .accentColor }
+        return BarTint.readable(rgb, dark: colorScheme == .dark).color
     }
 }

@@ -4,12 +4,13 @@ import SwiftUI
 struct QueueButton: View {
     @Environment(PlaybackQueue.self) private var queue
     @Environment(ArtworkCache.self) private var artwork
+    @Environment(\.playbackAccent) private var playbackAccent
     @State private var showing = false
 
     var body: some View {
         Button { showing.toggle() } label: {
             Image(systemName: "list.bullet")
-                .foregroundStyle(showing ? Color.accentColor : .secondary)
+                .foregroundStyle(showing ? playbackAccent : .secondary)
         }
         .buttonStyle(.plain)
         .help("Queue")

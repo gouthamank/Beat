@@ -10,6 +10,8 @@ struct SongsTableView: View {
     @Environment(PageStore.self) private var pages
     @Environment(LibraryStore.self) private var library
     @Environment(ArtworkCache.self) private var artwork
+    /// Read here: table cells are AppKit-hosted and don't get the environment.
+    @Environment(\.playbackAccent) private var playbackAccent
     @AppStorage("songs.showCovers") private var showCovers = true
     @State private var model = SongsModel()
     @State private var sortOrder: [TrackSort] = []
@@ -172,7 +174,7 @@ struct SongsTableView: View {
                         }
                     }
             } else if isCurrent {
-                PlayingIndicator(isAnimating: queue.isPlaying)
+                PlayingIndicator(isAnimating: queue.isPlaying, color: playbackAccent)
                     .scaleEffect(0.6)
                     .frame(width: 14)
             }
@@ -272,6 +274,7 @@ struct AlbumSongsView: View {
     @Environment(LibraryStore.self) private var library
     @Environment(AppNavigator.self) private var navigator
     @Environment(HeroTransition.self) private var hero
+    @Environment(\.playbackAccent) private var playbackAccent
     @Environment(ArtworkCache.self) private var artwork
     /// Width of the cover column, dragged by the user in the column header.
     @AppStorage("songs.albumArtWidth") private var artWidth = 160.0
@@ -298,6 +301,7 @@ struct AlbumSongsView: View {
             artWidth: $artWidth,
             currentID: queue.current?.id,
             isPlaying: queue.isPlaying,
+            playbackAccent: NSColor(playbackAccent),
             bottomInset: queue.current == nil ? 0 : NowPlayingBar.reservedHeight,
             scrollToTopToken: navigator.scrollToTop?.item == .songs ? navigator.scrollToTop?.token ?? 0 : 0,
             stores: .init(library: library, queue: queue, navigator: navigator, hero: hero, artwork: artwork)

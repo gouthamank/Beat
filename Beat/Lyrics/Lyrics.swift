@@ -100,6 +100,42 @@ enum LRC {
     }
 }
 
+/// A track in a DJ mix, from a tracklist stored as timed lyrics.
+struct MixChapter: Hashable, Sendable {
+    var start: TimeInterval
+    var title: String
+}
+
+/// Tells a mix's tracklist from a song's lyrics: both parse to timed lines, but a tracklist's lines are
+/// minutes apart and read like "Artist - Title". Both have to hold, so a sparse lyric can't pass by spacing alone.
+enum MixChapters {
+    static let minimumMedianGap: TimeInterval = 60
+    static let minimumListingShare = 0.6
+
+    /// Nil unless `lines` look like a tracklist.
+    static func from(_ lines: [LyricLine]) -> [MixChapter]? {
+        let timed = lines.filter { !$0.text.isEmpty }.sorted { $0.time < $1.time }
+        guard timed.count >= 3 else { return nil }
+        let gaps = zip(timed.dropFirst(), timed).map { $0.time - $1.time }.sorted()
+        // Lyrics stay seconds apart even in long songs with sparse verses: the median skips the long breaks.
+        guard gaps[gaps.count / 2] >= minimumMedianGap else { return nil }
+        let listings = timed.filter { isListing($0.text) }.count
+        guard Double(listings) >= Double(timed.count) * minimumListingShare else { return nil }
+        return timed.map { MixChapter(start: $0.time, title: $0.text) }
+    }
+
+    /// "Artist - Title", with any dash, or "?" for an unknown track.
+    static func isListing(_ text: String) -> Bool {
+        let text = text.trimmingCharacters(in: .whitespaces)
+        return text == "?" || [" - ", " – ", " — "].contains { text.contains($0) }
+    }
+
+    /// The chapter playing at `time`; nil before the first.
+    static func chapter(at time: TimeInterval, in chapters: [MixChapter]) -> MixChapter? {
+        chapters.last { $0.start <= time }
+    }
+}
+
 /// Picks lyrics from the available sources. Synced beats plain; local beats online.
 enum LyricsResolver {
     /// What LRCLIB returned for a song.

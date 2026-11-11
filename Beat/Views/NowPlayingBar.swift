@@ -6,9 +6,18 @@ struct NowPlayingBar: View {
 
     @Environment(PlaybackQueue.self) private var queue
     @Environment(AppNavigator.self) private var navigator
+    @Environment(\.lyricsProvider) private var lyrics
+    @Environment(\.playbackAccent) private var playbackAccent
     @State private var probe = FrameProbe()
     /// How far the bar has lifted while being dragged up: a hint that the drag is noticed, not tracking.
     @State private var lift: CGFloat = 0
+    /// The playing file's tracklist, when its timed lyrics are one (a DJ mix).
+    @State private var chapters: [MixChapter] = []
+    /// The pointer is on the seek strip: the edge line thickens.
+    @State private var seeking = false
+
+    /// The playing cover's colour, or the system accent (see `\.playbackAccent`).
+    private var progressColor: NSColor { NSColor(playbackAccent) }
 
     var body: some View {
         if let track = queue.current {
@@ -25,7 +34,7 @@ struct NowPlayingBar: View {
                     .buttonStyle(.plain)
                     VStack(spacing: 4) {
                         TransportControls()
-                        Scrubber(duration: track.duration)
+                        BarTimes(duration: track.duration)
                     }
                     .frame(maxWidth: .infinity)
                     ModeControls()
@@ -33,6 +42,19 @@ struct NowPlayingBar: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
                 .frameProbe(probe)
+                // The progress: the glass fills with the cover's colour, and a line along the bottom edge
+                // shows the same, with gaps at a mix's track starts. Core Animation moves both.
+                .background {
+                    BarProgress(duration: track.duration, color: progressColor, chapterStarts: chapters.map(\.start), thick: seeking)
+                }
+                // One click on the bottom edge seeks there. Above the bar's open gesture, which gets the rest.
+                .overlay { SeekStrip(duration: track.duration, chapters: chapters, hovering: $seeking) }
+                // A tracklist stored as lyrics becomes chapters. Files and saved answers only: no network.
+                .task(id: track.id) {
+                    chapters = []
+                    guard let lyrics, case .synced(let lines) = await lyrics.lyrics(for: track, online: false) else { return }
+                    chapters = MixChapters.from(lines) ?? []
+                }
                 // The whole bar opens Now Playing, by a click or a drag up. Controls take their own clicks and
                 // drags first, so this only gets the glass between them.
                 .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
@@ -230,12 +252,13 @@ struct TransportControls: View {
 struct Scrubber: View {
     let duration: TimeInterval
     @Environment(PlaybackQueue.self) private var queue
+    @Environment(\.playbackAccent) private var playbackAccent
     @State private var dragValue: Double?
 
     var body: some View {
         let shown = dragValue ?? queue.currentTime
         HStack(spacing: 8) {
-            timeLabel(shown.trackTime, alignment: .trailing)
+            TimeLabel(shown.trackTime, duration: duration, alignment: .trailing)
             Slider(
                 value: Binding(get: { shown }, set: { dragValue = $0 }),
                 in: 0...max(duration, 1)
@@ -246,15 +269,28 @@ struct Scrubber: View {
                 }
             }
             .controlSize(.mini)
-            timeLabel("-" + max(duration - shown, 0).trackTime, alignment: .leading)
+            .tint(playbackAccent)
+            TimeLabel("-" + max(duration - shown, 0).trackTime, duration: duration, alignment: .leading)
         }
         .font(.caption2.monospacedDigit())
         .foregroundStyle(.secondary)
     }
+}
 
-    /// Sized by a hidden copy of the widest time this track can show, so mixes over an hour
-    /// don't wrap and the slider doesn't shift as the digits change.
-    private func timeLabel(_ text: String, alignment: Alignment) -> some View {
+/// A time, sized by a hidden copy of the widest time this track can show, so mixes over an hour don't wrap
+/// and nothing beside it shifts as the digits change.
+struct TimeLabel: View {
+    let text: String
+    let duration: TimeInterval
+    let alignment: Alignment
+
+    init(_ text: String, duration: TimeInterval, alignment: Alignment) {
+        self.text = text
+        self.duration = duration
+        self.alignment = alignment
+    }
+
+    var body: some View {
         ZStack(alignment: alignment) {
             Text(duration >= 3600 ? "-0:00:00" : "-00:00").hidden()
             Text(text)
@@ -263,20 +299,264 @@ struct Scrubber: View {
     }
 }
 
+/// The bar's elapsed and remaining times, always showing, under the transport buttons.
+private struct BarTimes: View {
+    let duration: TimeInterval
+    @Environment(PlaybackQueue.self) private var queue
+
+    var body: some View {
+        HStack {
+            TimeLabel(queue.currentTime.trackTime, duration: duration, alignment: .leading)
+            Spacer(minLength: 12)
+            TimeLabel("-" + max(duration - queue.currentTime, 0).trackTime, duration: duration, alignment: .trailing)
+        }
+        .frame(maxWidth: 220)
+        .font(.caption2.monospacedDigit())
+        .foregroundStyle(.secondary)
+    }
+}
+
+/// A clear strip along the bar's bottom edge: one click seeks to that point. Hovering thickens the edge line
+/// and shows the time under the pointer above the bar, with the track there in a mix.
+private struct SeekStrip: View {
+    let duration: TimeInterval
+    let chapters: [MixChapter]
+    @Binding var hovering: Bool
+    @Environment(PlaybackQueue.self) private var queue
+    @State private var pointer: CGFloat?
+
+    static let height: CGFloat = 10
+
+    var body: some View {
+        GeometryReader { proxy in
+            let width = max(proxy.size.width, 1)
+            ZStack(alignment: .bottomLeading) {
+                Color.clear.allowsHitTesting(false)
+                Color.clear
+                    .frame(height: Self.height)
+                    .contentShape(Rectangle())
+                    .onContinuousHover { phase in
+                        switch phase {
+                        case .active(let point):
+                            pointer = point.x
+                            if !hovering { hovering = true }
+                        case .ended:
+                            pointer = nil
+                            hovering = false
+                        }
+                    }
+                    .gesture(SpatialTapGesture().onEnded { value in
+                        queue.seek(to: min(max(value.location.x / width, 0), 1) * duration)
+                    })
+                if let pointer {
+                    bubble(at: min(max(pointer / width, 0), 1) * duration)
+                        .fixedSize()
+                        .position(x: min(max(pointer, 70), width - 70), y: -16)
+                        .allowsHitTesting(false)
+                }
+            }
+        }
+    }
+
+    private func bubble(at time: TimeInterval) -> some View {
+        HStack(spacing: 6) {
+            Text(time.trackTime).monospacedDigit()
+            if let chapter = MixChapters.chapter(at: time, in: chapters) {
+                Text(chapter.title).foregroundStyle(.white.opacity(0.7)).lineLimit(1).frame(maxWidth: 320)
+            }
+        }
+        .font(.caption)
+        .foregroundStyle(.white)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(.black.opacity(0.8), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+}
+
+/// The bar's glass fill and bottom edge line. Core Animation runs them: while playing, each gets one linear
+/// animation to the end of the song, restarted only on play/pause, a new track or a seek, so the 4-times-a-second
+/// time updates cost nothing here (`PlayingIndicator` for why not SwiftUI).
+/// Reads the playback time itself, so its 4-times-a-second changes update only this, not the whole bar.
+private struct BarProgress: View {
+    let duration: TimeInterval
+    let color: NSColor
+    let chapterStarts: [TimeInterval]
+    let thick: Bool
+    @Environment(PlaybackQueue.self) private var queue
+
+    var body: some View {
+        BarProgressLayers(elapsed: queue.currentTime, duration: duration, isPlaying: queue.isPlaying, color: color,
+                          chapterStarts: chapterStarts, thick: thick)
+    }
+}
+
+private struct BarProgressLayers: NSViewRepresentable {
+    let elapsed: TimeInterval
+    let duration: TimeInterval
+    let isPlaying: Bool
+    let color: NSColor
+    let chapterStarts: [TimeInterval]
+    let thick: Bool
+
+    func makeNSView(context: Context) -> BarProgressView { BarProgressView() }
+
+    func updateNSView(_ view: BarProgressView, context: Context) {
+        view.update(elapsed: elapsed, duration: duration, isPlaying: isPlaying, color: color,
+                    chapterStarts: chapterStarts, lineHeight: thick ? 6 : 3)
+    }
+}
+
+final class BarProgressView: NSView {
+    private let fill = CAGradientLayer()
+    private let track = CALayer()
+    private let line = CALayer()
+    private let trackGaps = CAShapeLayer()
+    private let lineGaps = CAShapeLayer()
+
+    private var duration: TimeInterval = 0
+    private var isPlaying = false
+    private var color = NSColor.controlAccentColor
+    private var chapterStarts: [TimeInterval] = []
+    private var lineHeight: CGFloat = 3
+    /// Where playback was at `anchorTime`; the animation runs on from here.
+    private var anchorElapsed: TimeInterval = 0
+    private var anchorTime: CFTimeInterval = 0
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        wantsLayer = true
+        guard let layer else { return }
+        // Clipped to the bar's glass, so the fill and line follow its rounded corners.
+        layer.cornerRadius = 24
+        layer.cornerCurve = .continuous
+        layer.masksToBounds = true
+        fill.startPoint = CGPoint(x: 0, y: 0.5)
+        fill.endPoint = CGPoint(x: 1, y: 0.5)
+        track.mask = trackGaps
+        line.mask = lineGaps
+        trackGaps.fillRule = .evenOdd
+        lineGaps.fillRule = .evenOdd
+        for sublayer in [fill, track, line] {
+            // Grow rightwards from the leading edge.
+            sublayer.anchorPoint = .zero
+            layer.addSublayer(sublayer)
+        }
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
+
+    /// Clicks go to the bar.
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    override func layout() {
+        super.layout()
+        restart(at: currentElapsed)
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        applyColors()
+    }
+
+    /// Where the animation says playback is now.
+    private var currentElapsed: TimeInterval {
+        isPlaying ? anchorElapsed + (CACurrentMediaTime() - anchorTime) : anchorElapsed
+    }
+
+    func update(elapsed: TimeInterval, duration: TimeInterval, isPlaying: Bool, color: NSColor,
+                chapterStarts: [TimeInterval], lineHeight: CGFloat) {
+        let restyle = color != self.color || chapterStarts != self.chapterStarts || lineHeight != self.lineHeight
+        // A seek, or the player drifting, shows up as a gap between where it is and where the animation is.
+        let restartNeeded = isPlaying != self.isPlaying || duration != self.duration || abs(currentElapsed - elapsed) > 0.5
+        self.color = color
+        self.chapterStarts = chapterStarts
+        self.lineHeight = lineHeight
+        self.duration = duration
+        self.isPlaying = isPlaying
+        if restyle { applyColors(); layoutLines() }
+        if restartNeeded { restart(at: elapsed) }
+    }
+
+    private func applyColors() {
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            fill.colors = [color.withAlphaComponent(0.10).cgColor, color.withAlphaComponent(0.34).cgColor]
+            line.backgroundColor = color.cgColor
+            track.backgroundColor = NSColor.labelColor.withAlphaComponent(0.12).cgColor
+        }
+        CATransaction.commit()
+    }
+
+    /// The edge line's height (animated by Core Animation when hovering changes it) and the chapter gaps.
+    private func layoutLines() {
+        let width = bounds.width
+        track.bounds.size.height = lineHeight
+        line.bounds.size.height = lineHeight
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        track.position = .zero
+        line.position = .zero
+        track.bounds.size.width = width
+        let gaps = CGMutablePath()
+        gaps.addRect(CGRect(x: 0, y: 0, width: width, height: 8))
+        if duration > 0 {
+            for start in chapterStarts where start > 0 && start < duration {
+                gaps.addRect(CGRect(x: width * start / duration - 1, y: 0, width: 2, height: 8))
+            }
+        }
+        for mask in [trackGaps, lineGaps] {
+            mask.frame = CGRect(x: 0, y: 0, width: width, height: 8)
+            mask.path = gaps
+        }
+        CATransaction.commit()
+    }
+
+    /// Sets both widths for `elapsed` and, while playing, animates them on to the end of the song.
+    private func restart(at elapsed: TimeInterval) {
+        anchorElapsed = elapsed
+        anchorTime = CACurrentMediaTime()
+        let width = bounds.width
+        let fraction = duration > 0 ? min(max(elapsed / duration, 0), 1) : 0
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        fill.position = .zero
+        fill.bounds.size.height = bounds.height
+        layoutLines()
+        for layer in [fill, line] {
+            layer.removeAnimation(forKey: "progress")
+            layer.bounds.size.width = width * fraction
+        }
+        CATransaction.commit()
+        guard isPlaying, duration > elapsed, width > 0 else { return }
+        for layer in [fill, line] {
+            let grow = CABasicAnimation(keyPath: "bounds.size.width")
+            grow.fromValue = width * fraction
+            grow.toValue = width
+            grow.duration = duration - elapsed
+            grow.timingFunction = CAMediaTimingFunction(name: .linear)
+            grow.isRemovedOnCompletion = false
+            grow.fillMode = .forwards
+            layer.add(grow, forKey: "progress")
+        }
+    }
+}
+
 struct ModeControls: View {
     @Environment(PlaybackQueue.self) private var queue
+    @Environment(\.playbackAccent) private var playbackAccent
 
     var body: some View {
         @Bindable var queue = queue
         HStack(spacing: 14) {
             Button(action: queue.toggleShuffle) {
                 Image(systemName: "shuffle")
-                    .foregroundStyle(queue.isShuffled ? Color.accentColor : .secondary)
+                    .foregroundStyle(queue.isShuffled ? playbackAccent : .secondary)
             }
             .help(queue.isShuffled ? "Shuffle On" : "Shuffle Off")
             Button(action: queue.cycleRepeat) {
                 Image(systemName: queue.repeatMode == .one ? "repeat.1" : "repeat")
-                    .foregroundStyle(queue.repeatMode == .off ? .secondary : Color.accentColor)
+                    .foregroundStyle(queue.repeatMode == .off ? .secondary : playbackAccent)
             }
             .help("Repeat: \(queue.repeatMode.rawValue.capitalized)")
             QueueButton()
@@ -294,6 +574,7 @@ struct ModeControls: View {
                 .disabled(queue.output.isExternal)
                 .help(queue.isMuted ? "Unmute" : "Mute")
                 Slider(value: $queue.volume, in: 0...1)
+                    .tint(playbackAccent)
                     .disabled(queue.output.isExternal)
                     .help(queue.output.isExternal ? "On AirPlay, set the volume in the AirPlay menu or on the speaker" : "Volume")
                     .controlSize(.mini)
