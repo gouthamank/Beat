@@ -300,7 +300,14 @@ private struct TileGrid<Cell: View>: View {
                 let tile = max(minimum, (width - 48 - spacing * CGFloat(columns - 1)) / CGFloat(columns))
                 PagedColumns(count: count, rows: rows, columnWidth: tile, columnSpacing: spacing, rowSpacing: rowSpacing, cell: cell)
             } else {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: minimum, maximum: minimum + 60), spacing: spacing)], spacing: rowSpacing) {
+                // The measured column count, each column flexible: tiles share the row evenly and start under
+                // the heading. An adaptive grid capped each tile's growth and centred what was left, so a
+                // short row drifted right and its tiles jumped in size when the window narrowed by a few points.
+                // Before the first measurement the adaptive grid stands in, so nothing renders one column wide.
+                let gridColumns = width > 0
+                    ? Array(repeating: GridItem(.flexible(), spacing: spacing), count: columns)
+                    : [GridItem(.adaptive(minimum: minimum, maximum: minimum + 60), spacing: spacing)]
+                LazyVGrid(columns: gridColumns, spacing: rowSpacing) {
                     ForEach(0..<count, id: \.self) { cell($0).allowsHitTesting(!previewing).keyboardGridItem($0) }
                 }
                 .padding(.horizontal, 24)
