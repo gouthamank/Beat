@@ -134,12 +134,16 @@ struct NowPlayingView: View {
         .environment(\.playbackAccent, palette?.primary.color ?? playbackAccent)
         // The playing track's own art and colours: an album whose tracks carry different art changes with each.
         .task(id: ArtworkSource(track)) {
+            // Opening, the colours apply at once: animated, the whole view re-laid out inside that animation and
+            // the title slid down from the top of the cover while it grew out of the bar. Changing songs while
+            // open, they cross-fade.
+            let fade: Animation? = extracted == nil ? nil : .easeInOut(duration: 0.6)
             if let cached = artwork.cachedPalette(ArtworkSource(track)) {
-                withAnimation(.easeInOut(duration: 0.6)) { extracted = cached }
+                withAnimation(fade) { extracted = cached }
                 return
             }
             let found = await artwork.palette(ArtworkSource(track))
-            withAnimation(.easeInOut(duration: 0.6)) { extracted = found }
+            withAnimation(fade) { extracted = found }
         }
     }
 
