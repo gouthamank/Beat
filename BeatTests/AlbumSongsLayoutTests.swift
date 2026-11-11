@@ -75,4 +75,19 @@ final class AlbumSongsLayoutTests: XCTestCase {
         XCTAssertTrue(layout.rows.isEmpty)
         XCTAssertEqual(layout.albumRange(overlapping: 0, 10), 0..<0)
     }
+
+    func testSectionOfEachRow() {
+        let layout = AlbumSongsLayout(sections: sections, metrics: metrics)
+        for (row, kind) in layout.rows.enumerated() {
+            let expected: Int
+            switch kind {
+            case .artist(let s): expected = s
+            case .albumTop(let a), .albumBottom(let a), .song(let a, _, _): expected = layout.albums[a].section
+            }
+            XCTAssertEqual(layout.section(atRow: row), expected, "row \(row)")
+        }
+        XCTAssertEqual(layout.section(atRow: 0), 0, "artist A's header")
+        XCTAssertEqual(layout.section(atRow: layout.rows.count - 1), 1, "the last album's bottom row is artist B's")
+        XCTAssertNil(layout.section(atRow: layout.rows.count))
+    }
 }

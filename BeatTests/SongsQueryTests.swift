@@ -82,4 +82,14 @@ final class SongsQueryTests: XCTestCase {
         XCTAssertEqual(sections[0].songCount, 2)
         XCTAssertTrue(SongsQuery.sectionsByArtist([]).isEmpty)
     }
+
+    func testScrollLetter() {
+        XCTAssertEqual(ScrollLetter.letter(for: "Instra:mental"), "I")
+        XCTAssertEqual(ScrollLetter.letter(for: "ásc"), "A")
+        XCTAssertEqual(ScrollLetter.letter(for: "Émilie Simon"), "E")
+        XCTAssertEqual(ScrollLetter.letter(for: " lynx"), "L")
+        XCTAssertEqual(ScrollLetter.letter(for: "[NakedLunch]"), "#")
+        XCTAssertEqual(ScrollLetter.letter(for: "4hero"), "#")
+        XCTAssertEqual(ScrollLetter.letter(for: ""), "#")
+    }
 }

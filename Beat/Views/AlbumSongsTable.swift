@@ -91,6 +91,16 @@ struct AlbumSongsLayout {
         if case .song = rows[row] { true } else { false }
     }
 
+    /// The artist section a row belongs to, for the scrollbar's letter bubble.
+    func section(atRow row: Int) -> Int? {
+        guard rows.indices.contains(row) else { return nil }
+        switch rows[row] {
+        case .artist(let section): return section
+        case .albumTop(let a), .albumBottom(let a): return albums[a].section
+        case .song(let a, _, _): return albums[a].section
+        }
+    }
+
     /// Albums whose rows overlap `first...last`, by binary search (albums are in row order).
     func albumRange(overlapping first: Int, _ last: Int) -> Range<Int> {
         var lo = 0, hi = albums.count
@@ -233,6 +243,53 @@ struct AlbumSongsTable: NSViewRepresentable {
                                                    name: NSView.boundsDidChangeNotification, object: scroll.contentView)
             NotificationCenter.default.addObserver(self, selector: #selector(scrolled),
                                                    name: NSView.frameDidChangeNotification, object: scroll.contentView)
+            let scroller = KnobTrackingScroller()
+            scroller.onKnobDrag = { [weak self] dragging in self?.knobDragged(dragging) }
+            scroll.verticalScroller = scroller
+            scroll.addSubview(letterBubble, positioned: .above, relativeTo: nil)
+        }
+
+        // MARK: Letter bubble
+
+        /// The first letter of the artist at the top, beside the knob while the scrollbar is dragged.
+        private let letterBubble = ScrollLetterBubble()
+        private var draggingKnob = false
+        private var hideBubble: Task<Void, Never>?
+
+        private func knobDragged(_ dragging: Bool) {
+            draggingKnob = dragging
+            hideBubble?.cancel()
+            if dragging {
+                placeBubble()
+                fadeBubble(to: 1, over: 0.12)
+            } else {
+                // A moment to read the last letter before it goes.
+                hideBubble = Task { [weak self] in
+                    try? await Task.sleep(for: .milliseconds(400))
+                    guard !Task.isCancelled else { return }
+                    self?.fadeBubble(to: 0, over: 0.25)
+                }
+            }
+        }
+
+        /// Synchronous on purpose: inside an async task `runAnimationGroup` resolves to its async variant.
+        private func fadeBubble(to alpha: CGFloat, over duration: TimeInterval) {
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = duration
+                self.letterBubble.animator().alphaValue = alpha
+            }
+        }
+
+        private func placeBubble() {
+            guard draggingKnob, let table, let scroll, let scroller = scroll.verticalScroller, let parent else { return }
+            let top = table.rows(in: table.visibleRect).location
+            if let section = layout.section(atRow: top), parent.sections.indices.contains(section) {
+                letterBubble.letter = ScrollLetter.letter(for: parent.sections[section].name)
+            }
+            let knob = scroll.convert(scroller.rect(for: .knob), from: scroller)
+            let size = ScrollLetterBubble.size
+            let y = min(max(knob.midY - size / 2, scroll.bounds.minY + 8), scroll.bounds.maxY - size - 8)
+            letterBubble.frame = NSRect(x: knob.minX - size - 10, y: y, width: size, height: size)
         }
 
         func update(from parent: AlbumSongsTable) {
@@ -504,6 +561,7 @@ struct AlbumSongsTable: NSViewRepresentable {
                 }
             }
             layoutCovers()
+            placeBubble()
         }
 
         private func layoutCovers() {
@@ -627,6 +685,59 @@ struct CoverBlock: View {
 }
 
 /// Return plays the selection; everything else is the standard table.
+/// Library ▸ Songs' vertical scroller. Says when its knob is being dragged, as opposed to trackpad or wheel
+/// scrolling or a click in the track, so the letter bubble shows only then.
+final class KnobTrackingScroller: NSScroller {
+    var onKnobDrag: ((Bool) -> Void)?
+
+    override func mouseDown(with event: NSEvent) {
+        guard testPart(event.locationInWindow) == .knob else { return super.mouseDown(with: event) }
+        onKnobDrag?(true)
+        // AppKit tracks the drag here and returns when the mouse goes up.
+        super.mouseDown(with: event)
+        onKnobDrag?(false)
+    }
+}
+
+/// The letter beside the scrollbar knob while it's dragged. AppKit rather than SwiftUI: it changes inside the
+/// scroller's tracking loop, where it has to redraw straight away.
+final class ScrollLetterBubble: NSVisualEffectView {
+    static let size: CGFloat = 56
+    private let label = NSTextField(labelWithString: "")
+
+    var letter: String {
+        get { label.stringValue }
+        set { if newValue != label.stringValue { label.stringValue = newValue; needsLayout = true } }
+    }
+
+    init() {
+        super.init(frame: NSRect(x: 0, y: 0, width: Self.size, height: Self.size))
+        material = .popover
+        blendingMode = .withinWindow
+        state = .active
+        wantsLayer = true
+        layer?.cornerRadius = 12
+        layer?.cornerCurve = .continuous
+        layer?.masksToBounds = true
+        label.font = .systemFont(ofSize: 30, weight: .bold)
+        label.alignment = .center
+        label.textColor = .labelColor
+        addSubview(label)
+        alphaValue = 0
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
+
+    /// Never takes clicks: the scrollbar beside it keeps them.
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    override func layout() {
+        super.layout()
+        label.sizeToFit()
+        label.frame.origin = NSPoint(x: (bounds.width - label.frame.width) / 2, y: (bounds.height - label.frame.height) / 2)
+    }
+}
+
 final class SongsNSTableView: NSTableView {
     var onReturn: (() -> Void)?
 

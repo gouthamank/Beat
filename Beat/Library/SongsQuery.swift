@@ -157,6 +157,18 @@ extension SongsQuery {
 }
 
 /// One album artist's albums, for the pinned artist headers in Album by Artist.
+/// The letter shown while dragging Library ▸ Songs' scrollbar: the album artist's first character, without
+/// accents and uppercased, matching the page's `localizedStandardCompare` order. Numbers, symbols and empty
+/// names give "#".
+enum ScrollLetter {
+    static func letter(for name: String) -> String {
+        guard let first = name.trimmingCharacters(in: .whitespacesAndNewlines).first else { return "#" }
+        let folded = String(first).folding(options: .diacriticInsensitive, locale: nil).uppercased()
+        guard let scalar = folded.unicodeScalars.first, CharacterSet.letters.contains(scalar) else { return "#" }
+        return folded
+    }
+}
+
 struct ArtistSection: Identifiable, Sendable {
     let name: String
     let groups: [SongGroup]
