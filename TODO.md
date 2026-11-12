@@ -69,3 +69,73 @@ Plan:
 - Only if it's still noticeably slow: a small spinner (search field or subtitle) shown after ~250 ms, so quick
   searches don't flicker.
 - Check Albums, Artists and Genres searches the same way.
+
+## Quick Open (noted Nov 2026)
+Jump anywhere by typing: a ⌘K panel over the window that finds albums, artists, genres, sidebar pages and
+songs as you type, and opens or plays the pick. With ~3k albums and a deep sidebar tree, it's the fastest way
+around the library.
+
+Ideas:
+- Results grouped by kind (pages, albums, artists, genres, songs), best matches first; ↑ ↓ to move, Return to
+  open, ⌥Return (or similar) to play.
+- Open through `AppNavigator.openAlbum/openArtist/openGenre` and sidebar selection, so the navigation rules
+  (nesting, the cover zoom) hold.
+- Match on folded text built once per library load: `LibrarySnapshot.albumSearchText` already has it per album,
+  and the smart-filter `FoldedText` folds song fields once. Search off the main actor; keep keystrokes cheap.
+- Glass panel via `beatGlass`; Esc or a click outside closes it.
+
+## Sort buttons on page elements (noted Nov 2026)
+Change an element's order straight from its header, without opening the filter editor, like the album sort
+menu on artist pages (`AlbumSortMenu` in `ArtistDetailView.swift`).
+
+Questions to settle first:
+- Does a choice made here change the element's saved filter (its Sort step in `pages.json`), or only how it's
+  shown this session? Saving keeps one source of truth; a temporary override would need a reset.
+- Which sorts to offer: the element's own Sort step plus a few common ones for its kind (title, artist, year,
+  date added, plays, random), and ascending/descending.
+- Filters whose Limit comes after the Sort ("25 most played") give different songs when re-sorted; a header
+  sort should probably re-order the result without changing what the limit picked.
+
+## Library health page (noted Nov 2026)
+A read-only report of what's worth fixing in Music. Beat never writes to the library, so it only points the way:
+each item names the problem and opens the album (or shows the song) so it can be fixed in Music.
+
+Checks:
+- Albums without artwork (`LibrarySnapshot.hasArtwork`), and albums whose songs carry mixed covers.
+- Songs or albums with no year (they land under Timeline's "No year").
+- Likely duplicates: the same title, artist and length on more than one song, or the same album split in two
+  (same title and album artist, different album IDs).
+- Missing files: songs whose `location` no longer exists on disk.
+- Inconsistent tags within an album: mixed album artists, genres or years, gaps or repeats in track numbers.
+- Songs without a genre or album artist.
+
+Ideas:
+- A Library page in the sidebar (hideable in Settings like the others), one section per check with a count;
+  computed off the main actor, once per library load.
+- Pure checks over a `LibrarySnapshot`, so each is unit-tested with `Track.fixture`.
+
+## First-run tutorial (noted Nov 2026)
+A guided first look, like Android's spotlight coach marks, with most of the time spent on custom pages and
+smart filters, Beat's headline feature and the least obvious one.
+
+The Mac equivalents:
+- TipKit (macOS 14+, so fine for Beat's macOS 15 target): popover tips anchored to a control, with rules for
+  when each shows (after an event, once per user) and no repeat once dismissed. The native, low-effort option.
+- Spotlight-style coach marks (dim everything except one control, a caption beside it): not built in, but Beat
+  already measures views in window coordinates (`FrameProbe`) and draws window overlays (`HeroOverlay`), so a
+  dimmed overlay with a cut-out is within reach.
+- Possibly both: a short spotlight tour on first launch, TipKit tips for things found later.
+
+Flow ideas, smart filters first:
+1. Welcome: Beat reads the Music library and never changes it.
+2. The sidebar: folders and pages, and Home is just a page you can edit.
+3. Make a page, add an element, and walk the editor: "Find [kind] in [source]", a rule, a sort, a limit, then
+   Appearance (shelf, grid, list, Cover Flow, Timeline). Ideally on the user's own library with a sample filter
+   (e.g. "most played albums this year") that's created as they go.
+4. Shorter stops: Now Playing (click the cover for Radial, lyrics, the visualizer), Space to play/pause, swipe
+   back.
+
+To decide:
+- Skippable at any step, replayable from the Help menu; a tip shown once never returns.
+- Whether the tour creates a real page or uses a throwaway one it removes at the end.
+- Keep it short: a few steps on launch, the rest as tips when the user first reaches each place.
