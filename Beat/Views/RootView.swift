@@ -139,7 +139,10 @@ struct RootView: View {
                         // Pushed pages are hosted separately and set the window's minimum themselves: without
                         // their own, an album page let the window shrink below the page underneath, which
                         // then overflowed the column and shifted everything sideways.
+                        // Opaque, toolbar included: after an album page was pushed over a genre or See All grid and
+                        // popped, the page underneath showed through the grid, which draws no background itself.
                         destination(route).nowPlayingBarSpace().frame(minWidth: Self.detailMinWidth)
+                            .background(Color(nsColor: .windowBackgroundColor).ignoresSafeArea())
                     }
             }
             .id(selection)
