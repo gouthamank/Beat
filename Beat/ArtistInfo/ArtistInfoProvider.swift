@@ -57,16 +57,21 @@ actor ArtistInfoProvider {
         }
     }
 
-    /// Discogs' candidates for "Wrong artist?".
-    func candidates(name: String, token: String) async -> [DiscogsSearchResult] {
-        if case .found(let results) = await fetchSearch(name: name, token: token) { return results }
-        return []
+    /// Discogs' candidates for "Wrong artist?": empty when it knows no such artist, nil when it couldn't be asked
+    /// (offline, an error), which the picker must not present as "no artists".
+    func candidates(name: String, token: String) async -> [DiscogsSearchResult]? {
+        switch await fetchSearch(name: name, token: token) {
+        case .found(let results): results
+        case .notFound: []
+        case .failed: nil
+        }
     }
 
-    /// The user picked a different Discogs artist; it replaces the saved answer.
+    /// The user picked a different Discogs artist; it replaces the saved answer once it has loaded. Nil when it
+    /// couldn't be loaded, and then the current answer stays (it used to be cleared first, so a failed pick
+    /// wiped the bio and photo off the page).
     func choose(id: Int, key: String, token: String) async -> ArtistInfo? {
-        memory[key] = nil
-        return await load(id: id, key: key, token: token, chosen: true)
+        await load(id: id, key: key, token: token, chosen: true)
     }
 
     func clearDownloaded() {

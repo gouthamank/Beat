@@ -504,12 +504,21 @@ private struct DiscogsArtistPicker: View {
     @Environment(\.dismiss) private var dismiss
     @State private var results: [DiscogsSearchResult]?
     @State private var loadingID: Int?
+    /// Why there's nothing to show, or why the last pick didn't load.
+    @State private var problem: String?
+    @State private var attempt = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Choose “\(artist.name)” on Discogs").font(.headline)
             Group {
-                if let results {
+                if results == nil, let problem {
+                    VStack(spacing: 10) {
+                        Text(problem).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                        Button("Try Again") { attempt += 1 }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if let results {
                     if results.isEmpty {
                         Text("Discogs found no artists by that name.").foregroundStyle(.secondary)
                     } else {
@@ -538,23 +547,38 @@ private struct DiscogsArtistPicker: View {
             }
             .frame(height: 300)
             HStack {
+                // A pick that couldn't be loaded: the list stays to try again.
+                if results != nil, let problem {
+                    Text(problem).font(.callout).foregroundStyle(.secondary)
+                }
                 Spacer()
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
             }
         }
         .padding(20)
         .frame(width: 420)
-        .task {
-            guard let infoProvider, let token = Keychain.string(for: ArtistInfoSettings.tokenAccount) else { results = []; return }
+        .task(id: attempt) {
+            results = nil
+            problem = nil
+            guard let infoProvider, let token = Keychain.string(for: ArtistInfoSettings.tokenAccount), !token.isEmpty else {
+                problem = "Add your Discogs token in Settings to search Discogs."
+                return
+            }
             results = await infoProvider.candidates(name: artist.name, token: token)
+            if results == nil { problem = "Couldn’t reach Discogs. Check your connection and try again." }
         }
     }
 
     private func choose(_ result: DiscogsSearchResult) {
         guard let infoProvider, let token = Keychain.string(for: ArtistInfoSettings.tokenAccount) else { return }
         loadingID = result.id
+        problem = nil
         Task {
-            let info = await infoProvider.choose(id: result.id, key: artist.id, token: token)
+            guard let info = await infoProvider.choose(id: result.id, key: artist.id, token: token) else {
+                loadingID = nil
+                problem = "Couldn’t load that artist from Discogs. Try again."
+                return
+            }
             picked(info)
         }
     }
