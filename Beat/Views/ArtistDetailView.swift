@@ -165,14 +165,14 @@ struct ArtistDetailView: View {
 
     private func statsLine(_ artist: Artist) -> String {
         let albums = artist.albumIDs.count
-        var parts = ["\(albums) \(albums == 1 ? "album" : "albums")"]
+        var parts = [albums.counted("album")]
         if let real = info?.artist.realname, !real.isEmpty, real.lowercased() != artist.name.lowercased() {
             parts.insert(real, at: 0)
         }
         if let content {
-            parts.append("\(content.songCount) \(content.songCount == 1 ? "song" : "songs")")
+            parts.append(content.songCount.counted("song"))
             parts.append(Duration.seconds(content.duration).formatted(.units(allowed: [.hours, .minutes], width: .abbreviated)))
-            if content.plays > 0 { parts.append("\(content.plays.formatted()) \(content.plays == 1 ? "play" : "plays")") }
+            if content.plays > 0 { parts.append(content.plays.counted("play")) }
         }
         return parts.joined(separator: " · ")
     }

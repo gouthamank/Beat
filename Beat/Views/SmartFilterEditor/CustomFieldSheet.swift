@@ -150,7 +150,7 @@ struct CustomFieldSheet: View {
 
                 Section("Check") {
                     if let check {
-                        Text("Matches \(check.matches.formatted()) of \(check.total.formatted()) songs")
+                        Text("Matches \(check.matches.formatted()) of \(check.total.counted("song"))")
                             .foregroundStyle(.secondary)
                         ForEach(check.examples, id: \.source) { example in
                             LabeledContent {

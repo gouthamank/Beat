@@ -479,6 +479,13 @@ extension TimeInterval {
     }
 }
 
+extension Int {
+    /// "1 album", "3 albums", "20,000 songs": the count with its noun, singular for exactly one.
+    func counted(_ singular: String, _ plural: String? = nil) -> String {
+        "\(formatted()) \(self == 1 ? singular : plural ?? singular + "s")"
+    }
+}
+
 /// "Play Next" / "Add to Queue" for any set of tracks.
 struct TrackContextMenu: View {
     let tracks: [Track]

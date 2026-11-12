@@ -963,7 +963,7 @@ final class ArtistHeaderView: FlippedCell {
         chevron.isHidden = !linked
         plainName.isHidden = linked
         let albums = section.groups.count, songs = section.songCount
-        detail.stringValue = "\(albums) \(albums == 1 ? "album" : "albums") · \(songs) \(songs == 1 ? "song" : "songs")"
+        detail.stringValue = "\(albums.counted("album")) · \(songs.counted("song"))"
         needsLayout = true
     }
 

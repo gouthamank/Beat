@@ -448,7 +448,7 @@ private struct ArtistListCell: View {
     var body: some View {
         // A tap gesture, as on album tiles.
         ListCellContent(albumID: nil, title: artist.name,
-                        subtitle: "\(artist.albumIDs.count) \(artist.albumIDs.count == 1 ? "album" : "albums")",
+                        subtitle: artist.albumIDs.count.counted("album"),
                         probe: probe, hidesArt: hero.isReturning(to: .artist(artist.id)),
                         artistAlbumIDs: artist.albumIDsNewestFirst, artistID: artist.id,
                         keepsProbe: armed || gridItem.highlighted || hero.lastOpened == .artist(artist.id),
@@ -477,7 +477,7 @@ private struct GenreListCell: View {
 
     var body: some View {
         Button { if !navigationDisabled { navigator.openGenre(genre.id) } } label: {
-            ListCellContent(albumID: genre.albumIDs.first, title: genre.name, subtitle: "\(genre.trackCount) songs",
+            ListCellContent(albumID: genre.albumIDs.first, title: genre.name, subtitle: genre.trackCount.counted("song"),
                             highlighted: gridItem.highlighted)
         }
         .buttonStyle(.plain)

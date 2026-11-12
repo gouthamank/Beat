@@ -254,7 +254,7 @@ enum SongsSummary {
     static func text(_ rows: [Track]) -> String {
         let total = rows.reduce(0) { $0 + $1.duration }
         let time = Duration.seconds(total).formatted(.units(allowed: [.days, .hours, .minutes], width: .wide, maximumUnitCount: 2))
-        return "\(rows.count.formatted()) \(rows.count == 1 ? "song" : "songs") · \(time)"
+        return "\(rows.count.counted("song")) · \(time)"
     }
 }
 

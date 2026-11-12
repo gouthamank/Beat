@@ -28,7 +28,7 @@ struct ArtistGridView: View {
         .remembersScroll(memory)
         .keyboardGrid(count: visible.count, layout: .adaptive(minimum: 130, spacing: 22, inset: 24), id: { visible[$0].id })
         .navigationTitle(title)
-        .navigationSubtitle("\(artists.count) artists")
+        .navigationSubtitle(artists.count.counted("artist"))
         .searchable(text: searchText, placement: .toolbar, prompt: "Artists")
     }
 }
@@ -63,7 +63,7 @@ struct ArtistTile: View {
                 Text(artist.name)
                     .font(.callout.weight(.medium))
                     .lineLimit(1)
-                Text("\(artist.albumIDs.count) \(artist.albumIDs.count == 1 ? "album" : "albums")")
+                Text(artist.albumIDs.count.counted("album"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -109,7 +109,7 @@ struct GenreGridView: View {
         .remembersScroll(memory)
         .keyboardGrid(count: genres.count, layout: .adaptive(minimum: 170, spacing: 20, inset: 24), id: { genres[$0].id })
         .navigationTitle(title)
-        .navigationSubtitle("\(genres.count) genres")
+        .navigationSubtitle(genres.count.counted("genre"))
     }
 }
 
@@ -135,7 +135,7 @@ struct GenreTile: View {
                     if showsFooter {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(genre.name).font(.headline).lineLimit(1)
-                            Text("\(genre.trackCount) songs").font(.caption).opacity(0.8)
+                            Text(genre.trackCount.counted("song")).font(.caption).opacity(0.8)
                         }
                         .foregroundStyle(.white)
                         .padding(12)

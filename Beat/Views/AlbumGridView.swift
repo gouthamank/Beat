@@ -33,7 +33,7 @@ struct AlbumGridView: View {
         .keyboardGrid(count: shown.count, layout: .adaptive(minimum: Self.tile.minimum, spacing: Self.tile.spacing, inset: 24),
                       id: { shown[$0].id })
         .navigationTitle(title)
-        .navigationSubtitle("\(albums.count) albums")
+        .navigationSubtitle(albums.count.counted("album"))
         .searchable(text: navigator.search(memory, else: $localSearch), placement: .toolbar, prompt: "Albums")
     }
 }

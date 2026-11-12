@@ -337,7 +337,7 @@ private struct ElementPreview: View {
         guard let result else { return "Calculating…" }
         let minutes = Int(result.tracks.reduce(0) { $0 + $1.duration } / 60)
         let time = minutes >= 60 ? "\(minutes / 60) h \(minutes % 60) min" : "\(minutes) min"
-        if result.kind == .songs { return "\(result.tracks.count) songs · \(time)" }
-        return "\(result.count) \(result.kind.rawValue) · \(result.tracks.count) songs · \(time)"
+        if result.kind == .songs { return "\(result.tracks.count.counted("song")) · \(time)" }
+        return "\(result.count.counted(String(result.kind.rawValue.dropLast()))) · \(result.tracks.count.counted("song")) · \(time)"
     }
 }
