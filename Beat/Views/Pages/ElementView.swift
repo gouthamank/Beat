@@ -148,6 +148,15 @@ struct ElementView: View {
         case (.genres, .list):
             let genres = result.genres
             ColumnList(count: genres.count, rows: look.rows, columns: look.columns, fill: look.effectiveFill, spacing: gap) { GenreListCell(genre: genres[$0]) }
+        case (.albums, .coverFlow):
+            CoverFlowElement(albums: result.albums, side: CoverFlowGeometry.side(for: look.size),
+                             spread: CoverFlowGeometry.spread(for: look.spacing))
+        case (.albums, .timeline):
+            let albums = result.albums
+            YearTimelineElement(count: albums.count, year: { albums[$0].year }, newestFirst: look.timelineOrder == .newestFirst,
+                                rows: look.rows, maxColumns: look.timelineMaxColumns, fill: look.effectiveFill,
+                                tileWidth: width, spacing: gap,
+                                rowSpacing: tileRowGap) { AlbumTile(album: albums[$0], showsFooter: footer) }
         case (.albums, .grid):
             let albums = result.albums
             TileGrid(count: albums.count, rows: look.rows, fill: look.effectiveFill, minimum: width, spacing: gap, rowSpacing: tileRowGap) { i in

@@ -31,11 +31,28 @@ struct PageElement: Codable, Identifiable, Hashable, Sendable {
 }
 
 struct ElementAppearance: Codable, Hashable, Sendable {
-    enum Layout: String, Codable, CaseIterable, Sendable { case shelf, grid, list }
+    enum Layout: String, Codable, CaseIterable, Sendable {
+        case shelf, grid, list, coverFlow, timeline
+
+        var title: String {
+            switch self {
+            case .shelf: "Shelf"
+            case .grid: "Grid"
+            case .list: "List"
+            case .coverFlow: "Cover Flow"
+            case .timeline: "Timeline"
+            }
+        }
+    }
     enum Size: String, Codable, CaseIterable, Sendable { case small, medium, large }
     enum Spacing: String, Codable, CaseIterable, Sendable { case compact, regular, roomy }
     /// The order items take with more than one row (or list column): along each row, or down each column.
     enum Fill: String, Codable, CaseIterable, Sendable { case across, down }
+    /// Timeline only: which end the years start from.
+    enum TimelineOrder: String, Codable, CaseIterable, Sendable { case oldestFirst, newestFirst }
+    /// Timeline only: how a busy year makes room. Wider keeps every year the same height (fixed rows); taller
+    /// caps each year's columns, so busy years grow downwards and quiet ones shrink to fit.
+    enum TimelineGrowth: String, Codable, CaseIterable, Sendable { case wider, taller }
 
     var layout: Layout = .shelf
     var size: Size = .medium
@@ -46,6 +63,17 @@ struct ElementAppearance: Codable, Hashable, Sendable {
     var spacing: Spacing = .regular
     /// The fill chosen in Appearance; nil follows the layout (`effectiveFill`).
     var fill: Fill?
+    /// Timeline only; nil is oldest first.
+    var timelineOrder: TimelineOrder?
+    /// Timeline only; nil is wider (fixed rows per year).
+    var timelineGrowth: TimelineGrowth?
+    /// Timeline only, when growing taller: the most columns a year takes; nil is 5.
+    var timelineColumns: Int?
+
+    static let timelineColumnRange = 1...8
+    var effectiveTimelineColumns: Int { (timelineColumns ?? 5).clamped(to: Self.timelineColumnRange) }
+    /// The column cap when years grow taller, nil when they keep one height.
+    var timelineMaxColumns: Int? { timelineGrowth == .taller ? effectiveTimelineColumns : nil }
     var showHeader = true
     var showPlayButtons = true
     /// The title (and subtitle) under each tile; off shows art alone. Lists and songs keep their text.
@@ -56,10 +84,17 @@ struct ElementAppearance: Codable, Hashable, Sendable {
     static let allRows = 0
 
     /// Whether this layout can show every item (Rows set to All).
-    static func allowsAllRows(_ layout: Layout) -> Bool { layout != .shelf }
+    static func allowsAllRows(_ layout: Layout) -> Bool { layout == .grid || layout == .list }
 
-    /// Fill makes a difference only with more than one row, or, for a list, more than one column.
-    var fillApplies: Bool { layout == .list ? columns > 1 : rows != 1 }
+    /// Fill makes a difference only with more than one row, or, for a list (or a timeline growing taller), more
+    /// than one column.
+    var fillApplies: Bool {
+        switch layout {
+        case .list: columns > 1
+        case .timeline where timelineGrowth == .taller: effectiveTimelineColumns > 1
+        default: rows != 1
+        }
+    }
 
     /// Covers read like a shelf, along each row; lists read like a tracklist, down each column.
     static func defaultFill(for layout: Layout) -> Fill { layout == .list ? .down : .across }
@@ -78,9 +113,13 @@ struct ElementAppearance: Codable, Hashable, Sendable {
         return appearance
     }
 
-    /// Songs show as a shelf or a list; albums, artists and genres also as a grid.
+    /// Songs show as a shelf or a list; artists and genres also as a grid; albums also as Cover Flow or a timeline.
     static func layouts(for output: ResultKind) -> [Layout] {
-        output == .songs ? [.shelf, .list] : [.shelf, .grid, .list]
+        switch output {
+        case .songs: [.shelf, .list]
+        case .albums: [.shelf, .grid, .list, .coverFlow, .timeline]
+        case .artists, .genres: [.shelf, .grid, .list]
+        }
     }
 
     static func rowRange(layout: Layout, output: ResultKind) -> ClosedRange<Int> {
@@ -88,6 +127,9 @@ struct ElementAppearance: Codable, Hashable, Sendable {
         case .shelf: output == .songs ? 1...6 : 1...3
         case .grid: 1...6
         case .list: 1...25
+        case .coverFlow: 1...1
+        // Rows of albums under each year.
+        case .timeline: 1...3
         }
     }
 
@@ -98,6 +140,7 @@ struct ElementAppearance: Codable, Hashable, Sendable {
         case .shelf: output == .songs ? 4 : 1
         case .grid: 2
         case .list: 10
+        case .coverFlow, .timeline: 1
         }
     }
 
@@ -122,10 +165,41 @@ struct ElementAppearance: Codable, Hashable, Sendable {
         columns = try c.decodeIfPresent(Int.self, forKey: .columns) ?? 1
         spacing = try c.decodeIfPresent(Spacing.self, forKey: .spacing) ?? .regular
         fill = try c.decodeIfPresent(Fill.self, forKey: .fill)
+        timelineOrder = try c.decodeIfPresent(TimelineOrder.self, forKey: .timelineOrder)
+        timelineGrowth = try c.decodeIfPresent(TimelineGrowth.self, forKey: .timelineGrowth)
+        timelineColumns = try c.decodeIfPresent(Int.self, forKey: .timelineColumns)
         showHeader = try c.decodeIfPresent(Bool.self, forKey: .showHeader) ?? true
         showPlayButtons = try c.decodeIfPresent(Bool.self, forKey: .showPlayButtons) ?? true
         showFooter = try c.decodeIfPresent(Bool.self, forKey: .showFooter) ?? true
         sortOverride = try c.decodeIfPresent(SortKey.self, forKey: .sortOverride)
+    }
+}
+
+/// The Timeline layout's years: item indices grouped by year, in year order, keeping the element's own order
+/// within a year. Items without a year (0) come last under "No year" (nil), whichever way the years run.
+enum TimelineYears {
+    static func group(_ count: Int, year: (Int) -> Int, newestFirst: Bool) -> [(year: Int?, indices: [Int])] {
+        var byYear: [Int: [Int]] = [:]
+        for index in 0..<max(count, 0) { byYear[year(index), default: []].append(index) }
+        let years = byYear.keys.filter { $0 > 0 }.sorted(by: newestFirst ? (>) : (<))
+        var groups: [(year: Int?, indices: [Int])] = years.map { ($0, byYear[$0]!) }
+        let unknown = byYear.filter { $0.key <= 0 }.values.flatMap { $0 }.sorted()
+        if !unknown.isEmpty { groups.append((nil, unknown)) }
+        return groups
+    }
+
+    /// One year's mini-grid as columns of positions within the year. With `maxColumns` nil every year has
+    /// `rows` rows (all the same height; busy years get wider). With a cap, a year is as many columns as it
+    /// needs up to the cap (quiet years shrink to fit) and grows downwards: 20 albums with a cap of 5 are
+    /// 4 rows tall.
+    static func grid(count: Int, rows: Int, maxColumns: Int?, fill: ElementAppearance.Fill) -> [[Int]] {
+        guard count > 0 else { return [] }
+        guard let maxColumns else { return ElementPaging.columns(count: count, rows: rows, fill: fill) }
+        let width = min(count, max(maxColumns, 1))
+        switch fill {
+        case .across: return (0..<width).map { Array(stride(from: $0, to: count, by: width)) }
+        case .down: return ElementPaging.columns(count: count, rows: ElementPaging.rowsNeeded(count: count, columns: width), fill: .down)
+        }
     }
 }
 

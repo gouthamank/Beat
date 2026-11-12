@@ -29,6 +29,11 @@ struct ArtworkView: View {
     @Environment(ArtworkCache.self) private var artwork
     @State private var image: NSImage?
 
+    private struct Load: Hashable {
+        let source: ArtworkSource?
+        let size: ArtworkCache.Size
+    }
+
     /// The loaded image, else anything already cached (a large request shows the cached thumbnail
     /// meanwhile), so a view never flashes the placeholder for art that's already in memory.
     private var shown: NSImage? {
@@ -40,7 +45,9 @@ struct ArtworkView: View {
 
     var body: some View {
         content
-            .task(id: source) {
+            // A new size loads too (Cover Flow sharpens the cover reaching the centre); the current image stays
+            // up meanwhile, so nothing flashes.
+            .task(id: Load(source: source, size: size)) {
                 guard let source else { image = nil; return }
                 if let cached = artwork.cachedImage(source, size: size) {
                     image = cached
