@@ -57,7 +57,9 @@ final class AudioPlayer {
         upcoming = nil
         player.insert(item, after: nil)
         setUpcoming(upcomingURL)
-        if autoplay { play() }
+        // Without autoplay, paused: the queue player keeps its rate across items, so loading while playing
+        // (Next on the last song) carried on playing while the queue showed it stopped.
+        if autoplay { play() } else { player.pause() }
     }
 
     func setUpcoming(_ url: URL?) {

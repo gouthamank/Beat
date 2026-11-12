@@ -35,6 +35,8 @@ struct NowPlayingOverlay: View {
         .onChange(of: queue.current == nil) { _, stopped in
             if stopped { navigator.showingNowPlaying = false }
         }
+        // Next on the last song: close with the usual morph into the bar, which keeps the track.
+        .onChange(of: queue.skippedPastEnd) { navigator.showingNowPlaying = false }
     }
 
     private func open() {

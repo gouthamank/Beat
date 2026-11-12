@@ -8,6 +8,8 @@ final class PlaybackQueue {
     private(set) var state = QueueState()
     private(set) var isPlaying = false
     private(set) var currentTime: TimeInterval = 0
+    /// Counts presses of Next on the last song. Full Now Playing closes on it; the track stays in the bar.
+    private(set) var skippedPastEnd = 0
     var volume: Float {
         didSet {
             player.volume = volume
@@ -140,7 +142,10 @@ final class PlaybackQueue {
             history.recordSkip(track.id)
         }
         guard let j = state.index(after: i, manual: true, isPlayable: Self.isPlayable) else {
-            stop()
+            // As when the last song ends by itself: it stays loaded, paused at the start. Stopping cleared the
+            // queue, and Now Playing and the bar vanished under the click.
+            rewindAtEnd()
+            skippedPastEnd += 1
             return
         }
         state.move(to: j)
@@ -214,7 +219,10 @@ final class PlaybackQueue {
         announce()
     }
 
-    private func finished() {
+    private func finished() { rewindAtEnd() }
+
+    /// The queue has run out: the last track stays, paused at its start.
+    private func rewindAtEnd() {
         isPlaying = false
         currentTime = 0
         // Playing it again from the start is a new play.
