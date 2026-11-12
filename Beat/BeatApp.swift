@@ -15,6 +15,9 @@ struct BeatApp: App {
     @State private var scrobbler: Scrobbler
 
     init() {
+        // One window, no tabs: View ▸ Show Tab Bar let a second tab open a second copy of the whole UI, which broke
+        // it (the now-playing bar, Now Playing and transitions all assume one window). This removes the tab items.
+        NSWindow.allowsAutomaticWindowTabbing = false
         let library = LibraryStore()
         let artwork = ArtworkCache(loader: library.loader)
         let history = PlayHistoryStore()
