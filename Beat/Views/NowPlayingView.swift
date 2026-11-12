@@ -83,12 +83,19 @@ struct NowPlayingView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.playbackAccent) private var playbackAccent
     @AppStorage("appearance.coverColours") private var coverColours = true
-    @AppStorage("nowPlaying.showLyrics") private var showLyrics = false
+    /// Remembered in UserDefaults but held in `@State`: toggling an `@AppStorage` value from a click made the clicked
+    /// button jump to its new place while the rest of the column slid (the write lands outside the animation).
+    @State private var showLyrics = UserDefaults.standard.bool(forKey: "nowPlaying.showLyrics")
     @AppStorage("visualizer.style") private var visualizerStyle = VisualizerStyle.pulse.rawValue
     @State private var visualizing = false
     @State private var controlsVisible = true
     @State private var hideControls: Task<Void, Never>?
     @State private var extracted: ArtworkPalette?
+    /// The art shown (cover and backdrop): it follows the track once its colours, backdrop and cover are ready,
+    /// and stays put when the next track carries the same picture.
+    @State private var shownSource: ArtworkSource?
+    /// Counts backdrop swaps; a new layer fades in above the old one, which stays until it's covered.
+    @State private var backdropGeneration = 0
 
     /// The cover's colours, unless the Plain appearance is chosen in Settings.
     private var palette: ArtworkPalette? { coverColours ? extracted : nil }
@@ -112,6 +119,7 @@ struct NowPlayingView: View {
                     }
                 }
                 .animation(.spring(duration: 0.45, bounce: 0.1), value: showLyrics)
+                .onChange(of: showLyrics) { UserDefaults.standard.set(showLyrics, forKey: "nowPlaying.showLyrics") }
                 .padding(48)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 // Dragging down anywhere that isn't a control closes it. A click does nothing.
@@ -137,20 +145,32 @@ struct NowPlayingView: View {
             // Opening, the colours apply at once: animated, the whole view re-laid out inside that animation and
             // the title slid down from the top of the cover while it grew out of the bar. Changing songs while
             // open, they cross-fade.
+            let source = ArtworkSource(track)
+            // The same picture as the last track (tracks of one release each embedding it): nothing to change.
+            // Cross-fading backdrop and cover into identical copies of themselves still read as a blur and unblur.
+            if let shown = shownSource, await artwork.samePicture(shown, source) { return }
             let fade: Animation? = extracted == nil ? nil : .easeInOut(duration: 0.6)
-            if let cached = artwork.cachedPalette(ArtworkSource(track)) {
-                withAnimation(fade) { extracted = cached }
-                return
+            var found = artwork.cachedPalette(source)
+            if found == nil { found = await artwork.palette(source) }
+            // The new backdrop is rendered before anything changes, so colours and backdrop swap in one
+            // cross-fade; changing as each arrived (grey, then the image, then the colours) read as a flash.
+            let key = BackdropImages.Key(source: source, vivid: coverColours && found != nil)
+            if BackdropImages.cached(key) == nil { _ = await BackdropImages.image(key, artwork: artwork) }
+            // The cover too, so it changes in the same cross-fade instead of fading in when it has loaded.
+            _ = await artwork.image(source, size: .large)
+            guard !Task.isCancelled else { return }
+            withAnimation(fade) {
+                extracted = found
+                shownSource = source
+                backdropGeneration += 1
             }
-            let found = await artwork.palette(ArtworkSource(track))
-            withAnimation(fade) { extracted = found }
         }
     }
 
     private var player: some View {
         VStack(spacing: 22) {
                 // Original shape, so wide covers aren't cropped; the frame caps whichever side is longer.
-                ArtworkView(track: track, size: .large, cornerRadius: 16, framing: .original)
+                ArtworkView(source: shownSource ?? ArtworkSource(track), size: .large, cornerRadius: 16, framing: .original)
                     .frame(maxWidth: showLyrics ? 400 : 640, maxHeight: showLyrics ? 340 : 440)
                     .shadow(color: .black.opacity(0.35), radius: 30, y: 14)
                 VStack(spacing: 4) {
@@ -183,9 +203,13 @@ struct NowPlayingView: View {
                         Button { showLyrics.toggle() } label: {
                             Image(systemName: "quote.bubble")
                                 .foregroundStyle(showLyrics ? palette?.primary.color ?? playbackAccent : .secondary)
+                                // The clicked button hands its label the change without the column's animation (it's
+                                // mid-click), so the icon jumped to its new place while everything else slid.
+                                .animation(.spring(duration: 0.45, bounce: 0.1), value: showLyrics)
                         }
                         .buttonStyle(.plain)
-                        .help(showLyrics ? "Hide Lyrics" : "Show Lyrics")
+                        .help("Lyrics")
+                        .accessibilityValue(showLyrics ? "On" : "Off")
                         Button { visualizing = true } label: {
                             Image(systemName: "waveform").foregroundStyle(.secondary)
                         }
@@ -309,14 +333,18 @@ struct NowPlayingView: View {
             Color(nsColor: .windowBackgroundColor)
             ZStack {
                 palette?.background.color
-                ArtworkBackdrop(source: ArtworkSource(track), vividness: palette == nil ? .subtle : .vivid)
+                ArtworkBackdrop(source: shownSource ?? ArtworkSource(track), vividness: palette == nil ? .subtle : .vivid)
                 // Keeps what's behind the text close to the colour its contrast was checked against.
                 palette?.background.color.opacity(0.55)
             }
-            .id(ArtworkSource(track))
-            .transition(.opacity)
+            .id(backdropGeneration)
+            .zIndex(Double(backdropGeneration))
+            // The old layer stays opaque underneath until the new one has faded in: fading both at once let the
+            // window colour show through halfway.
+            .transition(.asymmetric(insertion: .opacity,
+                                    removal: .opacity.animation(.linear(duration: 0).delay(0.6))))
         }
-        .animation(.easeInOut(duration: 0.6), value: ArtworkSource(track))
+        // No `.animation` here: the swap carries its own (none when opening, a cross-fade when changing songs).
         .ignoresSafeArea()
     }
 }

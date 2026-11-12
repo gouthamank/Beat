@@ -52,6 +52,17 @@ final class ArtworkCache {
 
     func cachedPalette(_ source: ArtworkSource) -> ArtworkPalette? { palettes[source] }
 
+    /// Whether two sources show the same picture: tracks of one release often each embed the same cover,
+    /// and Now Playing shouldn't cross-fade between identical art. Compares the decoded thumbnails' pixels.
+    func samePicture(_ a: ArtworkSource, _ b: ArtworkSource) async -> Bool {
+        if a == b { return true }
+        guard let x = await image(a, size: .thumbnail)?.cgImage(forProposedRect: nil, context: nil, hints: nil),
+              let y = await image(b, size: .thumbnail)?.cgImage(forProposedRect: nil, context: nil, hints: nil),
+              x.width == y.width, x.height == y.height,
+              let dx = x.dataProvider?.data as Data?, let dy = y.dataProvider?.data as Data? else { return false }
+        return dx == dy
+    }
+
     /// The art's colours, extracted off the main actor from the thumbnail and cached per album or track.
     func palette(_ source: ArtworkSource) async -> ArtworkPalette? {
         if let hit = palettes[source] { return hit }

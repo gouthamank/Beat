@@ -34,13 +34,14 @@ struct ArtworkView: View {
         let size: ArtworkCache.Size
     }
 
-    /// The loaded image, else anything already cached (a large request shows the cached thumbnail
-    /// meanwhile), so a view never flashes the placeholder for art that's already in memory.
+    /// The source's cached image first, so a new source that's already in memory shows at once (in whatever
+    /// animation changed it) instead of a frame later; else the last loaded image, which stays up while a new one
+    /// loads; else a cached thumbnail for a large request, so a view never flashes the placeholder.
     private var shown: NSImage? {
+        if let source, let hit = artwork.cachedImage(source, size: size) { return hit }
         if let image { return image }
-        guard let source else { return nil }
-        return artwork.cachedImage(source, size: size)
-            ?? (size == .large ? artwork.cachedImage(source, size: .thumbnail) : nil)
+        guard let source, size == .large else { return nil }
+        return artwork.cachedImage(source, size: .thumbnail)
     }
 
     var body: some View {
