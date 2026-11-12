@@ -86,7 +86,9 @@ struct NowPlayingView: View {
     /// Remembered in UserDefaults but held in `@State`: toggling an `@AppStorage` value from a click made the clicked
     /// button jump to its new place while the rest of the column slid (the write lands outside the animation).
     @State private var showLyrics = UserDefaults.standard.bool(forKey: "nowPlaying.showLyrics")
-    @AppStorage("visualizer.style") private var visualizerStyle = VisualizerStyle.pulse.rawValue
+    /// Radial around the cover, toggled by clicking it. Behind the cover, so it moves nothing.
+    @AppStorage("nowPlaying.radial") private var showRadial = false
+    @AppStorage("visualizer.style") private var visualizerStyle = VisualizerStyle.horizon.rawValue
     @State private var visualizing = false
     @State private var controlsVisible = true
     @State private var hideControls: Task<Void, Never>?
@@ -137,7 +139,7 @@ struct NowPlayingView: View {
         .opacity(contentOpacity)
         .background { backdrop }
         // Controls and glass follow the cover's lightness rather than the system's.
-        .environment(\.colorScheme, palette.map { $0.isDark ? ColorScheme.dark : .light } ?? colorScheme)
+        .environment(\.colorScheme, colorSchemeForCover)
         // On the cover's own colours, playback controls use the colour chosen to read on them.
         .environment(\.playbackAccent, palette?.primary.color ?? playbackAccent)
         // The playing track's own art and colours: an album whose tracks carry different art changes with each.
@@ -170,9 +172,21 @@ struct NowPlayingView: View {
     private var player: some View {
         VStack(spacing: 22) {
                 // Original shape, so wide covers aren't cropped; the frame caps whichever side is longer.
-                ArtworkView(source: shownSource ?? ArtworkSource(track), size: .large, cornerRadius: 16, framing: .original)
-                    .frame(maxWidth: showLyrics ? 400 : 640, maxHeight: showLyrics ? 340 : 440)
-                    .shadow(color: .black.opacity(0.35), radius: 30, y: 14)
+                // Clicking it shows Radial around it.
+                RadialCover(active: showRadial, colour: palette?.primary.color ?? playbackAccent) {
+                    ArtworkView(source: shownSource ?? ArtworkSource(track), size: .large, cornerRadius: 16, framing: .original)
+                        // From the outline: the cover scales with the music, and SwiftUI's `.shadow` would redraw.
+                        .background(ShapeShadow(shape: RoundedRectangle(cornerRadius: 16, style: .continuous),
+                                                opacity: 0.35, radius: 30, y: 14))
+                }
+                .animation(.easeInOut(duration: 0.3), value: showRadial)
+                .contentShape(Rectangle())
+                .onTapGesture { showRadial.toggle() }
+                .help("Show or hide the spectrum")
+                .accessibilityAddTraits(.isButton)
+                .accessibilityLabel("Cover")
+                .accessibilityHint("Shows or hides the spectrum around the cover")
+                .frame(maxWidth: showLyrics ? 400 : 640, maxHeight: showLyrics ? 340 : 440)
                 VStack(spacing: 4) {
                     Text(track.title)
                         .font(.title.bold())
@@ -224,12 +238,13 @@ struct NowPlayingView: View {
 
     // MARK: Visualizer mode
 
-    private var style: VisualizerStyle { VisualizerStyle(rawValue: visualizerStyle) ?? .pulse }
+    /// A saved style that no longer exists (Pulse) falls back to Horizon.
+    private var style: VisualizerStyle { VisualizerStyle(rawValue: visualizerStyle) ?? .horizon }
 
     /// The visualization fills the view; controls fade out after 3 s without mouse movement.
     private var visualizerScreen: some View {
         ZStack {
-            VisualizerView(track: track, palette: palette, style: style)
+            VisualizerView(palette: palette, style: style)
             VStack {
                 HStack {
                     circleButton("chevron.left", help: "Leave Visualizer (Esc or ⇧⌘V)") { visualizing = false }
@@ -244,12 +259,15 @@ struct NowPlayingView: View {
                                 .accessibilityHidden(true)
                         }
                     Spacer()
-                    Picker("Style", selection: $visualizerStyle) {
-                        ForEach(VisualizerStyle.allCases, id: \.self) { Text($0.title).tag($0.rawValue) }
+                    // Bound to the style shown, not the saved name: a saved style that's since been removed matched
+                    // no item, so the menu showed nothing selected while Horizon played.
+                    Picker("Style", selection: Binding(get: { style }, set: { visualizerStyle = $0.rawValue })) {
+                        ForEach(VisualizerStyle.allCases, id: \.self) { Text($0.title).tag($0) }
                     }
-                    .pickerStyle(.segmented)
+                    // A menu for now: ten styles don't fit a segmented control.
+                    .pickerStyle(.menu)
                     .labelsHidden()
-                    .frame(width: 340)
+                    .frame(width: 200)
                     Spacer()
                     // The chevron's width, so the style picker stays centred.
                     Color.clear.frame(width: 36, height: 36)
@@ -257,10 +275,10 @@ struct NowPlayingView: View {
                 Spacer()
                 HStack(alignment: .bottom, spacing: 24) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(track.title).font(.headline).foregroundStyle(primary).lineLimit(1)
-                        Text(track.displayArtist).font(.subheadline).foregroundStyle(secondary).lineLimit(1)
+                        Text(track.title).font(.headline).foregroundStyle(style.isScene ? AnyShapeStyle(.white) : primary).lineLimit(1)
+                        Text(track.displayArtist).font(.subheadline).foregroundStyle(captionStyle).lineLimit(1)
                         if queue.output.isExternal {
-                            Text("Out of sync on AirPlay").font(.caption).foregroundStyle(secondary)
+                            Text("Out of sync on AirPlay").font(.caption).foregroundStyle(captionStyle)
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -275,6 +293,10 @@ struct NowPlayingView: View {
             .padding(.horizontal, 28)
             .padding(.top, 44)
             .padding(.bottom, 28)
+            // Scenes draw their own dark ground, whatever the cover's lightness: controls go dark to match, and
+            // playback colour uses a cover colour that shows up on it.
+            .environment(\.colorScheme, style.isScene ? .dark : colorSchemeForCover)
+            .environment(\.playbackAccent, style.isScene ? SceneColours(palette: palette).accent.color : palette?.primary.color ?? playbackAccent)
             .opacity(controlsVisible ? 1 : 0)
             .animation(.easeInOut(duration: 0.4), value: controlsVisible)
         }
@@ -288,6 +310,11 @@ struct NowPlayingView: View {
             controlsVisible = true
         }
     }
+
+    private var captionStyle: AnyShapeStyle { style.isScene ? AnyShapeStyle(.white.opacity(0.7)) : secondary }
+
+    /// The colour scheme the rest of Now Playing uses (see `body`).
+    private var colorSchemeForCover: ColorScheme { palette.map { $0.isDark ? ColorScheme.dark : .light } ?? colorScheme }
 
     private func revealControls() {
         if !controlsVisible { controlsVisible = true }

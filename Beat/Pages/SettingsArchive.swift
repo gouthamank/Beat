@@ -27,6 +27,7 @@ struct SettingsArchive: Codable {
         "visualizer.enabled",
         "visualizer.style",
         "nowPlaying.showLyrics",
+        "nowPlaying.radial",
     ]
 
     enum ArchiveError: LocalizedError {

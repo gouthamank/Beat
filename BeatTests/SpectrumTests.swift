@@ -79,4 +79,42 @@ final class SpectrumTests: XCTestCase {
         XCTAssertEqual(latest.first, Float(total - SampleBuffer.capacity))
         XCTAssertEqual(latest.last, Float(total - 1))
     }
+
+    // MARK: Cover bounce (Radial)
+
+    func testCoverRestsAtFullSizeInSilence() {
+        var bounce = CoverBounce()
+        for _ in 0..<120 { _ = bounce.update(bass: 0, dt: 1 / 60) }
+        XCTAssertEqual(bounce.scale, 1, accuracy: 0.001)
+    }
+
+    func testKickPushesCoverOutThenItOvershootsBack() {
+        var bounce = CoverBounce()
+        for _ in 0..<30 { _ = bounce.update(bass: 0, dt: 1 / 60) }
+        // One kick: the bass jumps, then falls away.
+        var scales: [Double] = []
+        for step in 0..<60 { scales.append(bounce.update(bass: step < 3 ? 0.8 : 0, dt: 1 / 60)) }
+        let peak = scales.max()!
+        XCTAssertGreaterThan(peak, 1.04, "a kick should visibly push the cover out")
+        let afterPeak = scales[scales.firstIndex(of: peak)!...]
+        XCTAssertLessThan(afterPeak.min()!, 1, "the spring should swing back past full size: that's the bounce")
+        XCTAssertEqual(scales.last!, 1, accuracy: 0.01, "and settle within a second")
+    }
+
+    func testCoverScaleStaysWithinLimits() {
+        var bounce = CoverBounce()
+        for step in 0..<600 {
+            let scale = bounce.update(bass: step % 2 == 0 ? 1 : 0, dt: 0.05)
+            XCTAssertGreaterThanOrEqual(scale, 0.88)
+            XCTAssertLessThanOrEqual(scale, 1.23)
+        }
+    }
+
+    func testRadialBarsFadeOutTowardsTheTitleBelow() {
+        XCTAssertEqual(RadialBars.visibility(pointing: CGPoint(x: 0, y: -1)), 1, "above")
+        XCTAssertEqual(RadialBars.visibility(pointing: CGPoint(x: 1, y: 0)), 1, "to the side")
+        XCTAssertEqual(RadialBars.visibility(pointing: CGPoint(x: 0, y: 1)), 0, "straight down, over the title")
+        let diagonal = RadialBars.visibility(pointing: CGPoint(x: 0.707, y: 0.707))
+        XCTAssertLessThan(diagonal, 0.1, "already mostly gone halfway down")
+    }
 }

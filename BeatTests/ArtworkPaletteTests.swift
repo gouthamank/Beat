@@ -58,4 +58,27 @@ final class ArtworkPaletteTests: XCTestCase {
         let palette = ArtworkPalette.make(pixels: [])
         XCTAssertGreaterThanOrEqual(palette.primary.contrast(with: palette.background), ArtworkPalette.primaryContrast)
     }
+
+    // MARK: Visualizer scene colours
+
+    func testSceneColoursKeepCoverColoursThatShowOnDark() {
+        let red = RGB(r: 0.9, g: 0.3, b: 0.2), yellow = RGB(r: 1, g: 0.9, b: 0.4)
+        let colours = SceneColours(palette: ArtworkPalette(background: gray(0.1), primary: red, secondary: yellow))
+        XCTAssertEqual(colours.accent, red)
+        XCTAssertEqual(colours.light, yellow)
+        XCTAssertLessThan(colours.deep.contrast(with: .black), gray(0.1).contrast(with: .black) + 0.01)
+    }
+
+    func testSceneColoursLightenCoverColoursTooDarkForTheGround() {
+        // A light cover: its text colours are dark and would vanish on the scenes' dark ground.
+        let colours = SceneColours(palette: ArtworkPalette(background: gray(0.95), primary: gray(0.1), secondary: gray(0.25)))
+        XCTAssertGreaterThanOrEqual(colours.accent.contrast(with: .black), 3)
+        XCTAssertGreaterThanOrEqual(colours.light.contrast(with: .black), 3)
+    }
+
+    func testSceneColoursWithoutCover() {
+        let colours = SceneColours(palette: nil)
+        XCTAssertGreaterThanOrEqual(colours.accent.contrast(with: .black), 3)
+        XCTAssertLessThan(colours.deep.contrast(with: .black), 1.5)
+    }
 }

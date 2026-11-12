@@ -1,9 +1,12 @@
 import SwiftUI
 
 enum VisualizerStyle: String, CaseIterable {
-    case pulse, bars, radial, waveform
+    case horizon, terrain, rings, starfield, fountain, constellation, bars, waveform
 
-    var title: String { rawValue.capitalized }
+    var title: String { self == .rings ? "Spectrum Rings" : rawValue.capitalized }
+
+    /// Draws a whole scene on its own dark ground (`VisualizerScenes`), rather than over the cover's backdrop.
+    var isScene: Bool { self != .waveform }
 }
 
 /// Reads the tap's samples each frame, analyses and smooths them. Plain class rather than observable:
@@ -34,106 +37,68 @@ final class VisualizerEngine {
         isAtRest = !playing && smoothedBands.allSatisfy { $0 < 0.01 } && smoothedScalars.allSatisfy { $0 < 0.01 }
         return SpectrumFrame(bands: smoothedBands, level: smoothedScalars[0], bass: smoothedScalars[1], waveform: waveform)
     }
+
+    private var bounce = CoverBounce()
+    private var lastDate: Date?
+
+    /// The cover's scale this frame, for Radial around Now Playing's cover: it springs out on each kick.
+    func coverScale(_ frame: SpectrumFrame, at date: Date) -> CGFloat {
+        let dt = lastDate.map { min(max(date.timeIntervalSince($0), 0), 0.05) } ?? 1 / 60
+        lastDate = date
+        return CGFloat(bounce.update(bass: frame.bass, dt: dt))
+    }
 }
 
-/// The visualization itself, in one of four styles, coloured from the cover.
+/// A cover that thumps with the music: a rise in the bass kicks it outward, and a loose spring pulls it back
+/// with a little overshoot, so each kick lands with some weight instead of the cover just tracking the level.
+struct CoverBounce {
+    private(set) var scale = 1.0
+    private var velocity = 0.0
+    private var lastBass: Float = 0
+
+    // Tuned by ear in a toy with knobs, on real tracks.
+    /// Spring strength and damping: a loose spring, about 2.7 swings a second, settling within a second.
+    private static let stiffness = 281.0, damping = 7.2
+    /// How hard a rise in the bass kicks the cover, and how much it swells with the level of the bass.
+    private static let kick = 3.24, swell = 0.064
+    private static let range = 0.88...1.23
+
+    mutating func update(bass: Float, dt: Double) -> Double {
+        let rise = Double(max(0, bass - lastBass))
+        lastBass = bass
+        velocity += rise * Self.kick
+        let target = 1 + Double(bass) * Self.swell
+        velocity += (Self.stiffness * (target - scale) - Self.damping * velocity) * dt
+        scale = (scale + velocity * dt).clamped(to: Self.range)
+        return scale
+    }
+}
+
+/// The visualization itself, in one of its styles, coloured from the cover.
 struct VisualizerView: View {
-    let track: Track
     let palette: ArtworkPalette?
     let style: VisualizerStyle
     @Environment(PlaybackQueue.self) private var queue
     @State private var engine = VisualizerEngine()
+    @State private var scenes = VisualizerScenes()
 
     private var primary: Color { palette?.primary.color ?? .accentColor }
-    private var secondary: Color { palette?.secondary.color ?? .secondary }
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1 / 60, paused: !queue.isPlaying && engine.isAtRest)) { _ in
+        TimelineView(.animation(minimumInterval: 1 / 60, paused: !queue.isPlaying && engine.isAtRest)) { timeline in
             let frame = engine.next(samples: queue.samples, playing: queue.isPlaying)
             GeometryReader { proxy in
-                let side = min(proxy.size.width, proxy.size.height)
-                ZStack {
-                    Canvas { context, size in draw(frame, in: &context, size: size) }
-                    if style == .pulse || style == .radial {
-                        ArtworkView(track: track, size: .large, cornerRadius: 16)
-                            .frame(width: side * (style == .pulse ? 0.42 : 0.34), height: side * (style == .pulse ? 0.42 : 0.34))
-                            // From the outline, so the pulse doesn't redraw a blurred copy of the cover every frame.
-                            .background(ShapeShadow(shape: RoundedRectangle(cornerRadius: 16, style: .continuous),
-                                                    opacity: 0.35, radius: 24, y: 10))
-                            .scaleEffect(style == .pulse ? 1 + CGFloat(frame.bass) * 0.03 : 1)
+                let _ = scenes.step(frame, style: style, date: timeline.date, size: proxy.size)
+                let colours = SceneColours(palette: palette)
+                Canvas { context, size in
+                    if style == .waveform {
+                        drawWaveform(frame, &context, size)
+                    } else {
+                        scenes.draw(frame, style: style, colours: colours, in: &context, size: size)
                     }
                 }
                 .frame(width: proxy.size.width, height: proxy.size.height)
             }
-        }
-    }
-
-    private func draw(_ frame: SpectrumFrame, in context: inout GraphicsContext, size: CGSize) {
-        switch style {
-        case .pulse: drawPulse(frame, &context, size)
-        case .bars: drawBars(frame, &context, size)
-        case .radial: drawRadial(frame, &context, size)
-        case .waveform: drawWaveform(frame, &context, size)
-        }
-    }
-
-    /// A soft glow behind the cover that breathes with the bass.
-    private func drawPulse(_ frame: SpectrumFrame, _ context: inout GraphicsContext, _ size: CGSize) {
-        let centre = CGPoint(x: size.width / 2, y: size.height / 2)
-        let side = min(size.width, size.height)
-        let bass = CGFloat(frame.bass)
-        let radius = side * 0.3 * (1 + bass * 0.6)
-        context.drawLayer { layer in
-            layer.addFilter(.blur(radius: 50))
-            let rect = CGRect(x: centre.x - radius, y: centre.y - radius, width: radius * 2, height: radius * 2)
-            layer.fill(Path(ellipseIn: rect), with: .color(primary.opacity(0.25 + 0.55 * bass)))
-        }
-        // A thin ring that follows overall loudness.
-        let ring = side * 0.26 * (1 + CGFloat(frame.level) * 0.25)
-        let ringRect = CGRect(x: centre.x - ring, y: centre.y - ring, width: ring * 2, height: ring * 2)
-        context.stroke(Path(ellipseIn: ringRect), with: .color(secondary.opacity(0.15 + 0.35 * Double(frame.level))), lineWidth: 2)
-    }
-
-    /// Rounded spectrum bars along the bottom, with a faint reflection.
-    private func drawBars(_ frame: SpectrumFrame, _ context: inout GraphicsContext, _ size: CGSize) {
-        let count = frame.bands.count
-        guard count > 0 else { return }
-        let usable = size.width * 0.86
-        let gap: CGFloat = 3
-        let width = max((usable - gap * CGFloat(count - 1)) / CGFloat(count), 1)
-        let left = (size.width - usable) / 2
-        let baseline = size.height * 0.7
-        let maxHeight = size.height * 0.5
-        let shading = GraphicsContext.Shading.linearGradient(
-            Gradient(colors: [secondary, primary]),
-            startPoint: CGPoint(x: 0, y: baseline), endPoint: CGPoint(x: 0, y: baseline - maxHeight)
-        )
-        for (i, value) in frame.bands.enumerated() {
-            let height = max(CGFloat(value) * maxHeight, 3)
-            let x = left + CGFloat(i) * (width + gap)
-            let bar = Path(roundedRect: CGRect(x: x, y: baseline - height, width: width, height: height), cornerRadius: width / 2)
-            context.fill(bar, with: shading)
-            let reflection = Path(roundedRect: CGRect(x: x, y: baseline + 4, width: width, height: height * 0.3), cornerRadius: width / 2)
-            context.fill(reflection, with: .color(primary.opacity(0.15)))
-        }
-    }
-
-    /// Bars radiating in a ring around the cover, mirrored left and right.
-    private func drawRadial(_ frame: SpectrumFrame, _ context: inout GraphicsContext, _ size: CGSize) {
-        let centre = CGPoint(x: size.width / 2, y: size.height / 2)
-        let side = min(size.width, size.height)
-        let inner = side * 0.17 + 16
-        let values = frame.bands + frame.bands.reversed()
-        let step = 2 * Double.pi / Double(values.count)
-        for (i, value) in values.enumerated() {
-            let angle = Double(i) * step - .pi / 2
-            let length = 6 + CGFloat(value) * side * 0.22
-            let direction = CGPoint(x: cos(angle), y: sin(angle))
-            var line = Path()
-            line.move(to: CGPoint(x: centre.x + direction.x * inner, y: centre.y + direction.y * inner))
-            line.addLine(to: CGPoint(x: centre.x + direction.x * (inner + length), y: centre.y + direction.y * (inner + length)))
-            context.stroke(line, with: .color(primary.opacity(0.4 + 0.6 * Double(value))),
-                           style: StrokeStyle(lineWidth: 4, lineCap: .round))
         }
     }
 
@@ -155,5 +120,75 @@ struct VisualizerView: View {
             glow.stroke(path, with: .color(primary.opacity(0.7)), style: StrokeStyle(lineWidth: width * 3, lineCap: .round, lineJoin: .round))
         }
         context.stroke(path, with: .color(primary), style: StrokeStyle(lineWidth: width, lineCap: .round, lineJoin: .round))
+    }
+}
+
+/// Spectrum bars radiating in a ring, mirrored left and right, around Now Playing's cover (Radial).
+enum RadialBars {
+    /// How much of a bar shows, by the direction it points: all of it to the sides and above, falling off steeply
+    /// below and none straight down, where Now Playing's title and artist sit under the cover.
+    static func visibility(pointing direction: CGPoint) -> Double {
+        pow(1 - max(0, Double(direction.y)), 2.5)
+    }
+
+    /// Bar thickness and the space between neighbours at the cover's edge, in points.
+    static let width: CGFloat = 5.9, gap: CGFloat = 4.1
+
+    /// As many bars as fit around the inner circle at `width + gap` each, so they're spaced the same at any
+    /// cover size. Each takes its value from the spectrum, mirrored (bass at the top, highs at the bottom).
+    static func draw(_ frame: SpectrumFrame, in context: inout GraphicsContext, centre: CGPoint, inner: CGFloat, reach: CGFloat,
+                     colour: Color) {
+        let bands = frame.bands
+        guard bands.count > 1 else { return }
+        let count = max(8, Int((2 * .pi * inner / (width + gap)).rounded()))
+        for k in 0..<count {
+            let around = Double(k) / Double(count)
+            // 0 at the top, 1 at the bottom, either way round; between two bands, a blend of both.
+            let position = (around < 0.5 ? around * 2 : (1 - around) * 2) * Double(bands.count - 1)
+            let low = Int(position), blend = Float(position - Double(low))
+            let value = bands[low] * (1 - blend) + bands[min(bands.count - 1, low + 1)] * blend
+            let angle = around * 2 * .pi - .pi / 2
+            let length = 6 + CGFloat(value) * reach
+            let direction = CGPoint(x: cos(angle), y: sin(angle))
+            var line = Path()
+            line.move(to: CGPoint(x: centre.x + direction.x * inner, y: centre.y + direction.y * inner))
+            line.addLine(to: CGPoint(x: centre.x + direction.x * (inner + length), y: centre.y + direction.y * (inner + length)))
+            let opacity = (0.4 + 0.6 * Double(value)) * visibility(pointing: direction)
+            guard opacity > 0.01 else { continue }
+            context.stroke(line, with: .color(colour.opacity(opacity)), style: StrokeStyle(lineWidth: width, lineCap: .round))
+        }
+    }
+}
+
+/// Now Playing's cover with Radial around it when `active`: the bars radiate from behind it and the cover
+/// thumps on the kick. The bars are a background, so turning them on doesn't move anything.
+struct RadialCover<Cover: View>: View {
+    let active: Bool
+    let colour: Color
+    @ViewBuilder let cover: Cover
+    @Environment(PlaybackQueue.self) private var queue
+    @State private var engine = VisualizerEngine()
+
+    /// Room around the cover for the bars, which start 5 pt from its edge and reach up to 34% of its shorter side.
+    private static var margin: CGFloat { 220 }
+
+    var body: some View {
+        // One structure either way, so the cover keeps its identity (and its loaded image) when toggled.
+        TimelineView(.animation(minimumInterval: 1 / 60, paused: !active || (!queue.isPlaying && engine.isAtRest))) { timeline in
+            let frame = engine.next(samples: queue.samples, playing: active && queue.isPlaying)
+            cover
+                .scaleEffect(active ? engine.coverScale(frame, at: timeline.date) : 1)
+                .background {
+                    Canvas { context, size in
+                        let coverSize = CGSize(width: size.width - Self.margin * 2, height: size.height - Self.margin * 2)
+                        let side = min(coverSize.width, coverSize.height)
+                        RadialBars.draw(frame, in: &context, centre: CGPoint(x: size.width / 2, y: size.height / 2),
+                                        inner: side / 2 + 5, reach: side * 0.34, colour: colour)
+                    }
+                    .padding(-Self.margin)
+                    .opacity(active ? 1 : 0)
+                    .allowsHitTesting(false)
+                }
+        }
     }
 }
