@@ -2,7 +2,7 @@ import Foundation
 
 /// Editor-side copy of a SmartFilter. Steps, groups and rules carry IDs so SwiftUI can
 /// bind to, insert, reorder and delete them safely; converted back to a SmartFilter on save.
-struct EditableFilter: Identifiable, Hashable {
+struct EditableFilter: Identifiable, Hashable, Sendable {
     var id: UUID
     var name: String
     var output: ResultKind
@@ -44,8 +44,8 @@ struct EditableFilter: Identifiable, Hashable {
     }
 }
 
-struct EditStep: Identifiable, Hashable {
-    enum Kind: Hashable {
+struct EditStep: Identifiable, Hashable, Sendable {
+    enum Kind: Hashable, Sendable {
         case filter(EditGroup)
         case sort([EditSortKey])
         case limit(Limit)
@@ -77,7 +77,7 @@ struct EditStep: Identifiable, Hashable {
     static func newLimit() -> EditStep { EditStep(kind: .limit(Limit(count: 25, unit: .songs))) }
 }
 
-struct EditGroup: Identifiable, Hashable {
+struct EditGroup: Identifiable, Hashable, Sendable {
     var id = UUID()
     var match: Match = .all
     var nodes: [EditNode] = []
@@ -95,8 +95,8 @@ struct EditGroup: Identifiable, Hashable {
     var group: RuleGroup { RuleGroup(match: match, nodes: nodes.map(\.node)) }
 }
 
-struct EditNode: Identifiable, Hashable {
-    indirect enum Content: Hashable {
+struct EditNode: Identifiable, Hashable, Sendable {
+    indirect enum Content: Hashable, Sendable {
         case rule(Rule)
         case group(EditGroup)
     }
@@ -124,7 +124,7 @@ struct EditNode: Identifiable, Hashable {
     func duplicated() -> EditNode { EditNode(node) }
 }
 
-struct EditSortKey: Identifiable, Hashable {
+struct EditSortKey: Identifiable, Hashable, Sendable {
     var id = UUID()
     var key: SortKey
 }

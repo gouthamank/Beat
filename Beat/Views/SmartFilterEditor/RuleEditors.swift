@@ -5,7 +5,8 @@ extension Binding {
     /// reach elements by position: a deleted rule still animating out could write back (a field losing
     /// focus) to a position that no longer existed, and the app trapped. Writes to a removed element are
     /// dropped; reads fall back to the element as it was.
-    func element<Element: Identifiable>(_ element: Element) -> Binding<Element> where Value == [Element] {
+    func element<Element: Identifiable & Sendable>(_ element: Element) -> Binding<Element>
+        where Value == [Element], Element.ID: Sendable {
         let id = element.id
         return Binding<Element>(
             get: { wrappedValue.first { $0.id == id } ?? element },

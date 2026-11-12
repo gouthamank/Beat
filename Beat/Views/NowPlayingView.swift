@@ -94,6 +94,9 @@ struct NowPlayingView: View {
     @State private var visualizing = false
     @State private var controlsVisible = true
     @State private var hideControls: Task<Void, Never>?
+    /// The style just stepped to with ← or →, named briefly in the middle of the screen.
+    @State private var styleHint: VisualizerStyle?
+    @State private var hideStyleHint: Task<Void, Never>?
     @State private var extracted: ArtworkPalette?
     /// The art shown (cover and backdrop): it follows the track once its colours, backdrop and cover are ready,
     /// and stays put when the next track carries the same picture.
@@ -253,12 +256,18 @@ struct NowPlayingView: View {
                         .keyboardShortcut(.cancelAction)
                         // ⇧⌘V leaves too, as it entered; a view takes one shortcut, so it gets a hidden button.
                         .background {
-                            Button("Leave Visualizer") { visualizing = false }
-                                .keyboardShortcut("v", modifiers: [.command, .shift])
-                                // Invisible but present: a `.hidden()` button can lose its shortcut.
-                                .opacity(0)
-                                .frame(width: 0, height: 0)
-                                .accessibilityHidden(true)
+                            // Invisible but present: a `.hidden()` button can lose its shortcut.
+                            Group {
+                                Button("Leave Visualizer") { visualizing = false }
+                                    .keyboardShortcut("v", modifiers: [.command, .shift])
+                                Button("Previous Style") { stepStyle(by: -1) }
+                                    .keyboardShortcut(.leftArrow, modifiers: [])
+                                Button("Next Style") { stepStyle(by: 1) }
+                                    .keyboardShortcut(.rightArrow, modifiers: [])
+                            }
+                            .opacity(0)
+                            .frame(width: 0, height: 0)
+                            .accessibilityHidden(true)
                         }
                     Spacer()
                     // Bound to the style shown, not the saved name: a saved style that's since been removed matched
@@ -313,7 +322,18 @@ struct NowPlayingView: View {
         }
     }
 
+            if let styleHint {
+                Text(styleHint.title)
+                    .font(.title2.weight(.semibold))
+                    .padding(.horizontal, 22)
+                    .padding(.vertical, 12)
+                    .beatGlass(in: Capsule())
+                    .environment(\.colorScheme, styleHint.isScene ? .dark : colorSchemeForCover)
+                    .transition(.opacity)
+                    .allowsHitTesting(false)
+            }
     private var captionStyle: AnyShapeStyle { style.isScene ? AnyShapeStyle(.white.opacity(0.7)) : secondary }
+        .animation(.easeInOut(duration: 0.25), value: styleHint)
 
     /// The colour scheme the rest of Now Playing uses (see `body`).
     private var colorSchemeForCover: ColorScheme { palette.map { $0.isDark ? ColorScheme.dark : .light } ?? colorScheme }
@@ -322,6 +342,8 @@ struct NowPlayingView: View {
         if !controlsVisible { controlsVisible = true }
         hideControls?.cancel()
         hideControls = Task {
+            hideStyleHint?.cancel()
+            styleHint = nil
             try? await Task.sleep(for: .seconds(3))
             guard !Task.isCancelled else { return }
             controlsVisible = false
@@ -330,6 +352,20 @@ struct NowPlayingView: View {
     }
 
     private func circleButton(_ symbol: String, help: String, action: @escaping () -> Void) -> some View {
+    /// ← and →: the previous or next style, wrapping round, named for a moment.
+    private func stepStyle(by offset: Int) {
+        let next = style.stepped(by: offset)
+        visualizerStyle = next.rawValue
+        styleHint = next
+        revealControls()
+        hideStyleHint?.cancel()
+        hideStyleHint = Task {
+            try? await Task.sleep(for: .seconds(1.2))
+            guard !Task.isCancelled else { return }
+            styleHint = nil
+        }
+    }
+
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.title3.weight(.semibold))

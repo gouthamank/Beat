@@ -117,4 +117,12 @@ final class SpectrumTests: XCTestCase {
         let diagonal = RadialBars.visibility(pointing: CGPoint(x: 0.707, y: 0.707))
         XCTAssertLessThan(diagonal, 0.1, "already mostly gone halfway down")
     }
+
+    func testVisualizerStylesStepAndWrap() {
+        let all = VisualizerStyle.allCases
+        XCTAssertEqual(all.first!.stepped(by: 1), all[1])
+        XCTAssertEqual(all.last!.stepped(by: 1), all.first!, "right past the last wraps to the first")
+        XCTAssertEqual(all.first!.stepped(by: -1), all.last!, "left past the first wraps to the last")
+        XCTAssertEqual(all[2].stepped(by: all.count), all[2])
+    }
 }

@@ -7,6 +7,13 @@ enum VisualizerStyle: String, CaseIterable {
 
     /// Draws a whole scene on its own dark ground (`VisualizerScenes`), rather than over the cover's backdrop.
     var isScene: Bool { self != .waveform }
+
+    /// The style `offset` places along, wrapping round at either end: ← and → in the visualizer.
+    func stepped(by offset: Int) -> VisualizerStyle {
+        let all = Self.allCases, count = all.count
+        let index = all.firstIndex(of: self) ?? 0
+        return all[((index + offset) % count + count) % count]
+    }
 }
 
 /// Reads the tap's samples each frame, analyses and smooths them. Plain class rather than observable:
@@ -81,6 +88,7 @@ struct VisualizerView: View {
     @Environment(PlaybackQueue.self) private var queue
     @State private var engine = VisualizerEngine()
     @State private var scenes = VisualizerScenes()
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var primary: Color { palette?.primary.color ?? .accentColor }
 
@@ -88,7 +96,7 @@ struct VisualizerView: View {
         TimelineView(.animation(minimumInterval: 1 / 60, paused: !queue.isPlaying && engine.isAtRest)) { timeline in
             let frame = engine.next(samples: queue.samples, playing: queue.isPlaying)
             GeometryReader { proxy in
-                let _ = scenes.step(frame, style: style, date: timeline.date, size: proxy.size)
+                let _ = scenes.step(frame, style: style, date: timeline.date, size: proxy.size, calm: reduceMotion)
                 let colours = SceneColours(palette: palette)
                 Canvas { context, size in
                     if style == .waveform {
@@ -167,6 +175,7 @@ struct RadialCover<Cover: View>: View {
     let colour: Color
     @ViewBuilder let cover: Cover
     @Environment(PlaybackQueue.self) private var queue
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var engine = VisualizerEngine()
 
     /// Room around the cover for the bars, which start 5 pt from its edge and reach up to 34% of its shorter side.
@@ -177,7 +186,8 @@ struct RadialCover<Cover: View>: View {
         TimelineView(.animation(minimumInterval: 1 / 60, paused: !active || (!queue.isPlaying && engine.isAtRest))) { timeline in
             let frame = engine.next(samples: queue.samples, playing: active && queue.isPlaying)
             cover
-                .scaleEffect(active ? engine.coverScale(frame, at: timeline.date) : 1)
+                // Under Reduce Motion the bars still play but the cover holds still.
+                .scaleEffect(active && !reduceMotion ? engine.coverScale(frame, at: timeline.date) : 1)
                 .background {
                     Canvas { context, size in
                         let coverSize = CGSize(width: size.width - Self.margin * 2, height: size.height - Self.margin * 2)

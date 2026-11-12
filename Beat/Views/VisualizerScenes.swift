@@ -36,6 +36,10 @@ final class VisualizerScenes {
     /// `dt` in 60 fps frames, the unit the speeds below are tuned in.
     private var frames = 1.0
     private var lastKick = -1.0
+    /// Reduce Motion: scenes that fly or roll towards you slow right down; levels still move in place.
+    private var calm = false
+    /// How far Horizon's grid has rolled, kept apart from `time` so calm can slow it alone.
+    private var gridRoll = 0.0
 
     private var terrain: [[Float]] = []
     private var terrainClock = 0.0
@@ -52,7 +56,8 @@ final class VisualizerScenes {
 
     // MARK: Advancing
 
-    func step(_ frame: SpectrumFrame, style: VisualizerStyle, date: Date, size: CGSize) {
+    func step(_ frame: SpectrumFrame, style: VisualizerStyle, date: Date, size: CGSize, calm: Bool) {
+        self.calm = calm
         let dt = lastDate.map { min(max(date.timeIntervalSince($0), 0), 0.05) } ?? 1 / 60
         lastDate = date
         time += dt
@@ -61,6 +66,7 @@ final class VisualizerScenes {
         if kicked { lastKick = time }
 
         switch style {
+        case .horizon: gridRoll += dt * 2.9 * (calm ? 0.25 : 1)
         case .terrain: stepTerrain(frame, dt)
         case .rings:
             if kicked { waves.append(0) }
@@ -74,7 +80,7 @@ final class VisualizerScenes {
 
     private func stepTerrain(_ frame: SpectrumFrame, _ dt: Double) {
         terrainClock += dt
-        guard terrainClock >= 2 / 60 || terrain.isEmpty else { return }
+        guard terrainClock >= (calm ? 8 : 2) / 60 || terrain.isEmpty else { return }
         terrainClock = 0
         let half = Double(Self.terrainColumns / 2)
         // The spectrum mirrored about the middle, the bass in the centre and higher (and taller) towards the sides.
@@ -91,7 +97,7 @@ final class VisualizerScenes {
 
     private func stepStars(_ frame: SpectrumFrame) {
         if stars.isEmpty { stars = (0..<500).map { _ in newStar(far: false) } }
-        let speed = (0.003 + Double(energy(frame)) * 0.02 + Double(frame.bass) * 0.02) * frames
+        let speed = starSpeed(frame) * frames
         for i in stars.indices {
             stars[i].z -= speed
             // Gone past, or out of view (projected from the centre, so off-screen once |x/z| passes about 1.25).
@@ -131,6 +137,11 @@ final class VisualizerScenes {
             nodes[i].x = (nodes[i].x + nodes[i].vx * pace + 1).truncatingRemainder(dividingBy: 1)
             nodes[i].y = (nodes[i].y + nodes[i].vy * pace + 1).truncatingRemainder(dividingBy: 1)
         }
+    }
+
+    /// How far the stars come towards you per frame: faster when louder, a quarter as fast under Reduce Motion.
+    private func starSpeed(_ frame: SpectrumFrame) -> Double {
+        (0.003 + Double(energy(frame)) * 0.02 + Double(frame.bass) * 0.02) * (calm ? 0.25 : 1)
     }
 
     private func energy(_ frame: SpectrumFrame) -> Float {
@@ -185,7 +196,7 @@ final class VisualizerScenes {
         context.fill(Path(CGRect(x: 0, y: horizon, width: w, height: h - horizon)), with: .color(.black))
         var grid = Path()
         for k in 0..<14 {
-            let z = (Double(k) + (time * 2.9).truncatingRemainder(dividingBy: 1)) / 14
+            let z = (Double(k) + gridRoll.truncatingRemainder(dividingBy: 1)) / 14
             let y = horizon + CGFloat(z * z) * (h - horizon)
             grid.move(to: CGPoint(x: 0, y: y)); grid.addLine(to: CGPoint(x: w, y: y))
         }
@@ -256,7 +267,7 @@ final class VisualizerScenes {
         let count = 36
         for i in 0..<count {
             let v = Double(frame.bands[Int(Double(i) * 1.6)]), base = 0.06 + Double(i) / Double(count) * 0.94
-            let push = waves.reduce(0) { $0 + 0.05 * exp(-pow((base - $1) * 9, 2)) * (1.3 - $1) }
+            let push = waves.reduce(0) { $0 + (calm ? 0.025 : 0.05) * exp(-pow((base - $1) * 9, 2)) * (1.3 - $1) }
             let colour = i < count / 2 ? c.accent : c.light
             context.stroke(disc(centre, radius * CGFloat(base + push)), with: .color(colour.color.opacity(0.15 + v * 0.85)),
                            lineWidth: 0.6 + v * 4)
@@ -267,8 +278,8 @@ final class VisualizerScenes {
     private func drawStars(_ frame: SpectrumFrame, _ c: SceneColours, _ context: inout GraphicsContext, _ size: CGSize) {
         fill(&context, size, Color(white: 0.01))
         let w = size.width, h = size.height, focal = w * 0.4
-        let speed = 0.003 + Double(energy(frame)) * 0.02 + Double(frame.bass) * 0.02
-        let trail = speed * (2 + Double(frame.bass) * 10)
+        let speed = starSpeed(frame)
+        let trail = speed * (calm ? 2 : 2 + Double(frame.bass) * 10)
         // Batched by colour and distance (near stars brighter and thicker): six paths rather than 500 strokes.
         var paths = [[Path]](repeating: [Path(), Path(), Path()], count: 2)
         for star in stars {
