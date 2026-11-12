@@ -2,7 +2,7 @@ import Foundation
 
 typealias PersistentID = UInt64
 
-struct Track: Identifiable, Hashable, Sendable {
+struct Track: Identifiable, Hashable, Codable, Sendable {
     let id: PersistentID
     var title: String
     var artist: String
@@ -81,6 +81,10 @@ struct LibrarySnapshot: Sendable {
     var albumSearchText: [PersistentID: String] = [:]
 
     static let empty = LibrarySnapshot()
+
+    /// Whether `tracks` is exactly what's loaded already. Music reloads (every time Beat becomes active) usually
+    /// change nothing, and swapping in an identical snapshot re-ran every element's smart filter.
+    func isSameLibrary(tracks other: [Track]) -> Bool { !tracks.isEmpty && tracks == other }
 
     func tracks(of album: Album) -> [Track] { album.trackIDs.compactMap { tracksByID[$0] } }
     /// The track an album's cover comes from: the first, in album order, that has artwork. Albums whose

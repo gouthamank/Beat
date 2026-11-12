@@ -20,24 +20,6 @@ navigation container instead of `NavigationStack`:
 Deferred (Nov 2026) because it replaces the navigation foundation every page sits on; the system stack
 with the reverse album zoom and a non-interactive swipe was the smaller change.
 
-## Artwork changed in Music: refresh without a relaunch
-Changing an album's art in Music reaches Beat's library within seconds (`LibraryWatcher` reloads ~2 s after
-Music writes `Library.musicdb`, and on activation), but covers already shown this session keep the old art
-and colours until Beat relaunches:
-
-- `ArtworkCache` keeps decoded images (`NSCache`, keyed by `ArtworkSource` + size) and palettes (dictionary,
-  never evicted) across library reloads.
-- `ArtworkView` reloads only when its `task(id: source)` changes, and the source (album/track ID) doesn't.
-
-Plan:
-- On each library reload, compare each album's cover track (`LibrarySnapshot.artworkTrackID`) and its
-  `dateModified` with the previous snapshot; drop changed albums' (and their tracks') images and palettes.
-- Include a per-album artwork revision in what `ArtworkView` keys its task on, so on-screen covers refetch;
-  `CoverTint.refresh()` so a changed cover's page and sidebar colours update too.
-- First check that Music actually bumps a track's modified date when only its artwork changes. If not,
-  fall back to comparing a cheap fingerprint of the art bytes for albums on screen.
-- Tests: the changed-album diff is pure (two snapshots in, changed album IDs out).
-
 ## Gapless playback (tabled Nov 2026)
 `AudioPlayer` is an `AVQueuePlayer` with one preloaded item: quick, but a short silence still falls between
 tracks. Proposal: move to `AVAudioEngine` with `AVAudioPlayerNode`, scheduling the next file to start on the

@@ -14,6 +14,8 @@ final class PageStore {
     @ObservationIgnored private var evaluated: [UUID: PageElement] = [:]
     @ObservationIgnored private var prepared: (key: LibraryKey, library: PreparedLibrary)?
     @ObservationIgnored private var latestKey: LibraryKey?
+    /// Folded text for the library version it was made from: plays change the history key but not the text.
+    @ObservationIgnored private var folded: (library: Int, text: FoldedText)?
     @ObservationIgnored private let directory: URL?
     /// Saves run one after another, so an older write can never land after a newer one.
     @ObservationIgnored private var saveTask: Task<Void, Never>?
@@ -209,9 +211,20 @@ final class PageStore {
         let stale = page.elements.filter { evaluated[$0.id] != $0 }
         guard !stale.isEmpty else { return }
         let cached = prepared?.library
+        let text = folded?.library == key.library ? folded!.text : FoldedText(tracks: snapshot.tracks)
+        folded = (key.library, text)
+        // Elements are independent, so they run side by side: a page waits for its slowest, not their sum.
         let (library, computed) = await Task.detached(priority: .userInitiated) {
-            let library = cached ?? PreparedLibrary(snapshot: snapshot, history: history)
-            return (library, stale.map { ($0, SmartFilterEngine.evaluate($0.effectiveFilter, in: library)) })
+            let library = cached ?? PreparedLibrary(snapshot: snapshot, history: history, folded: text)
+            let computed = await withTaskGroup(of: (Int, FilterResult).self) { group in
+                for (i, element) in stale.enumerated() {
+                    group.addTask { (i, SmartFilterEngine.evaluate(element.effectiveFilter, in: library)) }
+                }
+                var found = [FilterResult?](repeating: nil, count: stale.count)
+                for await (i, result) in group { found[i] = result }
+                return zip(stale, found).compactMap { element, result in result.map { (element, $0) } }
+            }
+            return (library, computed)
         }.value
         // A newer library or history arrived while this ran; its own evaluation will follow.
         guard latestKey == key else { return }

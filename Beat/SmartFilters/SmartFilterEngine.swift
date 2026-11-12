@@ -24,11 +24,16 @@ struct PreparedLibrary: Sendable {
     let tracks: [Track]
     let now: Date
     let calendar: Calendar
+    /// Text fields folded for matching. Pass the previous one while the library itself is unchanged (plays only
+    /// change counts), so it isn't folded again.
+    let folded: FoldedText
 
-    init(snapshot: LibrarySnapshot, history: [PersistentID: PlayHistoryStore.Stats] = [:], now: Date = .now, calendar: Calendar = .current) {
+    init(snapshot: LibrarySnapshot, history: [PersistentID: PlayHistoryStore.Stats] = [:], now: Date = .now, calendar: Calendar = .current,
+         folded: FoldedText? = nil) {
         self.snapshot = snapshot
         self.now = now
         self.calendar = calendar
+        self.folded = folded ?? FoldedText(tracks: snapshot.tracks)
         tracks = history.isEmpty ? snapshot.tracks : snapshot.tracks.map { PreparedLibrary.merge($0, history[$0.id]) }
     }
 
@@ -38,6 +43,7 @@ struct PreparedLibrary: Sendable {
         self.snapshot = snapshot
         self.now = now
         self.calendar = calendar
+        self.folded = FoldedText(tracks: tracks)
         self.tracks = tracks.map { PreparedLibrary.merge($0, history[$0.id]) }
     }
 
@@ -52,6 +58,26 @@ struct PreparedLibrary: Sendable {
     }
 }
 
+/// Each text field of every song, folded (case and accents removed) the first time a rule reads that field, then
+/// shared by every filter: folding with Foundation per song per rule was most of a filter's cost (about 85 ms a
+/// pass over 20k songs). Thread-safe, as a page's elements are evaluated in parallel.
+final class FoldedText: @unchecked Sendable {
+    private let tracks: [Track]
+    private let lock = NSLock()
+    private var fields: [Field: [PersistentID: String]] = [:]
+
+    init(tracks: [Track]) { self.tracks = tracks }
+
+    func values(_ field: Field) -> [PersistentID: String] {
+        if let done = lock.withLock({ fields[field] }) { return done }
+        // Folded outside the lock, so other fields aren't held up; a rare duplicate fold is harmless.
+        var values = [PersistentID: String](minimumCapacity: tracks.count)
+        for track in tracks { values[track.id] = SearchText.fold(SmartFilterEngine.text(field, track)) }
+        lock.withLock { fields[field] = values }
+        return values
+    }
+}
+
 enum SmartFilterEngine {
     static func evaluate(_ filter: SmartFilter, in library: PreparedLibrary) -> FilterResult {
         var tracks = library.tracks
@@ -60,7 +86,8 @@ enum SmartFilterEngine {
         for step in filter.steps {
             switch step {
             case .filter(let group):
-                tracks = tracks.filter { matches(group, $0, library) }
+                let test = predicate(group, library)
+                tracks = tracks.filter(test)
             case .sort(let keys):
                 tracks = sort(tracks, by: keys, groupedAs: filter.output, library: library, rng: &rng)
             case .limit(let limit):
@@ -72,75 +99,97 @@ enum SmartFilterEngine {
 
     // MARK: Rules
 
-    static func matches(_ group: RuleGroup, _ track: Track, _ library: PreparedLibrary) -> Bool {
-        guard !group.nodes.isEmpty else { return true }
-        let test: (RuleNode) -> Bool = { node in
+    /// A group's rules turned into one test, built once per filter step: search text folded, field values looked
+    /// up in the shared folded table, date cut-offs worked out, all before the first song is tried.
+    static func predicate(_ group: RuleGroup, _ library: PreparedLibrary) -> @Sendable (Track) -> Bool {
+        guard !group.nodes.isEmpty else { return { _ in true } }
+        let tests = group.nodes.map { node -> @Sendable (Track) -> Bool in
             switch node {
-            case .rule(let rule): matches(rule, track, library)
-            case .group(let inner): matches(inner, track, library)
+            case .rule(let rule): predicate(rule, library)
+            case .group(let inner): predicate(inner, library)
             }
         }
         switch group.match {
-        case .all: return group.nodes.allSatisfy(test)
-        case .any: return group.nodes.contains(where: test)
-        case .none: return !group.nodes.contains(where: test)
+        case .all: return { track in tests.allSatisfy { $0(track) } }
+        case .any: return { track in tests.contains { $0(track) } }
+        case .none: return { track in !tests.contains { $0(track) } }
         }
     }
 
-    static func matches(_ rule: Rule, _ track: Track, _ library: PreparedLibrary) -> Bool {
-        switch rule.field.type {
+    static func matches(_ group: RuleGroup, _ track: Track, _ library: PreparedLibrary) -> Bool {
+        predicate(group, library)(track)
+    }
+
+    static func predicate(_ rule: Rule, _ library: PreparedLibrary) -> @Sendable (Track) -> Bool {
+        let field = rule.field
+        switch field.type {
         case .text:
-            return matchText(text(rule.field, track), rule.op, rule.value)
+            guard case .text(let raw) = rule.value else { return { _ in true } }
+            let needle = SearchText.fold(raw)
+            let folded = library.folded.values(field)
+            let value: @Sendable (Track) -> String = { folded[$0.id] ?? SearchText.fold(text(field, $0)) }
+            // Empty search text: "contains" keeps everything, and "begins/ends with" matched nothing before
+            // (Foundation finds no empty range); kept so.
+            if needle.isEmpty, [RuleOperator.contains, .doesNotContain].contains(rule.op) { return { _ in true } }
+            if needle.isEmpty, [RuleOperator.beginsWith, .endsWith].contains(rule.op) { return { _ in false } }
+            switch rule.op {
+            case .is: return { value($0) == needle }
+            case .isNot: return { value($0) != needle }
+            case .contains: return { utf8Contains(value($0), needle) }
+            case .doesNotContain: return { !utf8Contains(value($0), needle) }
+            case .beginsWith: return { value($0).hasPrefix(needle) }
+            case .endsWith: return { value($0).hasSuffix(needle) }
+            default: return { _ in true }
+            }
         case .number:
-            return matchNumber(number(rule.field, track), rule.op, rule.value)
+            switch (rule.op, rule.value) {
+            case (.is, .number(let n)): return { number(field, $0) == n }
+            case (.isNot, .number(let n)): return { number(field, $0) != n }
+            case (.greaterThan, .number(let n)): return { number(field, $0) > n }
+            case (.lessThan, .number(let n)): return { number(field, $0) < n }
+            case (.inRange, .range(let lo, let hi)):
+                let low = min(lo, hi), high = max(lo, hi)
+                return { (low...high).contains(number(field, $0)) }
+            default: return { _ in true }
+            }
         case .date:
-            return matchDate(date(rule.field, track), rule.op, rule.value, library)
+            return datePredicate(field, rule.op, rule.value, library)
         case .bool:
-            let value = bool(rule.field, track)
-            return rule.op == .isFalse ? !value : value
+            if rule.op == .isFalse { return { !bool(field, $0) } }
+            return { bool(field, $0) }
         }
     }
 
-    private static let textOptions: String.CompareOptions = [.caseInsensitive, .diacriticInsensitive]
-
-    private static func matchText(_ value: String, _ op: RuleOperator, _ ruleValue: RuleValue) -> Bool {
-        guard case .text(let needle) = ruleValue else { return true }
-        switch op {
-        case .is: return value.compare(needle, options: textOptions) == .orderedSame
-        case .isNot: return value.compare(needle, options: textOptions) != .orderedSame
-        case .contains: return needle.isEmpty || value.range(of: needle, options: textOptions) != nil
-        case .doesNotContain: return needle.isEmpty || value.range(of: needle, options: textOptions) == nil
-        case .beginsWith: return value.range(of: needle, options: textOptions.union(.anchored)) != nil
-        case .endsWith: return value.range(of: needle, options: textOptions.union([.anchored, .backwards])) != nil
-        default: return true
-        }
-    }
-
-    private static func matchNumber(_ value: Double, _ op: RuleOperator, _ ruleValue: RuleValue) -> Bool {
-        switch (op, ruleValue) {
-        case (.is, .number(let n)): return value == n
-        case (.isNot, .number(let n)): return value != n
-        case (.greaterThan, .number(let n)): return value > n
-        case (.lessThan, .number(let n)): return value < n
-        case (.inRange, .range(let lo, let hi)): return value >= min(lo, hi) && value <= max(lo, hi)
-        default: return true
+    /// Byte search over two folded strings (both folded the same way, so comparing bytes is enough).
+    static func utf8Contains(_ haystack: String, _ needle: String) -> Bool {
+        var haystack = haystack, needle = needle
+        return haystack.withUTF8 { h in
+            needle.withUTF8 { n in
+                n.isEmpty || (n.count <= h.count && memmem(h.baseAddress, h.count, n.baseAddress, n.count) != nil)
+            }
         }
     }
 
     /// A missing date (e.g. never played) is never "in the last N", and is always "not in the last N".
-    private static func matchDate(_ value: Date?, _ op: RuleOperator, _ ruleValue: RuleValue, _ library: PreparedLibrary) -> Bool {
+    private static func datePredicate(_ field: Field, _ op: RuleOperator, _ ruleValue: RuleValue,
+                                      _ library: PreparedLibrary) -> @Sendable (Track) -> Bool {
+        let calendar = library.calendar
         switch (op, ruleValue) {
         case (.inLast, .relative(let n, let unit)), (.notInLast, .relative(let n, let unit)):
-            let cutoff = library.calendar.date(byAdding: unit.component, value: -n, to: library.now) ?? library.now
-            let isWithin = value.map { $0 >= cutoff } ?? false
-            return op == .inLast ? isWithin : !isWithin
+            let cutoff = calendar.date(byAdding: unit.component, value: -n, to: library.now) ?? library.now
+            let inLast = op == .inLast
+            return { track in
+                let isWithin = date(field, track).map { $0 >= cutoff } ?? false
+                return inLast ? isWithin : !isWithin
+            }
         case (.before, .date(let d)):
-            return value.map { $0 < library.calendar.startOfDay(for: d) } ?? false
+            let start = calendar.startOfDay(for: d)
+            return { date(field, $0).map { $0 < start } ?? false }
         case (.after, .date(let d)):
-            guard let endOfDay = library.calendar.date(byAdding: .day, value: 1, to: library.calendar.startOfDay(for: d)) else { return false }
-            return value.map { $0 >= endOfDay } ?? false
+            guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: d)) else { return { _ in false } }
+            return { date(field, $0).map { $0 >= endOfDay } ?? false }
         default:
-            return true
+            return { _ in true }
         }
     }
 
@@ -267,11 +316,12 @@ enum SmartFilterEngine {
     /// and keeps each group's tracks together in their existing order.
     private static func sort(_ tracks: [Track], by keys: [SortKey], groupedAs kind: ResultKind, library: PreparedLibrary, rng: inout SeededRNG) -> [Track] {
         guard !keys.isEmpty else { return tracks }
-        let groups: [ArraySlice<Track>]
-        if let key = groupKey(for: kind, library) {
-            groups = group(tracks, by: key)
-        } else {
-            groups = tracks.indices.map { tracks[$0...$0] }
+        let groups: [ArraySlice<Track>] = switch kind {
+        case .songs: tracks.indices.map { tracks[$0...$0] }
+        // By ID, not a string made from it for every song.
+        case .albums: group(tracks) { $0.albumID }
+        case .artists: group(tracks) { library.snapshot.artistKey($0) }
+        case .genres: group(tracks) { $0.genre.lowercased() }
         }
 
         // Built once per key, so a custom field's pattern compiles once rather than per track.
@@ -298,19 +348,10 @@ enum SmartFilterEngine {
         return order.flatMap { groups[$0] }
     }
 
-    private static func groupKey(for kind: ResultKind, _ library: PreparedLibrary) -> ((Track) -> String)? {
-        switch kind {
-        case .songs: nil
-        case .albums: { String($0.albumID) }
-        case .artists: { library.snapshot.artistKey($0) }
-        case .genres: { $0.genre.lowercased() }
-        }
-    }
-
     /// Groups tracks by key, ordered by each group's first appearance.
-    private static func group(_ tracks: [Track], by key: (Track) -> String) -> [ArraySlice<Track>] {
-        var order: [String] = []
-        var buckets: [String: [Track]] = [:]
+    private static func group<Key: Hashable>(_ tracks: [Track], by key: (Track) -> Key) -> [ArraySlice<Track>] {
+        var order: [Key] = []
+        var buckets: [Key: [Track]] = [:]
         for t in tracks {
             let k = key(t)
             if buckets[k] == nil { order.append(k) }

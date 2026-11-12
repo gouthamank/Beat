@@ -124,9 +124,13 @@ private struct PageEvaluation: ViewModifier {
     func body(content: Content) -> some View {
         let key = PageStore.LibraryKey(library: library.version, history: history.version)
         content.task(id: Key(library: key, page: pages.node(pageID)?.page)) {
-            // Debounce bursts (e.g. several plays or edits in a row).
-            try? await Task.sleep(for: .milliseconds(150))
-            guard !Task.isCancelled else { return }
+            // Debounce bursts (e.g. several plays or edits in a row), but not a first look: an element with no
+            // results yet shows a placeholder, and waiting only delayed it.
+            let elements = pages.node(pageID)?.page?.elements ?? []
+            if elements.allSatisfy({ pages.results[$0.id] != nil }) {
+                try? await Task.sleep(for: .milliseconds(150))
+                guard !Task.isCancelled else { return }
+            }
             await pages.evaluate(pageID: pageID, snapshot: library.snapshot, history: history.stats, key: key)
         }
     }

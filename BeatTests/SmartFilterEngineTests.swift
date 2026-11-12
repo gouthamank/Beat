@@ -167,4 +167,36 @@ final class SmartFilterEngineTests: XCTestCase {
             _ = SmartFilterEngine.evaluate(preset, in: lib)
         }
     }
+
+    // MARK: Folded matching
+
+    func testIsAndIsNotIgnoreCaseAndAccents() {
+        XCTAssertEqual(ids(run([filter(.all, rule(.title, .is, .text("GAMMA CAFE")))])), [3])
+        XCTAssertEqual(ids(run([filter(.all, rule(.title, .isNot, .text("gamma café")))])), [1, 2, 4, 5, 6])
+    }
+
+    func testEmptySearchTextKeepsItsMeaning() {
+        XCTAssertEqual(ids(run([filter(.all, rule(.title, .contains, .text("")))])).count, 6, "contains nothing: everything")
+        XCTAssertEqual(ids(run([filter(.all, rule(.title, .doesNotContain, .text("")))])).count, 6)
+        XCTAssertEqual(ids(run([filter(.all, rule(.title, .beginsWith, .text("")))])), [], "as before: no empty prefix match")
+        XCTAssertEqual(ids(run([filter(.all, rule(.title, .endsWith, .text("")))])), [])
+    }
+
+    func testFoldedTextIsSharedBetweenLibraries() {
+        let snapshot = LibrarySnapshot.build(tracks: library)
+        let first = PreparedLibrary(snapshot: snapshot, now: now, calendar: calendar)
+        // Plays changed, the library didn't: the folded text is handed on and gives the same answers.
+        let second = PreparedLibrary(snapshot: snapshot, history: [4: .init(playCount: 3)], now: now, calendar: calendar, folded: first.folded)
+        XCTAssertTrue(second.folded === first.folded)
+        let step = filter(.all, rule(.title, .contains, .text("ta")))
+        XCTAssertEqual(ids(run([step], in: first)), ids(run([step], in: second)))
+        XCTAssertEqual(first.folded.values(.title)[3], "gamma cafe")
+    }
+
+    func testByteSearch() {
+        XCTAssertTrue(SmartFilterEngine.utf8Contains("gamma cafe", "cafe"))
+        XCTAssertTrue(SmartFilterEngine.utf8Contains("gamma cafe", ""))
+        XCTAssertFalse(SmartFilterEngine.utf8Contains("cafe", "gamma cafe"))
+        XCTAssertFalse(SmartFilterEngine.utf8Contains("", "a"))
+    }
 }

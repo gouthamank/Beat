@@ -32,6 +32,8 @@ struct ArtworkView: View {
     private struct Load: Hashable {
         let source: ArtworkSource?
         let size: ArtworkCache.Size
+        /// Bumped when the art changed in Music.
+        let revision: Int
     }
 
     /// The source's cached image first, so a new source that's already in memory shows at once (in whatever
@@ -48,7 +50,7 @@ struct ArtworkView: View {
         content
             // A new size loads too (Cover Flow sharpens the cover reaching the centre); the current image stays
             // up meanwhile, so nothing flashes.
-            .task(id: Load(source: source, size: size)) {
+            .task(id: Load(source: source, size: size, revision: source.map { artwork.revision(of: $0) } ?? 0)) {
                 guard let source else { image = nil; return }
                 if let cached = artwork.cachedImage(source, size: size) {
                     image = cached

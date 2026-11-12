@@ -20,6 +20,10 @@ struct BeatApp: App {
         NSWindow.allowsAutomaticWindowTabbing = false
         let library = LibraryStore()
         let artwork = ArtworkCache(loader: library.loader)
+        // Saved thumbnails are named for the art Music has now; changed art is forgotten and loaded again.
+        artwork.currentLabel = { [unowned library] in library.snapshot.artworkLabel(for: $0) }
+        library.onRead = { [unowned artwork] in artwork.pruneSavedThumbnails(keeping: $0) }
+        library.onAccessLost = { [unowned artwork] in artwork.removeSavedThumbnails() }
         let history = PlayHistoryStore()
         let scrobbler = Scrobbler()
         _scrobbler = State(initialValue: scrobbler)
@@ -31,6 +35,12 @@ struct BeatApp: App {
         let hero = HeroTransition()
         navigator.hero = hero
         navigator.coverTint.configure(library: library, history: history, artwork: artwork)
+        library.onArtworkChanged = { [unowned artwork, unowned navigator] changed in
+            guard !changed.isEmpty else { return }
+            artwork.invalidate(changed)
+            // The page, sidebar and bar may be coloured from a cover that just changed.
+            navigator.coverTint.refresh()
+        }
         _navigator = State(initialValue: navigator)
         _hero = State(initialValue: hero)
     }

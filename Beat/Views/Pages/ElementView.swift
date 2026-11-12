@@ -40,7 +40,7 @@ struct ElementView: View {
                         content(result)
                     }
                 } else {
-                    ProgressView().controlSize(.small).padding(.horizontal, 24)
+                    placeholder
                 }
             }
             .padding(.vertical, look.spacing.elementPadding)
@@ -189,6 +189,139 @@ struct ElementView: View {
                 GenreTile(genre: genres[$0], showsFooter: footer).frame(width: width)
             }
         }
+    }
+}
+
+// MARK: Loading placeholder
+
+extension ElementView {
+    /// The element's own layout at its final size while its filter runs, with empty cover shapes for items:
+    /// a spinner was one line tall, so each element jumped open (pushing the rest down) as its results came in.
+    /// Text keeps its space, invisibly. Layouts that grow to fit everything reserve one row.
+    @ViewBuilder
+    var placeholder: some View {
+        let kind = element.filter.output
+        let gap = look.spacing.itemGap
+        let width = look.size.tileWidth(for: kind)
+        let footer = look.showFooter
+        let tileRowGap = footer ? gap + 6 : gap
+        let allRows = look.rows == ElementAppearance.allRows
+        // Enough to fill the rows across any window; layouts that grow to fit get about a row.
+        let count = allRows ? (look.layout == .list ? look.columns : 6) : max(1, look.rows) * (look.layout == .list ? look.columns : 12)
+        Group {
+            switch (kind, look.layout) {
+            case (_, .list):
+                ColumnList(count: count, rows: look.rows, columns: look.columns, fill: look.effectiveFill, spacing: gap) { _ in
+                    PlaceholderRow()
+                }
+            case (.songs, _):
+                Shelf(count: count, rows: look.rows, fill: look.effectiveFill, spacing: gap, rowSpacing: 4) { _ in
+                    PlaceholderRow().frame(width: width)
+                }
+            case (.albums, .coverFlow):
+                CoverFlowPlaceholder(side: CoverFlowGeometry.side(for: look.size), spread: CoverFlowGeometry.spread(for: look.spacing))
+            case (.albums, .timeline):
+                YearTimelineElement(count: count, year: { _ in 0 }, newestFirst: false, rows: look.rows,
+                                    maxColumns: look.timelineMaxColumns, fill: look.effectiveFill, tileWidth: width,
+                                    spacing: gap, rowSpacing: tileRowGap, hidesYears: true) { _ in
+                    PlaceholderTile(kind: .albums, footer: footer)
+                }
+            case (_, .grid):
+                TileGrid(count: count, rows: look.rows, fill: look.effectiveFill, minimum: width, spacing: gap,
+                         rowSpacing: kind == .genres ? gap : tileRowGap) { _ in
+                    PlaceholderTile(kind: kind, footer: footer)
+                }
+            default:
+                Shelf(count: count, rows: look.rows, fill: look.effectiveFill, spacing: gap,
+                      rowSpacing: kind == .genres ? gap : tileRowGap) { _ in
+                    PlaceholderTile(kind: kind, footer: footer).frame(width: width)
+                }
+            }
+        }
+        .disabled(true)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Loading")
+    }
+}
+
+/// An empty cover in the faint fill a cover shows before its art loads, shaped like the tile it stands in for.
+/// Footer text keeps its space but isn't drawn.
+private struct PlaceholderTile: View {
+    let kind: ResultKind
+    let footer: Bool
+
+    var body: some View {
+        switch kind {
+        case .genres:
+            // Genre names sit on the art, so the tile is the art alone.
+            cover(cornerRadius: 14)
+        case .artists:
+            VStack(spacing: 8) {
+                cover(cornerRadius: 10)
+                if footer { lines(.callout.weight(.medium), .caption) }
+            }
+        default:
+            VStack(alignment: .leading, spacing: 6) {
+                cover(cornerRadius: 10)
+                if footer { lines(.callout.weight(.medium), .caption) }
+            }
+        }
+    }
+
+    private func cover(cornerRadius: CGFloat) -> some View {
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous).fill(.quaternary).aspectRatio(1, contentMode: .fit)
+    }
+
+    private func lines(_ first: Font, _ second: Font) -> some View {
+        Group {
+            Text(verbatim: " ").font(first)
+            Text(verbatim: " ").font(second)
+        }
+    }
+}
+
+/// A list row's shape (`ListCellContent`, `SongCell`): a small empty cover, two lines' space.
+private struct PlaceholderRow: View {
+    var body: some View {
+        HStack(spacing: 10) {
+            RoundedRectangle(cornerRadius: 5, style: .continuous).fill(.quaternary).frame(width: 42, height: 42)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(verbatim: " ").font(.callout)
+                Text(verbatim: " ").font(.caption)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(5)
+    }
+}
+
+/// Cover Flow's stage with empty covers in place, and its caption's space.
+private struct CoverFlowPlaceholder: View {
+    let side: CGFloat
+    let spread: CGFloat
+
+    var body: some View {
+        VStack(spacing: 14) {
+            ZStack {
+                ForEach(-2...2, id: \.self) { d in
+                    let place = CoverFlowGeometry.place(distance: d, side: side, spread: spread)
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(.quaternary)
+                        .frame(width: side, height: side)
+                        .scaleEffect(place.scale)
+                        .rotation3DEffect(.degrees(place.rotation), axis: (x: 0, y: 1, z: 0), perspective: 0.5)
+                        .offset(x: place.x)
+                        .zIndex(place.zIndex)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: CoverFlowGeometry.stageHeight(side: side))
+            VStack(spacing: 2) {
+                Text(verbatim: " ").font(.callout.weight(.semibold))
+                Text(verbatim: " ").font(.caption)
+            }
+        }
+        .padding(.vertical, 6)
     }
 }
 

@@ -101,6 +101,8 @@ struct NowPlayingView: View {
     /// The art shown (cover and backdrop): it follows the track once its colours, backdrop and cover are ready,
     /// and stays put when the next track carries the same picture.
     @State private var shownSource: ArtworkSource?
+    /// `shownSource`'s art revision when it was shown (`ArtworkCache.revision(of:)`).
+    @State private var shownRevision = 0
     /// Counts backdrop swaps; a new layer fades in above the old one, which stays until it's covered.
     @State private var backdropGeneration = 0
 
@@ -148,14 +150,18 @@ struct NowPlayingView: View {
         // On the cover's own colours, playback controls use the colour chosen to read on them.
         .environment(\.playbackAccent, palette?.primary.color ?? playbackAccent)
         // The playing track's own art and colours: an album whose tracks carry different art changes with each.
-        .task(id: ArtworkSource(track)) {
+        // The revision too: a cover changed in Music while it plays is picked up.
+        .task(id: ShownArt(source: ArtworkSource(track), revision: artwork.revision(of: ArtworkSource(track)))) {
             // Opening, the colours apply at once: animated, the whole view re-laid out inside that animation and
             // the title slid down from the top of the cover while it grew out of the bar. Changing songs while
             // open, they cross-fade.
-            let source = ArtworkSource(track)
+            let source = ArtworkSource(track), revision = artwork.revision(of: source)
             // The same picture as the last track (tracks of one release each embedding it): nothing to change.
             // Cross-fading backdrop and cover into identical copies of themselves still read as a blur and unblur.
-            if let shown = shownSource, await artwork.samePicture(shown, source) { return }
+            // Unless it's this very art, changed in Music since it was shown.
+            if let shown = shownSource, shown != source || revision == shownRevision, await artwork.samePicture(shown, source) {
+                return
+            }
             let fade: Animation? = extracted == nil ? nil : .easeInOut(duration: 0.6)
             var found = artwork.cachedPalette(source)
             if found == nil { found = await artwork.palette(source) }
@@ -169,9 +175,15 @@ struct NowPlayingView: View {
             withAnimation(fade) {
                 extracted = found
                 shownSource = source
+                shownRevision = revision
                 backdropGeneration += 1
             }
         }
+    }
+
+    private struct ShownArt: Hashable {
+        let source: ArtworkSource
+        let revision: Int
     }
 
     private var player: some View {
@@ -310,18 +322,6 @@ struct NowPlayingView: View {
             .environment(\.playbackAccent, style.isScene ? SceneColours(palette: palette).accent.color : palette?.primary.color ?? playbackAccent)
             .opacity(controlsVisible ? 1 : 0)
             .animation(.easeInOut(duration: 0.4), value: controlsVisible)
-        }
-        .contentShape(Rectangle())
-        .onContinuousHover { phase in
-            if case .active = phase { revealControls() }
-        }
-        .onAppear { revealControls() }
-        .onDisappear {
-            hideControls?.cancel()
-            controlsVisible = true
-        }
-    }
-
             if let styleHint {
                 Text(styleHint.title)
                     .font(.title2.weight(.semibold))
@@ -332,26 +332,26 @@ struct NowPlayingView: View {
                     .transition(.opacity)
                     .allowsHitTesting(false)
             }
-    private var captionStyle: AnyShapeStyle { style.isScene ? AnyShapeStyle(.white.opacity(0.7)) : secondary }
+        }
         .animation(.easeInOut(duration: 0.25), value: styleHint)
+        .contentShape(Rectangle())
+        .onContinuousHover { phase in
+            if case .active = phase { revealControls() }
+        }
+        .onAppear { revealControls() }
+        .onDisappear {
+            hideControls?.cancel()
+            controlsVisible = true
+            hideStyleHint?.cancel()
+            styleHint = nil
+        }
+    }
+
+    private var captionStyle: AnyShapeStyle { style.isScene ? AnyShapeStyle(.white.opacity(0.7)) : secondary }
 
     /// The colour scheme the rest of Now Playing uses (see `body`).
     private var colorSchemeForCover: ColorScheme { palette.map { $0.isDark ? ColorScheme.dark : .light } ?? colorScheme }
 
-    private func revealControls() {
-        if !controlsVisible { controlsVisible = true }
-        hideControls?.cancel()
-        hideControls = Task {
-            hideStyleHint?.cancel()
-            styleHint = nil
-            try? await Task.sleep(for: .seconds(3))
-            guard !Task.isCancelled else { return }
-            controlsVisible = false
-            NSCursor.setHiddenUntilMouseMoves(true)
-        }
-    }
-
-    private func circleButton(_ symbol: String, help: String, action: @escaping () -> Void) -> some View {
     /// ← and →: the previous or next style, wrapping round, named for a moment.
     private func stepStyle(by offset: Int) {
         let next = style.stepped(by: offset)
@@ -366,6 +366,18 @@ struct NowPlayingView: View {
         }
     }
 
+    private func revealControls() {
+        if !controlsVisible { controlsVisible = true }
+        hideControls?.cancel()
+        hideControls = Task {
+            try? await Task.sleep(for: .seconds(3))
+            guard !Task.isCancelled else { return }
+            controlsVisible = false
+            NSCursor.setHiddenUntilMouseMoves(true)
+        }
+    }
+
+    private func circleButton(_ symbol: String, help: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.title3.weight(.semibold))

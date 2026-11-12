@@ -212,7 +212,7 @@ struct RootView: View {
         .onChange(of: pages.tree) { selectFirstPageIfNeeded() }
         .onChange(of: hiddenLibraryPages) { selectFirstPageIfNeeded() }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-            Task { await library.load() }
+            Task { await library.reloadIfMusicChanged() }
         }
     }
 

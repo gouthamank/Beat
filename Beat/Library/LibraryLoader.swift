@@ -19,8 +19,19 @@ actor LibraryLoader {
     private var trackArtwork: [PersistentID: ITLibMediaItem] = [:]
     /// Each album's cover track (see `LibrarySnapshot.artworkTrackID`).
     private var albumArtwork: [PersistentID: ITLibMediaItem] = [:]
+    /// Music has been read once (or the read failed), so art requests can be answered.
+    private var firstLoadFinished = false
+    private var waitingForFirstLoad: [CheckedContinuation<Void, Never>] = []
+
+    private func finishFirstLoad() {
+        guard !firstLoadFinished else { return }
+        firstLoadFinished = true
+        waitingForFirstLoad.forEach { $0.resume() }
+        waitingForFirstLoad = []
+    }
 
     func load() throws -> LibrarySnapshot {
+        defer { finishFirstLoad() }
         let library: ITLibrary
         if let existing = self.library {
             existing.reloadData()
@@ -52,8 +63,11 @@ actor LibraryLoader {
         return snapshot
     }
 
-    func artworkData(for source: ArtworkSource) -> Data? {
-        switch source {
+    /// Art is known only once Music has been read. While a saved library is on screen, cover requests wait for
+    /// that first read instead of finding nothing (and never asking again).
+    func artworkData(for source: ArtworkSource) async -> Data? {
+        if !firstLoadFinished { await withCheckedContinuation { waitingForFirstLoad.append($0) } }
+        return switch source {
         case .album(let id): albumArtwork[id]?.artwork?.imageData
         case .track(let id): trackArtwork[id]?.artwork?.imageData
         }

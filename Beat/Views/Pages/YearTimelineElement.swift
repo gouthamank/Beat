@@ -16,6 +16,8 @@ struct YearTimelineElement<Cell: View>: View {
     let tileWidth: CGFloat
     let spacing: CGFloat
     let rowSpacing: CGFloat
+    /// Keeps the year labels' space but not their text: the loading placeholder has no years to show.
+    var hidesYears = false
     @ViewBuilder let cell: (Int) -> Cell
     @Environment(\.elementPreview) private var previewing
 
@@ -70,6 +72,7 @@ struct YearTimelineElement<Cell: View>: View {
             Text(year.map(String.init) ?? "No year")
                 .font(.callout.weight(.semibold).monospacedDigit())
                 .foregroundStyle(.secondary)
+                .opacity(hidesYears ? 0 : 1)
             ZStack(alignment: .leading) {
                 Rectangle().fill(.quaternary).frame(height: 2)
                 Circle().fill(.secondary).frame(width: 8, height: 8)

@@ -13,15 +13,24 @@ final class ArtworkCache {
     }
 
     @ObservationIgnored private let loader: LibraryLoader
+    @ObservationIgnored private let disk: ArtworkDiskCache
+    /// What each source's art is now (`LibrarySnapshot.artworkLabel`), for naming saved thumbnails. Set by the app.
+    @ObservationIgnored var currentLabel: @MainActor (ArtworkSource) -> ArtworkLabel? = { _ in nil }
+    /// Bumped for a source when its art changes in Music, so views showing it load it again.
+    private var revisions: [ArtworkSource: Int] = [:]
     @ObservationIgnored private let cache = NSCache<NSString, NSImage>()
     @ObservationIgnored private var inFlight: [NSString: Task<NSImage?, Never>] = [:]
     /// Small and few (one per album visited or track played), so a plain dictionary rather than NSCache.
     @ObservationIgnored private var palettes: [ArtworkSource: ArtworkPalette] = [:]
 
-    init(loader: LibraryLoader) {
+    init(loader: LibraryLoader, disk: ArtworkDiskCache = ArtworkDiskCache()) {
         self.loader = loader
+        self.disk = disk
         cache.countLimit = 600
     }
+
+    /// Changes when the source's art changed in Music; views key their loading on it.
+    func revision(of source: ArtworkSource) -> Int { revisions[source] ?? 0 }
 
     func cachedImage(album: PersistentID, size: Size) -> NSImage? { cachedImage(.album(album), size: size) }
     func image(album: PersistentID, size: Size) async -> NSImage? { await image(.album(album), size: size) }
@@ -37,10 +46,17 @@ final class ArtworkCache {
         if let hit = cache.object(forKey: key) { return hit }
         if let task = inFlight[key] { return await task.value }
 
-        let loader = self.loader
+        let loader = self.loader, disk = self.disk
+        // Thumbnails come from disk when one was saved for the art Music has now; launch shows them before
+        // Music has even been read. Other sizes always come from Music.
+        let label = size == .thumbnail ? currentLabel(source) : nil
         let task = Task<NSImage?, Never> {
+            if let label, let saved = await disk.image(for: source, label: label) {
+                return NSImage(cgImage: saved, size: NSSize(width: saved.width, height: saved.height))
+            }
             guard let data = await loader.artworkData(for: source) else { return nil }
             guard let cg = await Self.decode(data, maxPixel: size.rawValue) else { return nil }
+            if let label { Task.detached(priority: .utility) { await disk.store(cg, for: source, label: label) } }
             return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
         }
         inFlight[key] = task
@@ -51,6 +67,35 @@ final class ArtworkCache {
     }
 
     func cachedPalette(_ source: ArtworkSource) -> ArtworkPalette? { palettes[source] }
+
+    /// Art that changed in Music: forget every size, its colours and its saved thumbnail, and bump its revision
+    /// so covers on screen load the new art.
+    func invalidate(_ sources: Set<ArtworkSource>) {
+        guard !sources.isEmpty else { return }
+        for source in sources {
+            for size in [Size.thumbnail, .large, .full] {
+                cache.removeObject(forKey: Self.key(source, size))
+                inFlight[Self.key(source, size)] = nil
+            }
+            palettes[source] = nil
+            BackdropImages.forget(source)
+            revisions[source, default: 0] += 1
+        }
+        let disk = self.disk
+        Task.detached(priority: .utility) { for source in sources { await disk.remove(source) } }
+    }
+
+    /// After a read of Music: drop saved thumbnails for art that changed or went away while Beat wasn't looking.
+    func pruneSavedThumbnails(keeping library: LibrarySnapshot) {
+        let disk = self.disk
+        Task.detached(priority: .utility) { await disk.prune(keeping: library) }
+    }
+
+    /// Music access was lost: nothing from the library stays on disk.
+    func removeSavedThumbnails() {
+        let disk = self.disk
+        Task.detached(priority: .utility) { await disk.removeAll() }
+    }
 
     /// Whether two sources show the same picture: tracks of one release often each embed the same cover,
     /// and Now Playing shouldn't cross-fade between identical art. Compares the decoded thumbnails' pixels.

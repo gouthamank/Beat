@@ -53,6 +53,17 @@ final class LibraryWatcher {
         }
     }
 
+    /// When Music last wrote its library database: the newest modification date of the bundle's database files.
+    /// Nil when no bundle is found, which callers treat as "may have changed".
+    nonisolated static func libraryStamp() -> Date? {
+        guard let bundle = libraryBundle(),
+              let files = try? FileManager.default.contentsOfDirectory(at: bundle, includingPropertiesForKeys: [.contentModificationDateKey])
+        else { return nil }
+        return files.filter { isRelevant(paths: [$0.path]) }
+            .compactMap { try? $0.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate }
+            .max()
+    }
+
     /// The default library location first, then any `.musiclibrary` bundle in the usual folders.
     nonisolated static func libraryBundle() -> URL? {
         let files = FileManager.default
