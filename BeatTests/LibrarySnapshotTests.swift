@@ -72,6 +72,38 @@ final class LibrarySnapshotTests: XCTestCase {
         XCTAssertTrue(SearchText.matches(snapshot.albumSearchText[8] ?? "", SearchText.words("cafe")), "compilation track artist, diacritics folded")
         XCTAssertFalse(SearchText.matches(raw, SearchText.words("sampler")))
     }
+
+    func testSizesAddUpPerAlbumArtistAndGenre() {
+        var tracks = [
+            Track.fixture(id: 1, album: "X", albumID: 10, albumArtist: "Ann", genre: "Jazz"),
+            Track.fixture(id: 2, album: "X", albumID: 10, albumArtist: "Ann", track: 2, genre: "Rock"),
+            Track.fixture(id: 3, album: "Y", albumID: 20, albumArtist: "Ann", genre: "Jazz"),
+        ]
+        tracks[0].fileSize = 100; tracks[1].fileSize = 20; tracks[2].fileSize = 3
+        let snapshot = LibrarySnapshot.build(tracks: tracks)
+        XCTAssertEqual(snapshot.albumsByID[10]?.fileSize, 120)
+        XCTAssertEqual(snapshot.albumsByID[20]?.fileSize, 3)
+        XCTAssertEqual(snapshot.artistsByID["ann"]?.fileSize, 123)
+        XCTAssertEqual(snapshot.genresByID["jazz"]?.fileSize, 103, "only the genre's own tracks")
+        XCTAssertEqual(snapshot.genresByID["rock"]?.fileSize, 20)
+    }
+
+    func testFormatSummary() {
+        func track(_ file: String, kind: String = "", bitrate: Int, sampleRate: Int) -> Track {
+            var t = Track.fixture(id: 1)
+            t.location = URL(fileURLWithPath: "/music/\(file)")
+            t.kind = kind; t.bitrate = bitrate; t.sampleRate = sampleRate
+            return t
+        }
+        XCTAssertEqual(track("a.mp3", bitrate: 320, sampleRate: 44100).formatSummary, "MP3 · 320 kbps · 44.1 kHz")
+        XCTAssertEqual(track("a.wav", bitrate: 1411, sampleRate: 48000).formatSummary, "WAV · 1,411 kbps · 48 kHz")
+        XCTAssertEqual(track("a.m4a", kind: "Apple Lossless audio file", bitrate: 900, sampleRate: 96000).formatSummary,
+                       "ALAC · 900 kbps · 96 kHz")
+        XCTAssertEqual(track("a.m4a", kind: "Purchased AAC audio file", bitrate: 256, sampleRate: 44100).formatSummary,
+                       "AAC · 256 kbps · 44.1 kHz")
+        XCTAssertEqual(track("a.aiff", bitrate: 0, sampleRate: 0).formatSummary, "AIFF", "unknown rates are left out")
+        XCTAssertNil(track("noextension", bitrate: 0, sampleRate: 0).formatSummary)
+    }
 }
 
 extension Track {

@@ -248,6 +248,15 @@ struct NowPlayingView: View {
                         .keyboardShortcut("v", modifiers: [.command, .shift])
                         .help("Visualizer (⇧⌘V)")
                     }
+                    // The file's format, quietly, a little apart from the controls.
+                    if let format = track.formatSummary {
+                        Text(format)
+                            .font(.caption2.monospacedDigit())
+                            .foregroundStyle(secondary)
+                            .opacity(0.7)
+                            .padding(.top, 10)
+                            .accessibilityLabel("Format: \(format)")
+                    }
                 }
                 .frame(maxWidth: 420)
         }

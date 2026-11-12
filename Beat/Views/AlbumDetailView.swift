@@ -406,8 +406,9 @@ struct AlbumDetailView: View {
         var parts: [String] = []
         if !album.genre.isEmpty { parts.append(album.genre) }
         if album.year > 0 { parts.append(String(album.year)) }
-        parts.append("\(trackCount) \(trackCount == 1 ? "song" : "songs")")
+        parts.append(trackCount.counted("song"))
         parts.append(Duration.seconds(album.duration).formatted(.units(allowed: [.hours, .minutes], width: .abbreviated)))
+        if album.fileSize > 0 { parts.append(album.fileSize.fileSizeText) }
         return parts.joined(separator: " · ")
     }
 }
@@ -484,6 +485,11 @@ extension Int {
     func counted(_ singular: String, _ plural: String? = nil) -> String {
         "\(formatted()) \(self == 1 ? singular : plural ?? singular + "s")"
     }
+}
+
+extension Int64 {
+    /// Bytes as Finder shows a file's size: "412 MB", "41.2 GB".
+    var fileSizeText: String { ByteCountFormatter.string(fromByteCount: self, countStyle: .file) }
 }
 
 /// "Play Next" / "Add to Queue" for any set of tracks.

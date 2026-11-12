@@ -35,6 +35,26 @@ struct Track: Identifiable, Hashable, Codable, Sendable {
     var fileSize: Int64
 
     var displayArtist: String { artist.isEmpty ? albumArtist : artist }
+
+    /// "MP3 · 320 kbps · 44.1 kHz", "WAV · 1,411 kbps · 48 kHz": the format from the file's extension (Music's
+    /// kind tells AAC from Apple Lossless, which share .m4a), then what Music knows of bitrate and sample rate.
+    var formatSummary: String? {
+        var parts: [String] = []
+        let ext = location.pathExtension.lowercased()
+        let format: String? = switch ext {
+        case "m4a", "mp4", "m4p": kind.localizedCaseInsensitiveContains("lossless") ? "ALAC" : "AAC"
+        case "aif", "aiff", "aifc": "AIFF"
+        case "": nil
+        default: ext.uppercased()
+        }
+        if let format { parts.append(format) }
+        if bitrate > 0 { parts.append("\(bitrate.formatted()) kbps") }
+        if sampleRate > 0 {
+            let khz = Double(sampleRate) / 1000
+            parts.append("\(khz.formatted(.number.precision(.fractionLength(0...1)))) kHz")
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
     var stars: Int { rating / 20 }
 }
 
@@ -50,6 +70,8 @@ struct Album: Identifiable, Hashable, Sendable {
     var trackIDs: [PersistentID]
     var duration: TimeInterval
     var discCount: Int
+    /// Bytes on disk, all tracks together.
+    var fileSize: Int64 = 0
 }
 
 struct Artist: Identifiable, Hashable, Sendable {
@@ -57,6 +79,8 @@ struct Artist: Identifiable, Hashable, Sendable {
     let id: String
     var name: String
     var albumIDs: [PersistentID]
+    /// Bytes on disk, all their albums together.
+    var fileSize: Int64 = 0
 }
 
 struct Genre: Identifiable, Hashable, Sendable {
@@ -66,6 +90,8 @@ struct Genre: Identifiable, Hashable, Sendable {
     /// In library album order.
     var albumIDs: [PersistentID]
     var trackCount: Int
+    /// Bytes on disk, the genre's tracks only.
+    var fileSize: Int64 = 0
 }
 
 struct LibrarySnapshot: Sendable {
@@ -137,7 +163,8 @@ extension LibrarySnapshot {
                 dateAdded: ordered.compactMap(\.dateAdded).min(),
                 trackIDs: ordered.map(\.id),
                 duration: ordered.reduce(0) { $0 + $1.duration },
-                discCount: Set(ordered.map(\.discNumber)).count
+                discCount: Set(ordered.map(\.discNumber)).count,
+                fileSize: ordered.reduce(0) { $0 + $1.fileSize }
             )
         }
         albums.sort {
@@ -151,6 +178,7 @@ extension LibrarySnapshot {
         for album in albums where !album.isCompilation {
             let key = album.artist.lowercased()
             artistsByKey[key, default: Artist(id: key, name: album.artist, albumIDs: [])].albumIDs.append(album.id)
+            artistsByKey[key]?.fileSize += album.fileSize
         }
         let artists = artistsByKey.values.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
 
@@ -161,6 +189,7 @@ extension LibrarySnapshot {
                 let key = track.genre.lowercased()
                 var genre = genresByKey[key] ?? Genre(id: key, name: track.genre, albumIDs: [], trackCount: 0)
                 genre.trackCount += 1
+                genre.fileSize += track.fileSize
                 if genre.albumIDs.last != album.id { genre.albumIDs.append(album.id) }
                 genresByKey[key] = genre
             }

@@ -28,7 +28,7 @@ struct ArtistGridView: View {
         .remembersScroll(memory)
         .keyboardGrid(count: visible.count, layout: .adaptive(minimum: 130, spacing: 22, inset: 24), id: { visible[$0].id })
         .navigationTitle(title)
-        .navigationSubtitle(artists.count.counted("artist"))
+        .navigationSubtitle("\(artists.count.counted("artist")) · \(artists.reduce(0) { $0 + $1.fileSize }.fileSizeText)")
         .searchable(text: searchText, placement: .toolbar, prompt: "Artists")
     }
 }
@@ -109,7 +109,7 @@ struct GenreGridView: View {
         .remembersScroll(memory)
         .keyboardGrid(count: genres.count, layout: .adaptive(minimum: 170, spacing: 20, inset: 24), id: { genres[$0].id })
         .navigationTitle(title)
-        .navigationSubtitle(genres.count.counted("genre"))
+        .navigationSubtitle("\(genres.count.counted("genre")) · \(genres.reduce(0) { $0 + $1.fileSize }.fileSizeText)")
     }
 }
 

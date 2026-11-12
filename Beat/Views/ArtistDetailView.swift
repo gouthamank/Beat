@@ -172,6 +172,7 @@ struct ArtistDetailView: View {
         if let content {
             parts.append(content.songCount.counted("song"))
             parts.append(Duration.seconds(content.duration).formatted(.units(allowed: [.hours, .minutes], width: .abbreviated)))
+            if artist.fileSize > 0 { parts.append(artist.fileSize.fileSizeText) }
             if content.plays > 0 { parts.append(content.plays.counted("play")) }
         }
         return parts.joined(separator: " · ")
