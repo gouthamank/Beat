@@ -89,7 +89,7 @@ struct ArtistDetailView: View {
         // As on album pages: while the art zooms in from a tile, the page fades in around it.
         .opacity(revealed ? 1 : 0)
         .onScrollGeometryChange(for: Double.self) {
-            CoverPageTopBar<EmptyView>.collapse(scrollOffset: $0.contentOffset.y + $0.contentInsets.top)
+            CoverPageTopBar.collapse(scrollOffset: $0.contentOffset.y + $0.contentInsets.top)
         } action: { _, progress in collapse.progress = progress }
         .background {
             // The tint's album (the same one the sidebar shows); with Plain, a soft blur of the featured album.
@@ -97,15 +97,13 @@ struct ArtistDetailView: View {
             CoverPageBackground(albumID: tint?.albumID ?? content?.featuredAlbumID, palette: palette, shown: backgroundShown)
                 .frameProbe(pageProbe)
         }
-        .overlay(alignment: .top) {
-            CoverPageTopBar(title: artist.name, collapse: collapse, palette: palette) {
-                ArtistArtwork(albumIDs: artist.albumIDsNewestFirst, artistID: artist.id, cornerRadius: 0)
-            }
-        }
+        .overlay(alignment: .top) { CoverPageTopBar(collapse: collapse, palette: palette) }
         // The page only, not the toolbar: the grid's search field kept this page's scheme after going back.
         .environment(\.colorScheme, pageScheme)
-        // The toolbar is empty on artist pages (see coverPageChrome): back lives on the page.
         .coverPageChrome()
+        .coverPageToolbar(title: artist.name, collapse: collapse, palette: palette, scheme: pageScheme) {
+            ArtistArtwork(albumIDs: artist.albumIDsNewestFirst, artistID: artist.id, cornerRadius: 0)
+        }
         .navigationTitle(artist.name)
         .onAppear {
             buildLocalContent(artist)

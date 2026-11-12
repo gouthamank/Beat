@@ -24,9 +24,10 @@ struct AlbumBackground: View {
 }
 
 extension View {
-    /// Album and artist pages keep the window toolbar (it holds the window controls) but empty and
-    /// see-through: no background, no title, no system back button. A toolbar over cover colours either
-    /// stuck out or couldn't be read; the page shows its own title and brings its own buttons.
+    /// Album and artist pages keep the window toolbar but see-through: no background, no title, no system
+    /// back button. A toolbar background over cover colours either stuck out or couldn't be read; the page
+    /// draws its own tinted bar under the strip (`CoverPageTopBar`) and puts back and its title there as items
+    /// (`coverPageToolbar`).
     func coverPageChrome() -> some View {
         toolbarBackground(.hidden, for: .windowToolbar)
             .toolbar(removing: .title)
@@ -39,11 +40,29 @@ extension View {
         modifier(CoverViewerClick(album: album, probe: probe))
     }
 
-    /// Room at the top for the page's own back (and info) buttons above the header.
+    /// The page's margins. The top is small: back and the compact title live in the window toolbar
+    /// (`coverPageToolbar`), so the header starts just under it. It used to reserve 62 pt for a back button
+    /// floating over the page, below an empty toolbar strip.
     func coverPageContentPadding() -> some View {
         padding(.horizontal, 28)
             .padding(.bottom, 28)
-            .padding(.top, 62)
+            .padding(.top, 16)
+    }
+
+    /// Back, and the page's art and title fading in as the header scrolls away, as window toolbar items. Apply
+    /// after the page's colour-scheme override, which must not reach the toolbar (the grid's search field kept
+    /// the page's scheme after going back); `scheme` is applied inside the items instead.
+    func coverPageToolbar<Art: View>(title: String, collapse: ScrollCollapse, palette: ArtworkPalette?, scheme: ColorScheme,
+                                     @ViewBuilder art: @escaping () -> Art) -> some View {
+        toolbar {
+            ToolbarItem(placement: .navigation) {
+                CoverPageBackButton().environment(\.colorScheme, scheme)
+            }
+            ToolbarItem(placement: .navigation) {
+                CoverPageToolbarTitle(title: title, collapse: collapse, palette: palette, art: art)
+                    .environment(\.colorScheme, scheme)
+            }
+        }
     }
 }
 
@@ -65,14 +84,40 @@ private struct CoverViewerClick: ViewModifier {
     }
 }
 
-/// The back button for pages shown without a toolbar back button (album and artist pages).
-struct PageBackButton: View {
+/// Back on album and artist pages, which hide the system back button (see `coverPageChrome`).
+private struct CoverPageBackButton: View {
     @Environment(AppNavigator.self) private var navigator
 
     var body: some View {
         if navigator.canGoBack {
-            PageCornerButton(symbol: "chevron.left", help: "Back (⌘[)") { navigator.goBack() }
+            Button { navigator.goBack() } label: { Label("Back", systemImage: "chevron.left") }
+                .help("Back (⌘[)")
         }
+    }
+}
+
+/// The page's art and title in the toolbar, fading in as the header's title scrolls under it.
+private struct CoverPageToolbarTitle<Art: View>: View {
+    let title: String
+    let collapse: ScrollCollapse
+    let palette: ArtworkPalette?
+    @ViewBuilder let art: () -> Art
+
+    var body: some View {
+        let progress = collapse.progress
+        HStack(spacing: 8) {
+            art()
+                .frame(width: 24, height: 24)
+                .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+            Text(title)
+                .font(.headline)
+                .lineLimit(1)
+                .foregroundStyle(palette?.primary.color ?? Color.primary)
+        }
+        .opacity(progress)
+        .offset(y: (1 - progress) * 6)
+        .allowsHitTesting(false)
+        .accessibilityHidden(progress < 0.5)
     }
 }
 
@@ -87,49 +132,36 @@ final class ScrollCollapse {
     var progress = 0.0
 }
 
-struct CoverPageTopBar<Art: View>: View {
-    let title: String
-    /// 0 with the header in view, 1 once it has scrolled away (see `collapse(scrollOffset:)`).
+/// Behind the toolbar strip on album and artist pages: clear while the header shows, a blurred, cover-tinted bar
+/// once it has scrolled away, so content scrolling under the strip doesn't collide with back and the title.
+/// The toolbar's own background stays hidden (see `coverPageChrome`); this is drawn by the page, under it.
+struct CoverPageTopBar: View {
     let collapse: ScrollCollapse
     let palette: ArtworkPalette?
-    @ViewBuilder let art: () -> Art
 
     /// How far through the header the page has scrolled, for `progress`: the bar fades in as the header's
-    /// title passes under it.
+    /// title passes under the toolbar.
     static func collapse(scrollOffset y: CGFloat) -> Double {
-        Double(min(max((y - 140) / 80, 0), 1))
+        Double(min(max((y - 94) / 80, 0), 1))
     }
 
     var body: some View {
-        let progress = collapse.progress
-        HStack(spacing: 12) {
-            PageBackButton()
-            HStack(spacing: 10) {
-                art()
-                    .frame(width: 30, height: 30)
-                    .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
-                Text(title)
-                    .font(.headline)
-                    .lineLimit(1)
-                    .foregroundStyle(palette?.primary.color ?? Color.primary)
+        // A zero-height anchor just under the strip, with the bar as its background: a background ignoring the top
+        // safe area grows up over exactly the strip. (A fixed zero-height frame of its own stays zero and showed
+        // nothing; content then ran visibly under the title.)
+        Color.clear
+            .frame(maxWidth: .infinity)
+            .frame(height: 0)
+            .background(alignment: .bottom) {
+                ZStack(alignment: .bottom) {
+                    Rectangle().fill(.bar)
+                    if let palette { palette.background.color.opacity(0.55) }
+                    Divider()
+                }
+                .ignoresSafeArea(edges: .top)
+                .opacity(collapse.progress)
             }
-            .opacity(progress)
-            .offset(y: (1 - progress) * 8)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 20)
-        .padding(.top, 14)
-        .padding(.bottom, 10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background {
-            ZStack(alignment: .bottom) {
-                Rectangle().fill(.bar)
-                if let palette { palette.background.color.opacity(0.55) }
-                Divider()
-            }
-            .ignoresSafeArea(edges: .top)
-            .opacity(progress)
-        }
+            .allowsHitTesting(false)
     }
 }
 
@@ -164,27 +196,6 @@ private struct Shimmer: ViewModifier {
             .onAppear {
                 withAnimation(.linear(duration: 1.3).repeatForever(autoreverses: false)) { phase = 1.5 }
             }
-    }
-}
-
-/// A small glass circle button in a page corner, standing in for a toolbar button.
-struct PageCornerButton: View {
-    let symbol: String
-    let help: String
-    var isOn = false
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(isOn ? Color.accentColor : .primary)
-                .frame(width: 34, height: 34)
-                .contentShape(Circle())
-        }
-        .buttonStyle(.plain)
-        .beatGlass(in: Circle(), interactive: true)
-        .help(help)
     }
 }
 
@@ -267,6 +278,10 @@ struct AlbumDetailView: View {
     private var palette: ArtworkPalette? {
         navigator.coverTint.current.flatMap { $0.route == .album(albumID) ? $0.palette : nil }
     }
+    /// The cover's lightness once its colours show, else the system's: for the page and its toolbar items.
+    private var pageScheme: ColorScheme {
+        backgroundShown ? palette.map { $0.isDark ? ColorScheme.dark : .light } ?? colorScheme : colorScheme
+    }
     @State private var artProbe = FrameProbe()
     /// False while an album zoom is landing, so the page fades in around the flying cover.
     @State private var revealed = false
@@ -304,22 +319,21 @@ struct AlbumDetailView: View {
         }
         .tracksScrolling(scrolling)
         .onScrollGeometryChange(for: Double.self) {
-            CoverPageTopBar<EmptyView>.collapse(scrollOffset: $0.contentOffset.y + $0.contentInsets.top)
+            CoverPageTopBar.collapse(scrollOffset: $0.contentOffset.y + $0.contentInsets.top)
         } action: { _, progress in collapse.progress = progress }
         .opacity(revealed ? 1 : 0)
         .background {
             CoverPageBackground(albumID: album.id, palette: palette, shown: backgroundShown)
                 .frameProbe(pageProbe)
         }
-        .overlay(alignment: .top) {
-            CoverPageTopBar(title: album.title, collapse: collapse, palette: palette) {
-                ArtworkView(albumID: album.id, cornerRadius: 0)
-            }
-        }
+        .overlay(alignment: .top) { CoverPageTopBar(collapse: collapse, palette: palette) }
         // Controls, glass and menus follow the cover's lightness rather than the system's, once its colours show.
         // The page only, not the toolbar: the grid's search field kept this page's scheme after going back.
-        .environment(\.colorScheme, backgroundShown ? palette.map { $0.isDark ? ColorScheme.dark : .light } ?? colorScheme : colorScheme)
+        .environment(\.colorScheme, pageScheme)
         .coverPageChrome()
+        .coverPageToolbar(title: album.title, collapse: collapse, palette: palette, scheme: pageScheme) {
+            ArtworkView(albumID: album.id, cornerRadius: 0)
+        }
         .navigationTitle(album.title)
         .onAppear {
             hero.setTarget(artProbe, for: album.id)
