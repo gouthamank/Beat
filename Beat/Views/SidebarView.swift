@@ -83,7 +83,10 @@ struct SidebarView: View {
                 cancel: isNew ? { navigator.cancelNaming(in: pages) } : nil
             ) {
                 pages.rename(node.id, to: $0)
-                if isNew { navigator.namingNew = nil }
+                guard isNew else { return }
+                navigator.namingNew = nil
+                // On a phone, a new page is what you'll edit next: the drawer gets out of its way.
+                if !node.isFolder { navigator.sidebarDrawerOpen = false }
             }
         }
         .confirmationDialog(deleteTitle, isPresented: Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } }), titleVisibility: .visible) {

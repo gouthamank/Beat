@@ -16,6 +16,8 @@ struct NameSheet: View {
     @State private var selection: TextSelection?
     @FocusState private var focused: Bool
     @State private var saved = false
+    /// Only the first focus selects everything; tapping back into the field later puts the caret where you tap.
+    @State private var selectedOnFocus = false
 
     init(title: String, symbol: String, name: String, saveTitle: String = "Rename", cancel: (() -> Void)? = nil,
          save: @escaping (String) -> Void) {
@@ -35,6 +37,7 @@ struct NameSheet: View {
                 .font(.headline)
             TextField("Name", text: $name, selection: $selection)
                 .textFieldStyle(.roundedBorder)
+                .autocorrectionDisabled()
                 .focused($focused)
                 .onSubmit(commit)
             HStack {
@@ -50,9 +53,12 @@ struct NameSheet: View {
         .padding(20)
         .frame(width: 320)
         .onDisappear { if !saved { cancel?() } }
-        .onAppear {
-            focused = true
-            // Select after focus lands; taking focus would otherwise reset the selection to a caret.
+        .onAppear { focused = true }
+        // Select once focus has landed; taking focus resets the selection to a caret. On iOS focus lands only after
+        // the sheet has slid up, well after `onAppear`, so selecting from there was undone.
+        .onChange(of: focused) { _, on in
+            guard on, !selectedOnFocus else { return }
+            selectedOnFocus = true
             Task { @MainActor in selection = TextSelection(range: name.startIndex..<name.endIndex) }
         }
     }

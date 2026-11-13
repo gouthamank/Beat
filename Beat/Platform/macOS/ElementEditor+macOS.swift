@@ -39,6 +39,7 @@ struct ElementEditorLayout<Preview: View>: View {
             TextField("Name", text: $draft.name, prompt: Text("Name"))
                 .textFieldStyle(.plain)
                 .font(.title2.weight(.semibold))
+                .autocorrectionDisabled()
                 .focused($nameFocused)
             if let caption = context.nameCaption {
                 Text(caption)

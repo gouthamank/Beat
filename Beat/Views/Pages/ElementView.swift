@@ -31,11 +31,7 @@ struct ElementView: View {
         if editing || look.showHeader || !isEmpty {
             VStack(alignment: .leading, spacing: 14) {
                 if editing || look.showHeader {
-                    if isPreview {
-                        header
-                    } else {
-                        header.contextMenu { ElementMenu(element: element, pageID: pageID, delete: delete) }
-                    }
+                    header
                 }
                 if let result {
                     if result.count == 0 {
@@ -65,9 +61,15 @@ struct ElementView: View {
             if isPreview {
                 title
             } else {
-                Button { navigator.push(.element(ElementRoute(pageID: pageID, elementID: element.id))) } label: { title }
-                    .buttonStyle(.plain)
+                // A tap gesture rather than a Button: a long press for the menu held a plain button pressed.
+                // The menu goes on the title alone, not the header: iOS lifts the menu's view at its ideal size, so the
+                // whole header faded into a copy with its spacer collapsed and the play buttons pulled in. The rest of
+                // the header falls through to the element's own menu behind it.
+                title
+                    .onTapGesture { navigator.push(.element(ElementRoute(pageID: pageID, elementID: element.id))) }
+                    .accessibilityAddTraits(.isButton)
                     .help("See All")
+                    .contextMenu { ElementMenu(element: element, pageID: pageID, delete: delete) }
             }
 
             if editing, !look.showHeader {

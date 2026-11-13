@@ -32,6 +32,7 @@ struct SongsTableView: View {
                 PlayShuffleToolbar(tracks: model.rows)
             }
             .searchable(text: $search, placement: .page, prompt: "Songs")
+            .autocorrectionDisabled()
         .onAppear { refresh(debounce: false) }
         .onChange(of: search) { refresh(debounce: true) }
         .onChange(of: sortOrder) { refresh(debounce: false) }
@@ -326,6 +327,7 @@ struct AlbumSongsView: View {
             PlayShuffleToolbar(tracks: model.playOrder)
         }
         .searchable(text: navigator.search(.songs, else: .constant("")), placement: .page, prompt: "Songs")
+        .autocorrectionDisabled()
         .onAppear { refresh(debounce: false) }
         .onChange(of: search) { refresh(debounce: true) }
         .onChange(of: pages.customFields) { refresh(debounce: false) }

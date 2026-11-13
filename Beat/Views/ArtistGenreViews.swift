@@ -31,6 +31,7 @@ struct ArtistGridView: View {
         .navigationTitle(title)
         .pageSubtitle(artists.count.counted("artist") + artists.reduce(0) { $0 + $1.fileSize }.fileSizeSuffix)
         .searchable(text: searchText, placement: .page, prompt: "Artists")
+        .autocorrectionDisabled()
     }
 }
 

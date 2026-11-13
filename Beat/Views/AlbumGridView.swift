@@ -36,6 +36,7 @@ struct AlbumGridView: View {
         .navigationTitle(title)
         .pageSubtitle(albums.count.counted("album") + albums.reduce(0) { $0 + $1.fileSize }.fileSizeSuffix)
         .searchable(text: navigator.search(memory, else: $localSearch), placement: .page, prompt: "Albums")
+        .autocorrectionDisabled()
     }
 }
 

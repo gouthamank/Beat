@@ -18,6 +18,7 @@ struct FilterEditorSheet: View {
     @Environment(LibraryStore.self) private var library
     @Environment(PlayHistoryStore.self) private var history
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.compactLayout) private var compact
 
     init(draft: ElementDraft) {
         target = draft.target
@@ -64,7 +65,8 @@ struct FilterEditorSheet: View {
     }
 
     private var saveTitle: String {
-        if pageID == nil { return "Save Defaults" }
+        // A phone's bar also holds Cancel and the Edit/Preview switch; the name row already says these are defaults.
+        if pageID == nil { return compact ? "Save" : "Save Defaults" }
         return isNew ? "Create" : "Save"
     }
 
@@ -147,7 +149,7 @@ private struct ElementPreview: View {
 struct ElementEditorContext {
     /// Under or beside the name: "Defaults for new elements" when editing those.
     let nameCaption: String?
-    /// "Create", "Save" or "Save Defaults".
+    /// "Create", "Save" or "Save Defaults" ("Save" on a phone).
     let saveTitle: String
     /// The element has a name.
     let canSave: Bool

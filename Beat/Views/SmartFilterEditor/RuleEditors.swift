@@ -218,7 +218,13 @@ struct RuleValueEditor: View {
                 #if os(macOS)
                 .textFieldStyle(.roundedBorder)
                 #endif
+                .autocorrectionDisabled()
+                #if os(macOS)
                 .frame(minWidth: 120, maxWidth: 220)
+                #else
+                // Its own row in the rule's form: the whole row takes the tap, not just its first 220 points.
+                .frame(maxWidth: .infinity, alignment: .leading)
+                #endif
         case (.number, .number(let n)) where rule.field == .rating:
             StarPicker(stars: Binding(get: { Int(n) }, set: { rule.value = .number(Double($0)) }))
         case (.number, .number(let n)):

@@ -127,6 +127,7 @@ struct CustomFieldSheet: View {
             Form {
                 Section {
                     TextField("Name", text: $field.name, prompt: Text("e.g. Catalog No."))
+                        .autocorrectionDisabled()
                     Picker("Source", selection: $field.source) {
                         ForEach(CustomField.sources, id: \.self) { Text($0.title).tag($0) }
                     }
@@ -136,6 +137,7 @@ struct CustomFieldSheet: View {
                     if mode == .pattern {
                         TextField("Pattern", text: $pattern, prompt: Text(#"e.g. AUX\w+"#))
                             .font(.body.monospaced())
+                            .autocorrectionDisabled()
                         if !pattern.isEmpty, !current.isValid {
                             Text("Not a valid regular expression.").font(.caption).foregroundStyle(.red)
                         }
