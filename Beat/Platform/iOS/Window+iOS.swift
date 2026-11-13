@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // The iPad and iPhone side of the main window (see Platform/macOS/Window+macOS.swift for the other).
 
@@ -143,6 +144,40 @@ private struct ZoomDestination: ViewModifier {
             content.navigationTransition(.zoom(sourceID: subject, in: namespace))
         } else {
             content
+        }
+    }
+}
+
+// MARK: Status bar
+
+extension View {
+    /// Has iOS re-read the status bar's style when a cover page's light or dark changes after it appeared (its colours
+    /// arrived late). The style comes from the navigation bar's colour scheme, which iOS otherwise reads only as the
+    /// page appears, so the bar kept white text on a page that had since turned pale.
+    func refreshesStatusBar(for scheme: ColorScheme) -> some View {
+        background { StatusBarRefresher(scheme: scheme) }
+    }
+}
+
+private struct StatusBarRefresher: UIViewRepresentable {
+    let scheme: ColorScheme
+
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView()
+        view.isUserInteractionEnabled = false
+        return view
+    }
+
+    func updateUIView(_ view: UIView, context: Context) {
+        // After SwiftUI has passed the new scheme to the navigation bar.
+        DispatchQueue.main.async { [weak view] in
+            var controller = view?.window?.rootViewController
+            while let current = controller {
+                current.setNeedsStatusBarAppearanceUpdate()
+                controller = current.presentedViewController
+            }
+            sequence(first: view as UIResponder?, next: { $0?.next }).compactMap { $0 as? UIViewController }
+                .forEach { $0.setNeedsStatusBarAppearanceUpdate() }
         }
     }
 }

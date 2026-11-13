@@ -17,6 +17,9 @@ extension View {
     /// The sidebar is always a column on the Mac.
     func sidebarDrawerButton() -> some View { self }
 
+    /// No status bar on the Mac.
+    func refreshesStatusBar(for scheme: ColorScheme) -> some View { self }
+
     /// The Mac flies covers itself (`HeroTransition`); these are for iPad and iPhone's zoom transition.
     func zoomTransitions() -> some View { self }
     func zoomSource(_ subject: HeroSubject?) -> some View { self }
