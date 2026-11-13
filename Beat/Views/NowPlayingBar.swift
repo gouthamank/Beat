@@ -155,21 +155,28 @@ struct WindowNowPlayingBar: View {
     @State private var origin = FrameProbe()
 
     var body: some View {
-        // Read here, inside the safe area, because the bar's overlay below ignores it.
+        // Read here, in the body: read inside a GeometryReader's closure, a new column frame didn't redraw the bar, so
+        // it stayed put while the window resized until something else (a page change) redrew it.
+        let column = navigator.detailColumnFrame
+        #if os(macOS)
+        bar(column: column, bottomInset: 0)
+        #else
+        // For the safe area: the bar's overlay below ignores it.
         GeometryReader { safe in
             // On a phone, just above the home indicator (the view's own safe area also counts the page's bottom bars),
             // or a little off the bottom edge on one with a home button, which has none.
-            bar(bottomInset: compact ? max(windowBottomInset(), 6) : safe.safeAreaInsets.bottom)
+            bar(column: column, bottomInset: compact ? max(windowBottomInset(), 6) : safe.safeAreaInsets.bottom)
         }
+        #endif
     }
 
-    private func bar(bottomInset: CGFloat) -> some View {
+    private func bar(column measured: CGRect?, bottomInset: CGFloat) -> some View {
         ZStack(alignment: .topLeading) {
             Color.clear.allowsHitTesting(false)
             // Hidden until the column has been measured, so it never shows over the wrong place.
             // A phone shows one column at a time, full width: its measured frame lags behind push and pop
             // animations, which left the bar half off the screen.
-            if let column = compact ? origin.windowRect : navigator.detailColumnFrame {
+            if let column = compact ? origin.windowRect : measured {
                 let base = origin.windowRect?.origin ?? .zero
                 NowPlayingBar(bottomInset: bottomInset)
                     // Over an album page's colours the bar's glass follows the cover's lightness, like the page does.

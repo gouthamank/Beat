@@ -14,6 +14,9 @@ extension View {
         modifier(TouchWindow(navigator: navigator))
     }
 
+    /// The window keeps the system's Light or Dark on iPad and iPhone (see `platformWindow`).
+    func windowAppearance() -> some View { self }
+
     /// On a phone, the root page's button for the sidebar drawer.
     func sidebarDrawerButton() -> some View { modifier(SidebarDrawerButton()) }
 

@@ -186,3 +186,19 @@ title, gone after the first scroll. Ruled out: the status-bar spacing (`addition
 a saved scroll offset (a fresh launch shows it too). Search is always shown (`.always`) for now. Next: a small
 Simulator test app (large title + hide-on-scroll search over a grid, adding Beat's grid modifiers one at a time:
 `tracksScrolling`, `remembersScroll`, `keyboardGrid`, `contentMargins`) to find what moves the list at launch.
+
+## End-to-end UI tests (noted Nov 2026)
+Unit tests cover the pure logic, but nothing checks the app as a whole: today's two Mac regressions (the
+now-playing bar not following window resizes, the window forgetting its size) were only caught by hand. Add UI tests
+(XCUITest, Xcode's UI testing: a separate test target that launches Beat and drives it through the accessibility
+tree) for the paths that keep breaking:
+- Launch, resize the window, check the now-playing bar's frame follows the page column; quit and relaunch, check the
+  window keeps its size.
+- Open an album from a tile and go back (⌘[, swipe back on iOS); open Now Playing and close it; switch sidebar pages.
+- Create, rename and delete a page; edit an element's rules and see the page update; Cancel leaves nothing behind.
+- iPhone (Simulator): the sidebar drawer, swipe between songs in Now Playing, Songs keeping its place after an album.
+Needs: a stable test library (a fixture folder through `FolderLibrarySource` on iOS; on the Mac a launch argument
+to load fixture tracks instead of Music, since UI tests shouldn't depend on the real library), and accessibility
+identifiers on the key controls. Run with `make test-ui` (Mac) and on a Simulator; the user runs them, as with
+unit tests. Snapshot tests of key screens (light/dark, phone/iPad widths) are a cheaper complement for layout
+regressions.

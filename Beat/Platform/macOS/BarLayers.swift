@@ -22,6 +22,11 @@ final class DetailColumnView: NSView {
     var report: ((CGRect) -> Void)?
     private var observers: [NSObjectProtocol] = []
     private var last: CGRect?
+    /// The split view's pane holding the page column, found while this view is in the window. SwiftUI can take this
+    /// view out of the window shortly after launch without putting it back or freeing it; the pane stays, so the
+    /// column is measured from it then, and the bar kept following window resizes and the sidebar.
+    private weak var pane: NSView?
+    private weak var observedWindow: NSWindow?
 
     /// Never takes clicks; it only measures.
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
@@ -33,21 +38,40 @@ final class DetailColumnView: NSView {
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
-        observers.forEach(NotificationCenter.default.removeObserver)
-        observers = []
-        guard let window else { return }
-        // The column can move without resizing (the sidebar's divider), which doesn't lay this view out.
-        for (name, object) in [(NSSplitView.didResizeSubviewsNotification, nil as Any?), (NSWindow.didResizeNotification, window)] {
-            observers.append(NotificationCenter.default.addObserver(forName: name, object: object, queue: .main) { [weak self] _ in
-                MainActor.assumeIsolated { self?.measure() }
-            })
+        // Out of the window: keep listening, and measure the pane instead (see `pane`). Said in Debug builds, so the
+        // fallback stays visible rather than quietly covering for something.
+        guard let window else {
+            #if DEBUG
+            print(pane == nil ? "DetailColumnView: taken out of the window and no split-view pane found; the bar won't follow resizes"
+                              : "DetailColumnView: taken out of the window; measuring the split-view pane instead")
+            #endif
+            return measure()
+        }
+        pane = sequence(first: superview, next: { $0?.superview }).lazy.compactMap { $0 }
+            .first { $0.superview is NSSplitView } ?? pane
+        if observedWindow !== window {
+            observers.forEach(NotificationCenter.default.removeObserver)
+            observers = []
+            observedWindow = window
+            // The column can move without resizing (the sidebar's divider), which doesn't lay this view out.
+            for (name, object) in [(NSSplitView.didResizeSubviewsNotification, nil as Any?), (NSWindow.didResizeNotification, window)] {
+                observers.append(NotificationCenter.default.addObserver(forName: name, object: object, queue: .main) { [weak self] _ in
+                    MainActor.assumeIsolated { self?.measure() }
+                })
+            }
         }
         measure()
     }
 
+    isolated deinit {
+        observers.forEach(NotificationCenter.default.removeObserver)
+    }
+
     private func measure() {
-        guard let window, let content = window.contentView else { return }
-        let r = convert(bounds, to: nil)
+        // This view while it's in the window; otherwise the column's pane.
+        guard let source: NSView = window != nil ? self : pane,
+              let window = source.window, let content = window.contentView else { return }
+        let r = source.convert(source.bounds, to: nil)
         let rect = CGRect(x: r.minX, y: content.bounds.height - r.maxY, width: r.width, height: r.height)
         guard rect != last else { return }
         last = rect

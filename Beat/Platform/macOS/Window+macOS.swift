@@ -8,8 +8,8 @@ import SwiftUI
 let pageColumnMinWidth: CGFloat = 680
 
 extension View {
-    /// The window around `RootView`: its minimum height, its Light or Dark, and the AppKit event monitors for what
-    /// SwiftUI doesn't expose on the Mac.
+    /// The window around `RootView`: its minimum height and the AppKit event monitors for what SwiftUI doesn't expose
+    /// on the Mac. (Its Light or Dark is `windowAppearance()`, applied inside `RootView`.)
     func platformWindow(queue: PlaybackQueue, navigator: AppNavigator) -> some View {
         modifier(MacWindow(queue: queue, navigator: navigator))
     }
@@ -19,6 +19,10 @@ extension View {
 
     /// No status bar on the Mac.
     func refreshesStatusBar(for scheme: ColorScheme) -> some View { self }
+
+    /// The window's Light or Dark, following the cover on album and artist pages. `RootView` applies it to its split
+    /// view, where it was before the platform split.
+    func windowAppearance() -> some View { modifier(WindowAppearance()) }
 
     /// The Mac flies covers itself (`HeroTransition`); these are for iPad and iPhone's zoom transition.
     func zoomTransitions() -> some View { self }
@@ -39,11 +43,31 @@ func resignWindowFocus() {
     }
 }
 
-private struct MacWindow: ViewModifier {
+/// Not `private`: the window's saved frame is stored under a key made from the content's full type name, and a private
+/// type's name includes a memory address that changes with every build, so the window never got its size back.
+struct MacWindow: ViewModifier {
     let queue: PlaybackQueue
     let navigator: AppNavigator
+
+    func body(content: Content) -> some View {
+        content
+            // Minimum width is set on RootView's page column (see there).
+            .frame(minHeight: 560)
+            // iPad and iPhone have the system's own edge swipe and no responder-chain Space.
+            .onAppear {
+                SpaceBarMonitor.install(queue: queue)
+                SidebarReclickMonitor.install(navigator: navigator)
+                SearchFocusMonitor.install()
+                SwipeBackMonitor.install(navigator: navigator)
+            }
+    }
+}
+
+/// The window's Light or Dark: the cover's on album and artist pages, otherwise the system's (`windowAppearance()`).
+private struct WindowAppearance: ViewModifier {
+    @Environment(AppNavigator.self) private var navigator
     /// The system's Light or Dark (System Settings ▸ Appearance), kept current while Beat runs.
-    @State private var systemScheme = MacWindow.currentSystemScheme()
+    @State private var systemScheme = WindowAppearance.currentSystemScheme()
 
     private static let systemAppearanceChanged = Notification.Name("AppleInterfaceThemeChangedNotification")
 
@@ -72,15 +96,6 @@ private struct MacWindow: ViewModifier {
             }
             .onReceive(DistributedNotificationCenter.default().publisher(for: Self.systemAppearanceChanged)) { _ in
                 systemScheme = Self.currentSystemScheme()
-            }
-            // Minimum width is set on RootView's page column (see there).
-            .frame(minHeight: 560)
-            // iPad and iPhone have the system's own edge swipe and no responder-chain Space.
-            .onAppear {
-                SpaceBarMonitor.install(queue: queue)
-                SidebarReclickMonitor.install(navigator: navigator)
-                SearchFocusMonitor.install()
-                SwipeBackMonitor.install(navigator: navigator)
             }
     }
 

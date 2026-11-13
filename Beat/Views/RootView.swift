@@ -161,6 +161,8 @@ struct RootView: View {
     var body: some View {
         @Bindable var navigator = navigator
         splitView
+        // The window's Light or Dark (Mac only), on the split view as it always was.
+        .windowAppearance()
         // Same page, different colours: Plain toggled, or plays changed an artist's featured album.
         .onChange(of: coverColours) { navigator.coverTint.refresh() }
         .onChange(of: history.version) { navigator.coverTint.refresh() }
