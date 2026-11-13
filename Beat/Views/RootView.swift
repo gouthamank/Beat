@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 
 enum SidebarItem: Hashable {
@@ -84,109 +83,84 @@ struct RootView: View {
     @Environment(AppNavigator.self) private var navigator
     @AppStorage(LibraryPage.hiddenKey) private var hiddenLibraryPages = ""
     @AppStorage("appearance.coverColours") private var coverColours = true
-    /// The system's Light or Dark (System Settings ▸ Appearance), kept current while Beat runs.
-    @State private var systemScheme = RootView.currentSystemScheme()
-
-    private static let systemAppearanceChanged = Notification.Name("AppleInterfaceThemeChangedNotification")
-
-    /// Read from the global preference rather than the window, which may be showing a cover's scheme.
-    private static func currentSystemScheme() -> ColorScheme {
-        UserDefaults.standard.string(forKey: "AppleInterfaceStyle") == "Dark" ? .dark : .light
-    }
     @Environment(PlayHistoryStore.self) private var history
+    /// A phone-width window: the sidebar is a drawer over the page rather than a column.
+    @Environment(\.compactLayout) private var compact
 
     private var selection: SidebarItem? { navigator.selection }
 
-    private var windowScheme: ColorScheme {
-        navigator.coverTint.current.map { $0.palette.isDark ? .dark : .light } ?? systemScheme
-    }
 
-    /// Back from a cover page, a grid's toolbar search field redrew its bezel in the window's Light or Dark
-    /// but kept its text in the page's: black text on a dark field. Setting the text again redraws it in
-    /// the window's current colours.
-    private static func resetToolbarSearchFields() {
-        func reset(_ view: NSView) {
-            if let field = view as? NSSearchField {
-                field.appearance = nil
-                field.textColor = .controlTextColor
-                field.stringValue = field.stringValue
-                (field.currentEditor() as? NSTextView)?.textColor = .controlTextColor
-                field.needsDisplay = true
+
+
+
+    /// The page column beside the sidebar, or on a phone alone (its sidebar is the drawer).
+    @ViewBuilder
+    private var columns: some View {
+        if compact {
+            pageStack
+        } else {
+            NavigationSplitView {
+                sidebar.navigationSplitViewColumnWidth(min: 180, ideal: 220, max: 300)
+            } detail: {
+                pageStack
             }
-            view.subviews.forEach(reset)
-        }
-        for window in NSApp.windows {
-            if let frame = window.contentView?.superview { reset(frame) }
         }
     }
 
+    /// The sidebar list. A pick shows its page and, on a phone, closes the drawer, even when it's the page already
+    /// showing.
+    private var sidebar: some View {
+        SidebarView(selection: Binding(get: { navigator.selection }, set: { item in
+            navigator.selection = item
+            navigator.sidebarDrawerOpen = false
+        }))
+    }
 
-    /// The narrowest the page column gets, on every page (root or pushed).
-    static let detailMinWidth: CGFloat = 680
+    private var pageStack: some View {
+        NavigationStack(path: navigator.pathBinding(for: selection)) {
+            detail
+                .nowPlayingBarSpace()
+                .sidebarDrawerButton()
+                .navigationDestination(for: Route.self) { route in
+                    // Pushed pages are hosted separately and set the window's minimum themselves: without
+                    // their own, an album page let the window shrink below the page underneath, which
+                    // then overflowed the column and shifted everything sideways.
+                    // Opaque, toolbar included: after an album page was pushed over a genre or See All grid and
+                    // popped, the page underneath showed through the grid, which draws no background itself.
+                    destination(route).zoomDestination(route).nowPlayingBarSpace().frame(minWidth: pageColumnMinWidth)
+                        .background(Color.windowBackground.ignoresSafeArea())
+                }
+        }
+        .id(selection)
+        .zoomTransitions()
+        // Where the window's now-playing bar goes (see WindowNowPlayingBar).
+        .background { DetailColumnReader(navigator: navigator) }
+        // The window's minimum width lives here, not on the window's root view: a root `minWidth` cut
+        // the sidebar's expand animation short (the page slid halfway, then snapped).
+        .frame(minWidth: pageColumnMinWidth)
+    }
 
     /// The sidebar, the page column and the window's now-playing bar. Split out of `body`, which grew too
     /// long for the compiler to type-check in reasonable time.
     private var splitView: some View {
-        @Bindable var navigator = navigator
-        return NavigationSplitView {
-            SidebarView(selection: $navigator.selection)
-                .navigationSplitViewColumnWidth(min: 180, ideal: 220, max: 300)
-        } detail: {
-            NavigationStack(path: navigator.pathBinding(for: selection)) {
-                detail
-                    .nowPlayingBarSpace()
-                    .navigationDestination(for: Route.self) { route in
-                        // Pushed pages are hosted separately and set the window's minimum themselves: without
-                        // their own, an album page let the window shrink below the page underneath, which
-                        // then overflowed the column and shifted everything sideways.
-                        // Opaque, toolbar included: after an album page was pushed over a genre or See All grid and
-                        // popped, the page underneath showed through the grid, which draws no background itself.
-                        destination(route).nowPlayingBarSpace().frame(minWidth: Self.detailMinWidth)
-                            .background(Color(nsColor: .windowBackgroundColor).ignoresSafeArea())
-                    }
-            }
-            .id(selection)
-            // Where the window's now-playing bar goes (see WindowNowPlayingBar).
-            .background { DetailColumnReader(navigator: navigator) }
-            // The window's minimum width lives here, not on the window's root view: a root `minWidth` cut
-            // the sidebar's expand animation short (the page slid halfway, then snapped).
-            .frame(minWidth: Self.detailMinWidth)
-        }
+        columns
         // One bar for the window, above pushed pages. Before `.disabled`, so it's disabled with the rest of the
         // window behind full-window views, and before the overlays that must draw over it.
         .overlay { WindowNowPlayingBar() }
+        // On a phone, over the bar too, like the page it covers.
+        .sidebarDrawer { sidebar }
         // Full-window views cover the window, so Tab (and VoiceOver) must stay inside them rather than
         // reach the sidebar and page underneath.
         .disabled(navigator.showingNowPlaying || navigator.artViewer != nil)
         .accessibilityHidden(navigator.showingNowPlaying || navigator.artViewer != nil)
         .onChange(of: navigator.showingNowPlaying || navigator.artViewer != nil) {
-            // Nothing keeps focus across the switch: a control left focused underneath would take Space
-            // and the first Tab. Esc and other shortcuts don't need a focused view.
-            Task {
-                await Task.yield()
-                NSApp.keyWindow?.makeFirstResponder(nil)
-            }
+            resignWindowFocus()
         }
     }
 
     var body: some View {
         @Bindable var navigator = navigator
         splitView
-        // While an album or artist page shows its colours, the whole window (toolbar, divider, sidebar
-        // material) takes the cover's lightness. Otherwise the system's own Light or Dark, set explicitly:
-        // `preferredColorScheme(nil)` doesn't restore a window that was given a scheme, so after a pale cover
-        // the sidebar stayed in Light mode.
-        .preferredColorScheme(windowScheme)
-        .onChange(of: windowScheme) {
-            Task {
-                // After the toolbar has rebuilt for the page now in front.
-                try? await Task.sleep(for: .milliseconds(50))
-                Self.resetToolbarSearchFields()
-            }
-        }
-        .onReceive(DistributedNotificationCenter.default().publisher(for: Self.systemAppearanceChanged)) { _ in
-            systemScheme = Self.currentSystemScheme()
-        }
         // Same page, different colours: Plain toggled, or plays changed an artist's featured album.
         .onChange(of: coverColours) { navigator.coverTint.refresh() }
         .onChange(of: history.version) { navigator.coverTint.refresh() }
@@ -196,7 +170,7 @@ struct RootView: View {
         .overlay { ArtViewerOverlay() }
         .modifier(PlaybackAccent())
         // These full-window views cover the toolbar's area, so its items would only float over them.
-        .toolbar(navigator.showingNowPlaying || navigator.artViewer != nil ? .hidden : .automatic, for: .windowToolbar)
+        .windowToolbar(navigator.showingNowPlaying || navigator.artViewer != nil ? .hidden : .automatic)
         .sheet(item: $navigator.editing) { FilterEditorSheet(draft: $0) }
         .sheet(item: $navigator.renamingElement) { ref in
             NameSheet(title: "Element Name", symbol: "rectangle.grid.1x2",
@@ -211,7 +185,7 @@ struct RootView: View {
         .onAppear { selectFirstPageIfNeeded() }
         .onChange(of: pages.tree) { selectFirstPageIfNeeded() }
         .onChange(of: hiddenLibraryPages) { selectFirstPageIfNeeded() }
-        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .appDidBecomeActive)) { _ in
             Task { await library.reloadIfMusicChanged() }
         }
     }
@@ -278,14 +252,22 @@ struct RootView: View {
             } description: {
                 Text(message)
             } actions: {
-                Button("Open Privacy Settings") {
-                    NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Media")!)
-                }
+                Button("Open Privacy Settings") { openPrivacySettings() }
                 .beatGlassButtonStyle(prominent: true)
                 Button("Try Again") { Task { await library.load() } }
                     .beatGlassButtonStyle()
             }
             .background(.background)
+        case .loaded where library.snapshot.tracks.isEmpty:
+            // Over the page, not blocking it: Settings and the sidebar stay usable.
+            ContentUnavailableView("No Music Yet", systemImage: "music.note", description: Text(emptyLibraryHint))
+                .frame(maxWidth: 440, maxHeight: 260)
+                .beatGlass(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .allowsHitTesting(false)
+                // On a phone the page fills the screen: keep the card at the bottom, off its rows.
+                .frame(maxHeight: .infinity, alignment: compact ? .bottom : .center)
+                .padding(.horizontal, compact ? 16 : 0)
+                .padding(.bottom, compact ? 24 : 0)
         case .idle, .loaded:
             EmptyView()
         }

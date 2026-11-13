@@ -1,4 +1,4 @@
-import AppKit
+import Foundation
 import MediaPlayer
 
 /// Publishes the current track to Control Center and routes media keys / AirPods controls back.
@@ -78,7 +78,7 @@ final class NowPlayingController {
     }
 
     /// MediaPlayer calls the request handler on a background queue, so it must not be main-actor isolated.
-    private nonisolated static func makeArtwork(_ image: NSImage) -> MPMediaItemArtwork {
+    private nonisolated static func makeArtwork(_ image: PlatformImage) -> MPMediaItemArtwork {
         return MPMediaItemArtwork(boundsSize: image.size) { _ in image }
     }
 }

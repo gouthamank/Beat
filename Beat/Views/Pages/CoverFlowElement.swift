@@ -1,4 +1,6 @@
+#if os(macOS)
 import AppKit
+#endif
 import SwiftUI
 
 /// Where a cover sits in Cover Flow, from its distance to the centre: the centre faces forward, the others
@@ -56,6 +58,7 @@ struct CoverFlowGeometry: Equatable {
 /// to open the album, double-click it to play. Sideways swipes and ← → flip through. Only the covers near the
 /// centre exist as views, so a long element costs no more than a short one.
 struct CoverFlowElement: View {
+    @Environment(\.pageInset) private var pageInset
     let albums: [Album]
     /// The centre cover's side (`CoverFlowGeometry.side(for:)`).
     let side: CGFloat
@@ -75,6 +78,8 @@ struct CoverFlowElement: View {
     @State private var probe = FrameProbe()
     @State private var scrollMonitor: Any?
     @State private var swipe: CGFloat = 0
+    /// How far the current drag had moved at the last flip check (iPad and iPhone).
+    @State private var dragged: CGFloat = 0
     @FocusState private var focused: Bool
 
     /// The centre cover's scale, so the zoom's stand-in matches it exactly.
@@ -103,6 +108,7 @@ struct CoverFlowElement: View {
                 Color.clear
                     .frame(width: side * centreScale, height: side * centreScale)
                     .frameProbe(probe)
+                    .zoomSource(albums.indices.contains(current) ? .album(albums[current].id) : nil)
                     .allowsHitTesting(false)
                 ForEach(max(0, current - CoverFlowGeometry.drawReach)...min(albums.count - 1, current + CoverFlowGeometry.drawReach), id: \.self) { i in
                     let place = CoverFlowGeometry.place(distance: i - current, side: side, spread: spread)
@@ -138,10 +144,25 @@ struct CoverFlowElement: View {
             }
             return .handled
         }
+        #if os(macOS)
         .onContinuousHover { phase in
             if case .active = phase { watchScrolling(true) } else { watchScrolling(false) }
         }
         .onDisappear { watchScrolling(false) }
+        #else
+        // Touch: a sideways drag over the stage flips covers as it goes, like the Mac's trackpad swipe; mostly
+        // vertical drags are left to the page.
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 12)
+                .onChanged { value in
+                    guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                    swipe -= value.translation.width - dragged
+                    dragged = value.translation.width
+                    flipBySwipe()
+                }
+                .onEnded { _ in dragged = 0; swipe = 0 }
+        )
+        #endif
         // The zoom back from the album page lands on the centre cover.
         .task(id: albums[current].id) { hero.registerTile(probe, for: albums[current].id, cornerRadius: 6) }
     }
@@ -180,7 +201,7 @@ struct CoverFlowElement: View {
             Text(album.artist).font(.caption).foregroundStyle(.secondary).lineLimit(1)
         }
         .frame(maxWidth: side * 2.5)
-        .padding(.horizontal, 24)
+        .padding(.horizontal, pageInset)
     }
 
     private func move(by step: Int) {
@@ -194,6 +215,13 @@ struct CoverFlowElement: View {
         }
     }
 
+    /// One cover per `swipeStep` of sideways movement, either way.
+    private func flipBySwipe() {
+        while swipe > Self.swipeStep { move(by: 1); swipe -= Self.swipeStep }
+        while swipe < -Self.swipeStep { move(by: -1); swipe += Self.swipeStep }
+    }
+
+    #if os(macOS)
     /// While the pointer is over the stage, sideways scrolls flip covers instead of reaching the page. Vertical
     /// scrolls pass through, so the page still scrolls.
     private func watchScrolling(_ on: Bool) {
@@ -215,8 +243,8 @@ struct CoverFlowElement: View {
         guard event.momentumPhase.isEmpty else { return true }
         if event.phase == .began { swipe = 0 }
         swipe -= event.scrollingDeltaX
-        while swipe > Self.swipeStep { move(by: 1); swipe -= Self.swipeStep }
-        while swipe < -Self.swipeStep { move(by: -1); swipe += Self.swipeStep }
+        flipBySwipe()
         return true
     }
+    #endif
 }

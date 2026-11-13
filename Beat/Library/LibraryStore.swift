@@ -14,7 +14,7 @@ final class LibraryStore {
     /// Bumped on every successful load; used as a cache key by derived results.
     private(set) var version = 0
 
-    let loader = LibraryLoader()
+    let loader: any LibrarySource = makeLibrarySource()
 
     /// Art whose picture changed in Music between reads (the app forwards it to `ArtworkCache.invalidate`).
     @ObservationIgnored var onArtworkChanged: @MainActor (Set<ArtworkSource>) -> Void = { _ in }
@@ -42,6 +42,9 @@ final class LibraryStore {
         defer { isLoading = false }
         if !triedSavedLibrary {
             triedSavedLibrary = true
+            // Asks for MediaPlayer access on iPad and iPhone (nothing to ask on the Mac). Without it, the read
+            // below fails and the usual "No Access" state shows.
+            _ = await loader.requestAccess()
             if let saved = await LibraryCache.load() {
                 snapshot = saved
                 version += 1

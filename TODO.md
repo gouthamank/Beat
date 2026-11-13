@@ -179,37 +179,10 @@ Ideas:
 - Hosting: GitHub Pages from the repo (a `docs/` folder or a `gh-pages` branch) keeps it free and next to
   the code.
 
-## iPad, then iPhone (noted Nov 2026)
-Beat on iPad first, then iPhone, sharing one engine with the Mac app. The library is the songs synced to the
-device from the Mac (Finder sync); Apple Music streaming and cloud-only songs stay out of scope, as on the Mac.
-
-Library:
-- A new loader on MediaPlayer (`MPMediaQuery` / `MPMediaLibrary`, "Media & Apple Music" permission) producing
-  the same `[Track]` as `LibraryLoader` does from `iTunesLibrary`, which is macOS-only.
-- Play `MPMediaItem.assetURL` with `AVPlayer`. It's nil for DRM and cloud-only items: skip those at load, the
-  iOS form of "tracks without a file location are skipped".
-- Available: title, artists, album, genre, grouping, comments, composer, year, plays, skips, rating, BPM,
-  dates, track/disc numbers, duration, artwork. Not available: bitrate, sample rate, file size, kind, file
-  path. Hide what depends on them (format line, file sizes, `.lrc` lyrics beside files); embedded and online
-  lyrics still work.
-- Library changes: `MPMediaLibraryDidChange` notifications instead of `LibraryWatcher` (FSEvents).
-
-Shared as is (pure Swift): models, `SmartFilterEngine`, pages (`PageStore`, `pages.json`), play history,
-`QueueState`, lyrics parsing, Last.fm, Discogs, `ArtworkPalette`, spectrum analysis, the launch caches, and
-their tests. Playback carries over too: `AVPlayer`, the audio tap, `MPRemoteCommandCenter`, AirPlay picker
-(plus an audio session and the background audio mode on iOS).
-
-Interface work:
-- `project.yml`: a multiplatform target (or a shared framework plus Mac and iOS apps).
-- UIKit versions of the AppKit pieces: `FrameProbe`, `ShapeShadow`, `PlayingIndicator`; `NSImage` to a
-  platform image type in `ArtworkCache`/`BackdropImages`.
-- Library > Songs (`AlbumSongsTable`, an `NSTableView`) needs a touch version.
-- The AppKit event monitors (swipe back, Space, sidebar reclick, search focus) drop out or become gestures;
-  hover, keyboard grids and right-click menus become touch, long-press and swipe equivalents.
-- Settings window becomes a settings screen; Liquid Glass via `Glass.swift` works natively on iOS 26.
-
-Order:
-1. iPad: `NavigationSplitView` behaves much as on the Mac, so the sidebar of pages carries over. Roughly two to
-   three weeks of focused work for a solid first version.
-2. iPhone: the sidebar becomes a tab bar or a list to drill into; layouts for a small screen. A few more weeks.
-- Pages and settings move between devices with Settings > Export/Import (`SettingsArchive`) to start with.
+## Search field half shown at launch on iPhone (noted Nov 2026)
+With the Library grids' search tucked away until pulled down (`SearchFieldPlacement.page` as
+`.navigationBarDrawer(displayMode: .automatic)`), it started half revealed at launch: an empty pill under the large
+title, gone after the first scroll. Ruled out: the status-bar spacing (`additionalSafeAreaInsets`), `remembersScroll`,
+a saved scroll offset (a fresh launch shows it too). Search is always shown (`.always`) for now. Next: a small
+Simulator test app (large title + hide-on-scroll search over a grid, adding Beat's grid modifiers one at a time:
+`tracksScrolling`, `remembersScroll`, `keyboardGrid`, `contentMargins`) to find what moves the list at launch.

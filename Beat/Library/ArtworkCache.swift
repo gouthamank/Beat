@@ -1,4 +1,4 @@
-import AppKit
+import Foundation
 import ImageIO
 import Observation
 
@@ -12,18 +12,18 @@ final class ArtworkCache {
         case full = 4096
     }
 
-    @ObservationIgnored private let loader: LibraryLoader
+    @ObservationIgnored private let loader: any LibrarySource
     @ObservationIgnored private let disk: ArtworkDiskCache
     /// What each source's art is now (`LibrarySnapshot.artworkLabel`), for naming saved thumbnails. Set by the app.
     @ObservationIgnored var currentLabel: @MainActor (ArtworkSource) -> ArtworkLabel? = { _ in nil }
     /// Bumped for a source when its art changes in Music, so views showing it load it again.
     private var revisions: [ArtworkSource: Int] = [:]
-    @ObservationIgnored private let cache = NSCache<NSString, NSImage>()
-    @ObservationIgnored private var inFlight: [NSString: Task<NSImage?, Never>] = [:]
+    @ObservationIgnored private let cache = NSCache<NSString, PlatformImage>()
+    @ObservationIgnored private var inFlight: [NSString: Task<PlatformImage?, Never>] = [:]
     /// Small and few (one per album visited or track played), so a plain dictionary rather than NSCache.
     @ObservationIgnored private var palettes: [ArtworkSource: ArtworkPalette] = [:]
 
-    init(loader: LibraryLoader, disk: ArtworkDiskCache = ArtworkDiskCache()) {
+    init(loader: any LibrarySource, disk: ArtworkDiskCache = ArtworkDiskCache()) {
         self.loader = loader
         self.disk = disk
         cache.countLimit = 600
@@ -32,16 +32,16 @@ final class ArtworkCache {
     /// Changes when the source's art changed in Music; views key their loading on it.
     func revision(of source: ArtworkSource) -> Int { revisions[source] ?? 0 }
 
-    func cachedImage(album: PersistentID, size: Size) -> NSImage? { cachedImage(.album(album), size: size) }
-    func image(album: PersistentID, size: Size) async -> NSImage? { await image(.album(album), size: size) }
+    func cachedImage(album: PersistentID, size: Size) -> PlatformImage? { cachedImage(.album(album), size: size) }
+    func image(album: PersistentID, size: Size) async -> PlatformImage? { await image(.album(album), size: size) }
     func cachedPalette(album: PersistentID) -> ArtworkPalette? { palettes[.album(album)] }
     func palette(album: PersistentID) async -> ArtworkPalette? { await palette(.album(album)) }
 
-    func cachedImage(_ source: ArtworkSource, size: Size) -> NSImage? {
+    func cachedImage(_ source: ArtworkSource, size: Size) -> PlatformImage? {
         cache.object(forKey: Self.key(source, size))
     }
 
-    func image(_ source: ArtworkSource, size: Size) async -> NSImage? {
+    func image(_ source: ArtworkSource, size: Size) async -> PlatformImage? {
         let key = Self.key(source, size)
         if let hit = cache.object(forKey: key) { return hit }
         if let task = inFlight[key] { return await task.value }
@@ -50,14 +50,14 @@ final class ArtworkCache {
         // Thumbnails come from disk when one was saved for the art Music has now; launch shows them before
         // Music has even been read. Other sizes always come from Music.
         let label = size == .thumbnail ? currentLabel(source) : nil
-        let task = Task<NSImage?, Never> {
+        let task = Task<PlatformImage?, Never> {
             if let label, let saved = await disk.image(for: source, label: label) {
-                return NSImage(cgImage: saved, size: NSSize(width: saved.width, height: saved.height))
+                return PlatformImage(cgImage: saved)
             }
             guard let data = await loader.artworkData(for: source) else { return nil }
             guard let cg = await Self.decode(data, maxPixel: size.rawValue) else { return nil }
             if let label { Task.detached(priority: .utility) { await disk.store(cg, for: source, label: label) } }
-            return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
+            return PlatformImage(cgImage: cg)
         }
         inFlight[key] = task
         let image = await task.value
@@ -101,8 +101,8 @@ final class ArtworkCache {
     /// and Now Playing shouldn't cross-fade between identical art. Compares the decoded thumbnails' pixels.
     func samePicture(_ a: ArtworkSource, _ b: ArtworkSource) async -> Bool {
         if a == b { return true }
-        guard let x = await image(a, size: .thumbnail)?.cgImage(forProposedRect: nil, context: nil, hints: nil),
-              let y = await image(b, size: .thumbnail)?.cgImage(forProposedRect: nil, context: nil, hints: nil),
+        guard let x = await image(a, size: .thumbnail)?.cg,
+              let y = await image(b, size: .thumbnail)?.cg,
               x.width == y.width, x.height == y.height,
               let dx = x.dataProvider?.data as Data?, let dy = y.dataProvider?.data as Data? else { return false }
         return dx == dy
@@ -112,7 +112,7 @@ final class ArtworkCache {
     func palette(_ source: ArtworkSource) async -> ArtworkPalette? {
         if let hit = palettes[source] { return hit }
         guard let image = await image(source, size: .thumbnail),
-              let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return nil }
+              let cg = image.cg else { return nil }
         let palette = await Self.extractPalette(cg)
         if let palette { palettes[source] = palette }
         return palette

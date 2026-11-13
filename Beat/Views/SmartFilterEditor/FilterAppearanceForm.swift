@@ -12,7 +12,12 @@ struct FilterAppearanceForm: View {
                 Picker("Layout", selection: Binding(get: { appearance.layout }, set: { setLayout($0) })) {
                     ForEach(ElementAppearance.layouts(for: draft.output), id: \.self) { Text($0.title).tag($0) }
                 }
+                // Five layouts don't fit a phone's width as segments ("Cover F…"); a menu row does.
+                #if os(macOS)
                 .pickerStyle(.segmented)
+                #else
+                .pickerStyle(.menu)
+                #endif
                 Picker("Size", selection: $appearance.size) {
                     ForEach(ElementAppearance.Size.allCases, id: \.self) { Text($0.rawValue.capitalized).tag($0) }
                 }

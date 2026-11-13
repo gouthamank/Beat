@@ -1,205 +1,274 @@
-# Beat architecture
+# How Beat is built
 
-## Overview
+Beat is a music player that sits on top of the music you already have. On the Mac it reads the Music app's
+library; on iPad and iPhone, the songs synced to the device. It never changes that library. What it adds is its own
+way of browsing: a sidebar of **pages**, each made of **elements**, and each element is a **smart filter** (find
+songs, sort them, keep some) shown in a layout of your choosing.
 
+This document walks through the pieces in the order data flows through them: from the library, through the
+filters, to the screen and the speakers. The diagrams are [Mermaid](https://mermaid.js.org), which GitHub and most
+Markdown viewers draw as pictures. For the rules to follow when changing things, see `CLAUDE.md`.
+
+## The big picture
+
+```mermaid
+flowchart TD
+    music[("Music library<br/>(Mac: Music app · iPhone/iPad: synced songs)")]
+    source["LibrarySource<br/>reads it, read-only"]
+    store["LibraryStore<br/>the current snapshot"]
+    history["PlayHistoryStore<br/>Beat's own plays and skips"]
+    pages["PageStore<br/>pages, elements, results"]
+    engine["SmartFilterEngine<br/>filter → sort → limit"]
+    views["Views<br/>sidebar, pages, album and artist pages"]
+    queue["PlaybackQueue"]
+    player["AudioPlayer<br/>(AVQueuePlayer)"]
+    system["Lock screen, media keys,<br/>Last.fm (optional)"]
+
+    music --> source --> store
+    store --> pages
+    history --> pages
+    pages <--> engine
+    pages --> views
+    views -- "play these" --> queue
+    queue --> player
+    queue --> history
+    queue --> system
 ```
- Music's library DB (~/Music/Music/Music Library.musiclibrary)
-            │  read-only
-            ▼
- LibraryLoader (actor, owns ITLibrary) ──artwork bytes──► ArtworkCache (NSCache, background decode)
-            │ LibrarySnapshot (Sendable value)
-            ▼
- LibraryStore (@MainActor @Observable, version counter)
-            │                                  PlayHistoryStore (Beat's own plays/skips, JSON)
-            │                                         │
-            └──────────────┬──────────────────────────┘
-                           ▼
-            PageStore.evaluate(page on screen) → PreparedLibrary → SmartFilterEngine.evaluate (detached task)
-                           │ [element ID: FilterResult]
-                           ▼
- SwiftUI views: RootView (NavigationSplitView) → Sidebar tree | PageView | detail pages | editor sheet
-                           │ queue.play(tracks, startAt:)
-                           ▼
- PlaybackQueue (@Observable) ── QueueState (pure logic)
-            │                └─ AudioPlayer (AVQueuePlayer, current + 1 preloaded item)
-            ├─ PlayHistoryStore.recordPlay / recordSkip
-            ├─ Scrobbler.nowPlaying / played (opt-in Last.fm; queue on disk, LastFMClient actor)
-            └─ NowPlayingController (MPNowPlayingInfoCenter, MPRemoteCommandCenter)
-```
 
-`BeatApp` creates one of each store and injects them with `.environment(...)`:
-- `LibraryStore`
-- `ArtworkCache`
-- `PlayHistoryStore`
-- `PlaybackQueue`
-- `PageStore`
-- `AppNavigator`
+`BeatApp` creates one of each store at launch and hands them to every view through SwiftUI's environment
+(`.environment(...)`): `LibraryStore`, `ArtworkCache`, `PlayHistoryStore`, `PlaybackQueue`, `PageStore`,
+`AppNavigator` and a few smaller ones (`HeroTransition`, `ArtistImages`, `Scrobbler`). There are no global
+singletons beyond the system's own media centres.
 
-There are no singletons apart from the system's MediaPlayer centers.
+Where the code lives:
 
-## Folders
-
-| Folder | Contents |
+| Folder | What's in it |
 |---|---|
-| `Beat/Library` | Models, loading, artwork, play history |
-| `Beat/Playback` | Queue logic, the AVFoundation player, system Now Playing, the Controls menu |
-| `Beat/SmartFilters` | Filter model, rule vocabulary, engine, presets, the editor model |
-| `Beat/Pages` | The sidebar tree of folders and pages, page elements, `PageStore` and its persistence |
-| `Beat/DesignSystem` | Glass abstraction, artwork view, blurred backdrop |
-| `Beat/Views` | All SwiftUI screens; `Pages/` and `SmartFilterEditor/` are grouped |
-| `BeatTests` | XCTest unit tests for the pure logic |
+| `Beat/Library` | The data model, reading the library, artwork, the launch caches, play history |
+| `Beat/SmartFilters` | What a smart filter is, the engine that runs it, the presets |
+| `Beat/Pages` | The sidebar tree of folders and pages, page elements, saving them |
+| `Beat/Playback` | The queue, the audio player, the audio tap for the visualizer, system Now Playing |
+| `Beat/Lyrics`, `Beat/ArtistInfo`, `Beat/Scrobbling` | The optional online extras: LRCLIB lyrics, Discogs artist info, Last.fm |
+| `Beat/DesignSystem` | Liquid Glass (with a fallback for macOS 15), artwork views, blurred backdrops |
+| `Beat/Views` | The screens |
+| `Beat/Platform` | Everything that differs between the Mac and iPad/iPhone (see [Platforms](#platforms)) |
+| `BeatTests` | Unit tests for the pure logic |
 
-## Library layer
+## The library
 
-- **`LibraryLoader`** (actor) wraps `ITLibrary(apiVersion: "1.1")`.
-  - `load()` reloads the library and maps `ITLibMediaItem`s with a file location into `Track` value types. It keeps every artwork-bearing item for lazy art; an album's cover is its first track with artwork in album order (`LibrarySnapshot.artworkTrackID`).
-  - `ITLibrary` objects are not Sendable and never leave the actor.
-- **`Models.swift`:** `Track`, `Album`, `Artist`, `Genre` and `LibrarySnapshot`. Beat doesn't read playlists from Music.
-  - `LibrarySnapshot.build(tracks:)` is a pure function that groups tracks into albums (disc/track order), artists (keyed by the album artist's case-folded name; compilations excluded) and genres.
-  - `artistKey(_:)` is the single definition of "which artist a track belongs to", used by grouping, limits and projection.
-- **`LibraryStore`:** holds the current snapshot, a load state, and a `version` that's bumped on every load. Reload happens on launch, on `didBecomeActive`, and when `LibraryWatcher` sees Music write its database. Overlapping requests coalesce into one follow-up load.
-- **`LibraryWatcher`:** an FSEvents stream on the `.musiclibrary` bundle, scheduled on the main queue, debounced 2 s. `isRelevant(paths:)` (tested) keeps only `.musicdb`/`.itdb`/`sentinel` writes.
-- **`ArtworkCache`:** pulls `imageData` from the loader and downsamples it with ImageIO in a `@concurrent` function. It caches by (`ArtworkSource`, size), where a source is an album's cover or a track's own art (Now Playing uses the track's, so albums whose tracks carry different art change per track), with `.thumbnail` and `.large`, and deduplicates in-flight requests. `ArtworkView` shows any cached image immediately (a large request falls back to the cached thumbnail) so already-loaded art never flashes a placeholder. The cache also extracts and keeps an `ArtworkPalette` per source.
-- **`PlayHistoryStore`:** `[PersistentID: Stats]` of Beat-recorded plays and skips, written atomically in the background.
-  - A play counts at 50% of the track or 4 minutes. A skip is a manual "next" between 2 and 20 seconds in.
-  - These stats are merged into Music's counts only inside `PreparedLibrary`, never written back.
-- **`Scrobbler`:** opt-in Last.fm scrobbling, fed by `PlaybackQueue`. It announces a track when it starts playing and queues a `Scrobble` when the play counts (the same rule as above). `ScrobbleQueue` (pure, tested) is saved to `scrobbles.json` and sent in batches of 50 by `flush()`, which backs off from 1 to 30 minutes while Last.fm is unreachable. A revoked session keeps the queue and asks the user to connect again.
-  - Sign-in is Last.fm's desktop flow: `auth.getToken`, the approval page in the browser, then polling `auth.getSession`. The session key goes in the Keychain.
-  - `LastFMRequest` (pure, tested) signs calls with the API key and secret compiled in from `Config/Secrets.xcconfig`. Having a key is the feature switch: builds without one (or with the example placeholders) have no Last.fm tab and a scrobbler that does nothing.
+Everything starts with a **`LibrarySnapshot`**: an immutable value holding every playable song (`Track`) and the
+albums, artists and genres built from them (`LibrarySnapshot.build(tracks:)`, a pure, tested function). Because
+it's a plain value, it can be handed to background work freely.
 
-## Playback layer
+A **`LibrarySource`** produces it. There are three, one per situation:
 
-- **`QueueState`** (pure struct, unit-tested): the item list, the original order while shuffled, the current index and the repeat mode.
-  - `index(after:manual:isPlayable:)` handles repeat off/all/one (a manual skip ignores repeat-one) and skips unplayable tracks.
-  - Shuffle keeps the current track first. Unshuffling restores the original order and keeps the current track.
-  - `insertNext` / `append` keep the unshuffled order in sync.
-- **`AudioPlayer`:** an `AVQueuePlayer` holding exactly the current item plus one preloaded upcoming item for near-gapless transitions.
-  - It reports `onTime`, `onAdvanced` (the preloaded item took over) and `onFinished`.
-  - A failed item is treated as ended.
-- **`PlaybackQueue`:** the façade the views use (`play`, `playNext`, `addToQueue`, transport, shuffle, repeat, volume).
-  - After any queue change it recomputes the upcoming item and hands it to `AudioPlayer`.
-  - Previous restarts the track if more than 3 seconds have played.
-  - Volume persists in `UserDefaults`.
-- **`NowPlayingController`:** publishes title, artist, album, duration, elapsed time, rate and artwork, and routes remote commands back as `@MainActor @Sendable` closures.
-- **`PlaybackCommands`:** the "Controls" menu (⌘→/⌘← next/previous, ⌘↑/⌘↓ volume). `SpaceBarMonitor` handles Space.
+| Source | Where | Reads |
+|---|---|---|
+| `LibraryLoader` | Mac | The Music app's library through `iTunesLibrary.framework` |
+| `MediaLibrarySource` | iPhone, iPad | Songs synced from a Mac, through MediaPlayer (`MPMediaQuery`) |
+| `FolderLibrarySource` | Simulator | Audio files saved to the app's Music folder, since the Simulator has no library |
+
+Songs without a playable file (Apple Music streaming, cloud-only, DRM) are skipped. Beat only plays local files.
+
+**`LibraryStore`** owns the current snapshot. Reading 20,000 songs takes a few seconds, so launch is two-stage:
+
+1. Show the library saved last time (`LibraryCache`, a JSON file in Caches) straight away.
+2. Read the real library behind it, and swap it in only if something changed.
+
+Cover thumbnails are saved too (`ArtworkDiskCache`, small HEIC files), named after the cover they came from, so a
+changed cover never shows a stale picture. `ArtworkCache` decodes and scales artwork off the main thread, keeps
+each cover's colour palette (`ArtworkPalette`), and serves anything already loaded instantly.
+
+The library is re-read when Music changes it: the Mac watches Music's database files (`LibraryWatcher`, FSEvents),
+iOS listens for MediaPlayer's change notification. Switching back to Beat re-reads only if something changed.
+
+**`PlayHistoryStore`** keeps Beat's own play and skip counts (a play counts at half the song or 4 minutes). They
+are merged with Music's counts when filters run, and never written back to Music.
 
 ## Smart filters
 
-### Model (`SmartFilter.swift`, `Field.swift`)
+A smart filter is a short pipeline of steps, run in order:
+
+```mermaid
+flowchart LR
+    all["Whole library"] --> f["Filter<br/>match all / any / none<br/>of rules and groups"]
+    f --> s["Sort<br/>by fields, a custom field,<br/>or random (stable for the day)"]
+    s --> l["Limit<br/>first N songs, albums, artists,<br/>genres, minutes or hours"]
+    l --> p["Show as<br/>songs · albums · artists · genres"]
 ```
-SmartFilter
-  output:  songs | albums | artists | genres what the result is shown as
-  steps:   [FilterStep]                       run in order
-             .filter(RuleGroup)               match all/any/none of nodes; nodes are rules or nested groups
-             .sort([SortKey])                 field, .random or .custom(CustomField), ascending flag
-             .limit(Limit)                    count of songs/albums/artists/genres/minutes/hours
+
+Steps can repeat and their order matters: "sort by plays, keep 25" isn't "keep 25, sort by plays". A filter that
+shows albums still works on songs underneath; the albums are whatever those songs belong to.
+
+The model is in `SmartFilter.swift` and `Field.swift`. The engine (`SmartFilterEngine.evaluate`) is a pure function
+from a filter and a **`PreparedLibrary`** (the snapshot with play history merged in, plus the current date) to a
+`FilterResult`. Being pure makes it easy to test and safe to run in the background:
+
+- Each filter step is compiled once into a closure rather than interpreted per song.
+- Text fields are folded (case and accents removed) once per library, not once per comparison.
+- A page's elements are evaluated in parallel.
+
+**Custom fields** (`CustomField.swift`) let you sort by something inside a tag, like a catalogue number in
+brackets, or anything a regular expression can pull out.
+
+## Pages
+
+The sidebar is a free-form tree: folders and pages, mixed at any level. Only pages hold content.
+
+```mermaid
+flowchart TD
+    tree["PageTree"] --> folder["Folder"]
+    tree --> page1["Page"]
+    folder --> page2["Page"]
+    folder --> sub["Folder"]
+    page1 --> e1["Element"]
+    page1 --> e2["Element"]
+    e1 --> filter["SmartFilter<br/>what to find"]
+    e1 --> look["ElementAppearance<br/>how to show it"]
 ```
-How a filter is shown lives on the page element that owns it (see Pages), not on the filter.
 
-**Custom fields (`CustomField.swift`)** are user-defined sort fields: a value extracted from a text tag (text in the last parentheses or brackets, or a regex using capture group 1 if present). A sort key embeds the whole definition, so filters stay self-contained and the engine stays pure. `PageStore.customFields` is only the picker's list. Saving a definition rewrites every embedded copy with the same ID (`refreshCustomFields`), and deleting one leaves existing copies sorting. Values compare with `localizedStandardCompare`, like other text, and no match sorts last in either direction.
-- `Field` has a `FieldType`: text, number, date or bool. The type decides which `RuleOperator`s are valid and how a group aggregates when sorting (`sum`, `average`, `min` or `max`).
-- `RuleValue` covers `.text`, `.number`, `.range`, `.date`, and `.relative(n, unit)`. Filters always start from the whole library.
-- Rating rules and sorts work in stars (0–5), not Music's 0–100 scale.
+Each **element** owns its filter and its appearance: shelf, grid, list, Cover Flow or year timeline, plus size,
+rows, spacing and so on. Home is just an ordinary page.
 
-### Engine (`SmartFilterEngine.swift`)
-The core is a pure function: `evaluate(filter, in: PreparedLibrary) -> FilterResult`.
-- **`PreparedLibrary`** is built once per library/history version and shared by every element evaluated against it. It holds the snapshot, tracks with `PlayHistoryStore` stats merged in, and an injected `now` and `calendar`.
-- **Filter** tests individual tracks. Text matching ignores case and diacritics, and an empty "contains" matches everything. A missing date is never "in the last N" and always "not in the last N". Date boundaries are inclusive.
-- **Sort** sorts tracks when the output is songs. Otherwise it groups tracks by album, artist or genre (first-appearance order), sorts the groups by each key's aggregate, and flattens back to tracks. The sort is stable, and missing values sort last in either direction. Random draws from a `SeededRNG` seeded with the filter ID and the day number, so random shelves are stable within a day.
-- **Limit** keeps the first N tracks, the tracks that fit a time budget, or the tracks of the first N distinct albums, artists or genres. The limit unit can differ from the output kind ("songs from 3 artists").
-- **Projection** turns the final track list into `FilterResult`. Album results reorder `tracks` into album, then disc/track order so "play section" sounds right.
-- Step order matters (sort→limit ≠ limit→sort). The tests pin this down.
+**`PageTree`** (pure, tested) does every structural change: insert, move, duplicate, delete. **`PageStore`** holds
+the tree, saves it to `pages.json`, and runs filters lazily, only for the page on screen and only for elements that
+changed. A `pages.json` that won't read is set aside rather than overwritten.
 
-### Presets
-- **`Presets`:** nine built-in filters. `Presets.homePage()` wraps them as elements of a "Home" page with fresh IDs; it seeds the tree on first launch and backs "Add Default Home Page".
+The **element editor** (`FilterEditorSheet`) edits a draft (`EditableFilter`, a copy of the filter with an ID on every
+piece so lists can be edited safely) and shows a live preview built from the real element view. Its layout differs
+by platform: a window with the preview beside Rules and Appearance on the Mac, and forms in a navigation stack on
+iPad and iPhone (see [Platforms](#platforms)).
 
-## Pages (`Beat/Pages/`)
+## On screen
 
-### Model (`PageModel.swift`, `PageTree.swift`)
+`RootView` lays out the window: the sidebar, the page with its navigation stack, and a few full-window layers on top.
+
+```mermaid
+flowchart TD
+    root["RootView"]
+    root --> split["Sidebar + page stack<br/>(Mac, iPad: side by side · iPhone: page with a drawer)"]
+    root --> bar["Now-playing bar<br/>(one per window)"]
+    root --> layers["Full-window layers:<br/>cover flight · Now Playing · cover viewer"]
+    split --> pagev["Page: its elements"]
+    pagev --> detail["Album, artist, genre and See All pages<br/>(pushed onto the stack)"]
 ```
-PageTree.nodes: [SidebarNode]                 the user's sidebar, top level
-  SidebarNode { id, name, symbol, content }
-    .folder([SidebarNode])                    nests without limit
-    .page(Page)                               a leaf: never has children
-  Page.elements: [PageElement]
-    PageElement { filter: SmartFilter, appearance: ElementAppearance }   id == filter.id
-      ElementAppearance: layout (shelf/grid/list), size, rows, columns, spacing, showHeader, showPlayButtons, sortOverride
+
+A few things are worth knowing about why it's shaped this way:
+
+- **The now-playing bar and the full-window layers sit above the navigation stack, not inside it.** Pages pushed
+  onto a stack are drawn above anything attached to the stack, so the bar would vanish under an album page. One bar
+  for the whole window also stays still while pages slide in and out.
+- **Opening an album or artist is always done through `AppNavigator`** (`openAlbum`, `openArtist`, `openGenre`).
+  It keeps one navigation trail per sidebar page, returns to a page already in the trail instead of opening it
+  twice, and remembers each page's scroll position and search.
+- **Album and artist pages take their colours from the cover.** `CoverTint` works out the front page's palette and
+  everything that follows the cover reads from it: the page, the sidebar, the now-playing bar and, on the Mac, the
+  window's light or dark. Text colours are picked to stay readable on the cover's background.
+- **Covers fly between screens.** On the Mac, tapping a tile flies its cover into the album page's header and back
+  again (`HeroTransition`). Views in separate columns can't share SwiftUI's matched geometry, so each tile carries a
+  tiny probe that reports its position in the window (`FrameProbe`), and the flight is drawn in a layer over
+  everything. iPad and iPhone use iOS's own zoom transition instead, which can follow a swipe down.
+- **Library ▸ Songs** groups every song by album under its album artist. On the Mac that's an AppKit table, since a
+  SwiftUI list of ~3,000 album blocks was too slow; on iPad and iPhone, for now, a SwiftUI list.
+- **Grids, shelves and lists work from the keyboard** on the Mac (`KeyboardGrid`): each collection is one Tab stop,
+  and the arrow keys move a highlight across it.
+
+### Now Playing
+
+The bar opens **Now Playing**, which grows out of the bar to fill the window and shrinks back into it. It shows the
+cover on its own colours, the transport, optional **lyrics** and a full-screen **visualizer**:
+
+- **Lyrics** come from, in order: a `.lrc` file beside the song, lyrics embedded in the file, then (only if you turn
+  it on) LRCLIB online. Synced lyrics follow the song and seek when tapped. A DJ mix whose "lyrics" are a timed
+  tracklist becomes **chapters** instead: the progress line splits at each track (`MixChapters`).
+- **The visualizer** reads the audio through a tap on the player (`AudioTap`), analyses it on the main thread
+  (`SpectrumAnalyzer`, an FFT into 64 bands) and draws it as a waveform or one of several scenes. Radial, a ring of
+  bars around the cover, is toggled by clicking the cover.
+
+## Playback
+
+```mermaid
+flowchart LR
+    views["Views"] -- "play, next, shuffle…" --> queue["PlaybackQueue"]
+    queue --> state["QueueState<br/>order, shuffle, repeat<br/>(pure, tested)"]
+    queue --> player["AudioPlayer<br/>current song + next one preloaded"]
+    player --> tap["AudioTap → visualizer"]
+    queue --> np["NowPlayingController<br/>lock screen, media keys"]
+    queue --> hist["PlayHistoryStore"]
+    queue --> scrob["Scrobbler (Last.fm, opt-in)"]
 ```
-- The tree is free-form: folders and pages mix at every level, including the top. Home is an ordinary page.
-- **`PageTree`** is a pure value type holding every structural operation (insert, remove, move, duplicate, updatePage). `move` refuses a page as a destination and a folder into its own subtree. `index` in `move` refers to the destination before the move. Duplicates get fresh IDs throughout.
-- Each element owns its filter; there is no shared filter list. `effectiveFilter` appends the sort override as a last step, so it reorders without changing membership.
-- `ElementAppearance.layouts(for:)`: songs are shelf or list, everything else shelf, grid or list. `fit(to:)` keeps layout, rows and columns valid when the output changes. Elements have no icon; the header is the filter name.
 
-### Store (`PageStore.swift`)
-- Holds `tree`, `customFields` and `results` keyed by element ID. Saves `~/Library/Application Support/Beat/pages.json` as `{ version, nodes, customFields }`, pretty-printed, with writes chained so they land in order. The old `filters.json` is no longer read.
-- **Corrupt file:** if `pages.json` doesn't decode, it's renamed to `pages.corrupt-<timestamp>.json` before falling back to the default tree, so the next save can't overwrite it.
-- **Lazy evaluation:** `evaluate(pageID:…)` runs only the visible page's elements, and only those that changed since their last result. A new library or history version (`LibraryKey`) rebuilds the `PreparedLibrary` and invalidates every result. `PageView` and `ElementDetailView` trigger it through the `PageEvaluation` modifier (150 ms debounce, keyed by the versions and the page's contents).
+`PlaybackQueue` is what the views talk to. The ordering rules (shuffle that keeps the current song first, repeat
+one and all, skipping missing files) live in `QueueState`, a pure struct with its own tests. `AudioPlayer` keeps the
+current song plus the next one loaded, so songs follow each other with almost no gap. On the Mac the volume slider
+is Beat's own; on iPad and iPhone it is the system volume.
 
-### Editor (`EditableFilter.swift`, `Views/SmartFilterEditor/`)
-- **`EditableFilter`** mirrors `SmartFilter`, but every step, group, node and sort key carries a UUID, so `ForEach($array)` bindings survive inserts, deletes and reorders. It converts both ways losslessly (tested against all presets).
-- **`Rule.make(field:)` and `RuleValue.defaultValue(for:op:)`** give new rules sensible starting values. `fits(_:field:)` resets the value when an operator change needs a different shape (a range, relative vs absolute date).
-- **`FilterEditorSheet`** edits one element (`ElementDraft`: page ID, `EditableFilter`, `ElementAppearance`). A Rules / Appearance switch picks the top pane; a live preview fills the bottom of a `VSplitView`.
-  - Rules: flat step sections (move up/down, delete, add).
-  - Rules opens with "Find [Show as] in [source]", which defines what the filter finds, then the steps.
-  - Appearance (`FilterAppearanceForm`): name, layout, size, rows, columns (list only), spacing, header toggles and the sort override.
-  - `SortFieldPicker` is shared by the Sort step and the sort override. Its Custom section lists custom fields and opens `CustomFieldSheet` (with a live match check over the library, examples from the current preview) and `CustomFieldsManager`.
-  - The preview (`ElementPreview`) evaluates the element's `effectiveFilter` with a 200 ms debounce whenever the draft changes, and renders the real `ElementView` with `isPreview: true` (no See All link, menu or edit controls) inside its own destination-less `NavigationStack`, so it looks exactly like the page and clicks stay in the sheet.
-  - `Show as` changes are fitted to the appearance at the sheet level, since the Appearance form may not be on screen.
-- **`RuleGroupEditor`** is recursive. Nested groups go through `AnyView` to break the opaque-type cycle, and nesting is capped at depth 3.
-- **`AppNavigator`** holds the sidebar selection, the element being edited and the node being renamed. The editor sheet is attached in `RootView`. `ElementMenu` holds the shared Edit / Duplicate / Move / Delete element actions.
+## Platforms
 
-## UI layer
+Beat is two apps from one set of sources. The Mac target (`Beat`) and the iPad/iPhone target (`BeatiOS`) compile
+the same `Beat/` folder, except that each leaves out the other's half of `Beat/Platform/`.
 
-- **`RootView`:** a `NavigationSplitView` with `SidebarView` on the left and a `NavigationStack` bound to `AppNavigator.path`, which resets whenever the selection changes. Overlays on the split view (outside the stack, so pushed pages don't cover them): the loading state, `HeroOverlay` and `NowPlayingOverlay`.
-  - Routes are typed: `AlbumRoute`, `ArtistRoute`, `GenreRoute`, `ElementRoute`.
-  - If the selected page disappears (deleted, or nothing selected), it falls back to the first page in the tree.
-  - One `NowPlayingBar` for the window (`WindowNowPlayingBar`), an overlay on the split view placed over the page column (`navigator.detailColumnFrame`, measured by `DetailColumnReader` on layout, divider moves and window resizes). It stays still while pages push and pop. Every page applies `.nowPlayingBarSpace()`, which adds bottom `contentMargins` so scrolling content clears the bar.
-- **Sidebar:** the page tree above the fixed Library section. It's rendered flat: `SidebarRow.visible` lists the visible rows depth-first (skipping collapsed folders, expansion state held in `SidebarView`) with hand-drawn indentation and chevrons. Each open folder ends with an "Add" row (a New Page / New Folder menu) that also gives drops an "end of this folder" position.
-  - Page rows stay plain (tag, `itemProvider` drag, context menu). Drop targets and popovers on a selectable row swallow its click on macOS.
-  - Row context menus create, rename (a sheet whose field opens with the name selected), change icon (sheet, presented from the sidebar), duplicate, Move To and delete (with a page count for folders).
-  - Drag and drop: one `ForEach.dropDestination` over the flat rows; a drop before row *i* lands at that row's parent and index, past the end goes to the end of the top level. Moves run in a `Task` after the drop callback. Folders (not selectable) also accept drops onto themselves, which moves an item inside, and click to expand. The bottom "New" menu doubles as a "Move to Top Level" drop target.
-- **Pages:** `PageView` renders a page's elements with `ElementView`, laid out by each element's appearance.
-  - Shelf: rows that scroll sideways together, filled column by column. Grid: adaptive, cut off after N rows using the measured column count. List: rows × columns compact rows (songs, albums, artists or genres), filled column by column.
-  - Edit Page mode shows every header (even hidden ones) with inline move, edit, duplicate and delete controls.
-  - Element headers link to `ElementDetailView` ("See All").
-- **Library views:**
-  - `AlbumGridView` / `AlbumTile`: hover play button, context menu.
-  - `AlbumDetailView`: coloured from the cover. `ArtworkPalette` gives a background (the dominant colour, edges weighted) and primary/secondary text colours from the cover that meet 4.5:1 and 3:1 contrast, else white/black. The page forces light/dark from the palette so controls and glass match.
-- **Album zoom (`HeroTransition.swift`):** `AlbumTile` and album list rows open albums themselves, measuring their art with a `FrameProbe` (an AppKit view reporting its window frame). `HeroOverlay` flies the cached cover from there to the album header's probed frame, then hands over. Reduce Motion skips it; the editor preview disables album navigation.
-- **Cover viewer (`ArtViewerOverlay`, in `HeroTransition.swift`):** clicking an album page's header art sets `navigator.artViewer`; the root overlay grows the cover from the header's probed frame to a window-filling, aspect-correct view on black, swapping in a `.full` (4096 px) decode. Click or Esc shrinks it back.
-- **Now Playing (`NowPlayingView.swift`):** opened from the bar or ⌘L. `NowPlayingOverlay` grows a clipped frame from the bar's probed window frame to the full window while the full-size content fades in, and reverses on close. Big art, title and the transport, centred. Coloured by the current cover's palette, with a 55% wash of the palette background over the blur so text contrast holds (album pages do the same). `QueueState.moveUpNext`/`clearUpNext` exist and are tested, but no view uses them since Playing Next was removed.
-- **Lyrics (`Beat/Lyrics/`, `LyricsView`):** a lyrics button in Now Playing (remembered in `nowPlaying.showLyrics`) puts the player in a left column and lyrics on the right. `LyricsProvider` (actor, injected through `\.lyricsProvider`) resolves sources in order, via the pure `LyricsResolver`: a `.lrc` file beside the audio, embedded lyrics (`AVURLAsset.load(.lyrics)`; LRC-formatted text counts as synced), LRCLIB synced, embedded plain, LRCLIB plain. LRCLIB is used only when `lyrics.online` is on; answers (including misses, retried after 30 days) are cached in `Application Support/Beat/lyrics/<trackID>.json` and used even when the setting is off. Synced lyrics highlight the current line (`LRC.currentIndex` over `queue.currentTime`), auto-scroll unless the user scrolled in the last 4 s, and seek on click.
-- **Output (`RoutePicker`):** `AVRoutePickerView` bound to Beat's `AVQueuePlayer` (`PlaybackQueue.outputPlayer`), in `ModeControls`. The system menu handles speakers, headphones and AirPlay, and routes Beat only.
-- **Visualizer:** `AudioTap` attaches an `MTAudioProcessingTap` to each `AVPlayerItem` (skipped when `visualizer.enabled` is off). Its C process callback pulls the source audio through unchanged and mixes it to mono into `SampleBuffer` (a 2048-sample ring in a `Mutex`; real-time thread, no allocation). `SpectrumAnalyzer` (pure, tested) runs a Hann-windowed vDSP FFT on the main thread at display rate and reduces it to 64 log-spaced bands (30 Hz to 16 kHz), loudness, bass and a 256-point waveform; `Smoother` gives fast rise, slow fall. `VisualizerView` draws Pulse, Bars, Radial or Waveform in a `Canvas` under a `TimelineView`, coloured from the palette. Now Playing's visualizer mode (⇧⌘V) fills the view; controls and cursor hide after 3 s idle; Esc leaves the mode first. Visuals lead the sound on AirPlay (shown as a note).
-- **Settings (`SettingsView`):** Appearance (`appearance.coverColours`: Cover Colours or Plain, which simply withholds the palette from album pages and Now Playing), Lyrics (`lyrics.online`, Clear Downloaded Lyrics) and Visualizer (`visualizer.enabled`, which skips the tap entirely).
-  - **Library ▸ Songs = `AlbumSongsView`** (Album by Artist only): `SongsQuery.groupByAlbum` groups in library album order, split by `sectionsByArtist` under pinned album-artist headers (`LazyVStack` `pinnedViews: .sectionHeaders`; the name links to the artist page); each group is a plain cover (click: full-window viewer, only when the album has artwork) plus its title and year in a cover column the user resizes (`ColumnResizeHandle`, `songs.albumArtWidth`) beside `AlbumSongRow`s. Track number, title (artist underneath when it differs from the album artist) and time always show; other columns are `ExtraColumn`s chosen from a Columns menu (`songs.albumColumns`), display only, no sorting.
-  - **Songs See All = `SongsTableView`**, where order matters: a compact, sortable `Table` with SwiftUI column customization (`@SceneStorage("SongsColumns")`) and optional 18 pt covers. Both views share `SongsHeader` and `SongsModel`, which filters/sorts/groups off the main actor through the pure `SongsQuery` (every search word must match; natural text sort; missing values last; custom-field values cached per track).
-  - `AlbumGridView` search matches every word against `LibrarySnapshot.albumSearchText` (title, album artist and every track artist, folded), so featured and compilation artists find their albums.
-  - `ArtistGenreViews`
-- **Now-playing marker:** `PlayingIndicator` (animated equalizer bars) marks the current track in album rows, song cells and the Songs table.
+```mermaid
+flowchart TD
+    shared["Shared code: Beat/<br/>models, filters, pages, playback,<br/>most views"]
+    api["Platform.swift<br/>lists the names both platforms provide"]
+    mac["Beat/Platform/macOS<br/>AppKit, iTunesLibrary"]
+    ios["Beat/Platform/iOS<br/>UIKit, MediaPlayer"]
+    shared --> api
+    api -. "Mac app" .-> mac
+    api -. "iPad / iPhone app" .-> ios
+```
 
-## Persistence
+Shared code never mentions AppKit or UIKit. Where the platforms differ, both folders provide the **same names**,
+and each app compiles one of them:
 
-| File | Owner | Contents |
+| File (in both folders) | What it provides |
+|---|---|
+| `Platform+*.swift` | Images and colours (`PlatformImage`, `PlatformColor`), opening links, the window background, small view helpers |
+| `Window+*.swift` | The window around `RootView`: light/dark handling and event monitors on the Mac; phone layouts, the sidebar drawer, Settings as a sheet and zoom transitions on iOS |
+| `BeatApp+*.swift` | Start-up setup, menus, the Mac's Settings window and About panel |
+| `SettingsView+*.swift` | The Settings container (Mac tabs, iOS list) and settings-file import/export |
+| `ElementEditor+*.swift` | The element editor's layout |
+| `FrameProbe.swift` | The tiny view that reports a tile's position for transitions |
+| `BarLayers.swift` | The now-playing bar's progress drawing |
+| `AlbumSongsTable.swift` | Library ▸ Songs |
+| `LibraryWatcher.swift`, `OutputRoute.swift`, `RoutePicker.swift`, `VolumeControl.swift` | Library changes, AirPlay, volume |
+
+Some pieces exist on one platform only: the library loaders (above), the Mac's keyboard and trackpad monitors
+(Space to play, ⌘[ and swipe back), and the iOS sidebar drawer, form-based rule editor, back-swipe restorer and
+keyboard dismissal. Differences of a line or two stay in the shared file as `#if os(macOS)`.
+
+**Phones and narrow iPad windows** get their own layouts through one switch, `\.compactLayout` (set from iOS's
+horizontal size class, always off on the Mac):
+
+- The sidebar becomes a drawer over the page.
+- Album and artist headers stack, lists drop their cards, and shelves size their covers to the screen.
+- The element editor becomes forms with Cancel and Save in its navigation bar.
+- Now Playing stacks the cover, lyrics and controls vertically.
+
+Because the switch is off on the Mac, the Mac's layouts never change.
+
+## What's saved where
+
+| What | Where | Owner |
 |---|---|---|
-| `~/Library/Application Support/Beat/history.json` | `PlayHistoryStore` | Beat-recorded plays/skips per track |
-| `~/Library/Application Support/Beat/scrobbles.json` | `Scrobbler` | Plays waiting to be sent to Last.fm |
-| Keychain `lastfm-session`, `UserDefaults` `lastfm.enabled`, `lastfm.username` | `Scrobbler`, Settings | Last.fm session, switch and account name |
-| `~/Library/Application Support/Beat/pages.json` | `PageStore` | The sidebar tree: folders, pages, elements (each with its smart filter and appearance) |
-| `~/Library/Application Support/Beat/filters.json` | (none) | Legacy smart filters from before pages; left on disk, no longer read |
-| `UserDefaults` `volume` | `PlaybackQueue` | Last volume |
-| `UserDefaults` `appearance.coverColours`, `lyrics.online`, `nowPlaying.showLyrics` | Settings, Now Playing | Preferences |
-| `~/Library/Application Support/Beat/lyrics/` | `LyricsProvider` | Cached LRCLIB answers |
-| `UserDefaults` `sidebar.selection`, `sidebar.expanded` | `AppNavigator` | The selected sidebar item (`SidebarItem.storageString`) and open folder IDs, restored at launch |
-| `UserDefaults` `elements.newDefault` | `NewElementDefaults` | The `PageElement` (filter + appearance) new elements start from, set in Settings; absent means built-in |
-| `UserDefaults` `library.hidden` | Settings | Library pages hidden from the sidebar |
-| `UserDefaults` `appearance.sidebarTint`, `albums.artistList`, `artistInfo.online` | Settings, Albums | Sidebar tint on album and artist pages; Albums' artist list shown; Discogs lookups on |
-| `UserDefaults` `artist.sorts` | Artist page | Sort order of Albums, Singles & EPs and Appears On (JSON `ArtistSorts`; shared by all artists) |
-| Keychain `discogs-token` | Settings / `ArtistInfoProvider` | The user's Discogs personal access token |
-| `~/Library/Application Support/Beat/artists/` | `ArtistInfoProvider` | Cached Discogs artist answers (JSON) and photos, named by a hash of the artist ID |
+| Pages, elements and custom fields | `Application Support/Beat/pages.json` | `PageStore` |
+| Beat's plays and skips | `Application Support/Beat/history.json` | `PlayHistoryStore` |
+| Scrobbles waiting to send | `Application Support/Beat/scrobbles.json` | `Scrobbler` |
+| Downloaded lyrics | `Application Support/Beat/lyrics/` | `LyricsProvider` |
+| Downloaded artist info and photos | `Application Support/Beat/artists/` | `ArtistInfoProvider` |
+| The library as last read, for a fast launch | `Caches/Beat/library.json` | `LibraryCache` |
+| Cover thumbnails | `Caches/Beat/Thumbnails/` | `ArtworkDiskCache` |
+| Last.fm session, Discogs token | Keychain | `Scrobbler`, Settings |
+| Preferences, the selected page, open folders, volume | `UserDefaults` | Settings, `AppNavigator`, `PlaybackQueue` |
 
-## Concurrency model
-- All stores and `AudioPlayer` / `NowPlayingController` are `@MainActor`.
-- `LibraryLoader` is an actor. Snapshots, tracks, filters and results are `Sendable` value types, so they cross into detached tasks freely.
-- Heavy work (library mapping, filter evaluation, image decoding) runs off the main actor. Results are assigned back on the main actor.
-- AVFoundation and NotificationCenter callbacks arrive on the main queue and use `MainActor.assumeIsolated`. MediaPlayer callbacks hop with `Task { @MainActor in … }`.
+Settings ▸ General ▸ Export saves pages, elements, custom fields and the preferences in one file
+(`SettingsArchive`), which is how they move between a Mac and an iPhone. Tokens and play history stay on each device.
+
+## Doing work off the main thread
+
+The stores, the player and the views run on the main actor. The library, filters and results are plain `Sendable`
+values, so the heavy work (reading the library, running filters, decoding artwork) happens in background tasks and
+only the result comes back. The library loaders are actors. The one exception to "analysis on the main thread" is
+the audio tap's callback, which runs on the real-time audio thread and therefore only copies samples into a buffer:
+no allocation, no locks it can wait on.

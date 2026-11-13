@@ -5,6 +5,7 @@ import SwiftUI
 /// cap, taller; the years sit top-aligned either way. Within a year, albums keep the element's own order.
 /// Named for years because SwiftUI already has a `TimelineView`.
 struct YearTimelineElement<Cell: View>: View {
+    @Environment(\.pageInset) private var pageInset
     let count: Int
     /// The item's year; 0 for none.
     let year: (Int) -> Int
@@ -39,7 +40,7 @@ struct YearTimelineElement<Cell: View>: View {
                     HStack(alignment: .top, spacing: 0) { years(groups, laidOut) }
                 }
             }
-            .padding(.horizontal, 24)
+            .padding(.horizontal, pageInset)
             .padding(.vertical, 6)
         }
         // Arrow keys cross from one year's grid into the next.

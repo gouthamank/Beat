@@ -140,7 +140,7 @@ extension View {
         overlay {
             if isOn {
                 RoundedRectangle(cornerRadius: cornerRadius + 4, style: .continuous)
-                    .strokeBorder(Color(nsColor: .keyboardFocusIndicatorColor), lineWidth: 3)
+                    .strokeBorder(Color.keyboardFocus, lineWidth: 3)
                     .padding(-4)
                     .allowsHitTesting(false)
             }

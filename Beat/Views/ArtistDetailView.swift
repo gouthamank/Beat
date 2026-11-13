@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 
 /// An artist's page: a header like an album page's (art, name, stats, Play/Shuffle, cover colours from
@@ -12,6 +11,7 @@ struct ArtistDetailView: View {
     @Environment(PlaybackQueue.self) private var queue
     @Environment(ArtworkCache.self) private var artwork
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.compactLayout) private var compact
     @Environment(\.artistInfoProvider) private var infoProvider
     @Environment(AppNavigator.self) private var navigator
     @Environment(HeroTransition.self) private var hero
@@ -126,7 +126,7 @@ struct ArtistDetailView: View {
     // MARK: Header
 
     private func header(_ artist: Artist) -> some View {
-        HStack(alignment: .bottom, spacing: 24) {
+        coverPageHeaderLayout(compact) {
             // Their downloaded photo, else the cover mosaic; the zoom from a tile lands here.
             ArtistArtwork(albumIDs: artist.albumIDsNewestFirst, artistID: artist.id, cornerRadius: HeroTransition.headerCornerRadius)
                 .frame(width: 200, height: 200)
@@ -137,9 +137,9 @@ struct ArtistDetailView: View {
                 // Hidden while the zoom's flying copy is on its way here (or back to its tile).
                 .opacity(hero.isFlying(to: .artist(artist.id)) ? 0 : 1)
 
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: compact ? .center : .leading, spacing: 6) {
                 Text(artist.name)
-                    .font(.largeTitle.bold())
+                    .font(compact ? .title.bold() : .largeTitle.bold())
                     .foregroundStyle(palette?.primary.color ?? Color.primary)
                     .lineLimit(2)
                 Text(statsLine(artist))
@@ -158,6 +158,7 @@ struct ArtistDetailView: View {
                 }
                 .padding(.top, 10)
             }
+            .multilineTextAlignment(compact ? .center : .leading)
         }
     }
 
@@ -181,13 +182,15 @@ struct ArtistDetailView: View {
     @ViewBuilder
     private func sections(_ content: ArtistPageContent) -> some View {
         if !content.topSongs.isEmpty {
+            // Two columns side by side, or one on a phone, where two cut every title to a word.
+            let columns = compact ? 1 : 2
             section("Top Songs") {
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: 24), GridItem(.flexible(), spacing: 24)], spacing: 4) {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 24), count: columns), spacing: 4) {
                     ForEach(Array(content.topSongs.enumerated()), id: \.element.id) { i, track in
                         SongCell(track: track, context: content.topSongs, index: i).keyboardGridItem(i)
                     }
                 }
-                .keyboardGrid(count: content.topSongs.count, layout: .order(.rows(columns: 2)), id: { content.topSongs[$0].id })
+                .keyboardGrid(count: content.topSongs.count, layout: .order(.rows(columns: columns)), id: { content.topSongs[$0].id })
             }
         }
         albumSection("Albums", content.albums, sort: .albums, showsArtist: false)
@@ -393,7 +396,7 @@ private struct ArtistAboutSection: View {
                 }
                 Text("·")
                 Button("Wrong artist?") { choosing = true }
-                    .buttonStyle(.link)
+                    .linkButtonStyle()
             }
             .font(.caption)
             .foregroundStyle(secondary)
@@ -426,7 +429,7 @@ private struct ArtistAboutSection: View {
                         let name = ArtistMatcher.baseName(reference.name)
                         if library.snapshot.artistsByID[name.lowercased()] != nil {
                             Button(name) { navigator.openArtist(name.lowercased()) }
-                                .buttonStyle(.link)
+                                .linkButtonStyle()
                         } else {
                             Text(name).foregroundStyle(reference.active == false ? secondary : AnyShapeStyle(.primary))
                         }
@@ -445,7 +448,7 @@ private struct DiscogsFindLink: View {
 
     var body: some View {
         Button("Find “\(artist.name)” on Discogs…") { choosing = true }
-            .buttonStyle(.link)
+            .linkButtonStyle()
             .font(.caption)
             .sheet(isPresented: $choosing) {
                 DiscogsArtistPicker(artist: artist) { picked in
@@ -554,7 +557,7 @@ private struct DiscogsArtistPicker: View {
             }
         }
         .padding(20)
-        .frame(width: 420)
+        .sheetSize(width: 420)
         .task(id: attempt) {
             results = nil
             problem = nil

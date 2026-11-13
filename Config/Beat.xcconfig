@@ -5,4 +5,8 @@
 LASTFM_API_KEY =
 LASTFM_SHARED_SECRET =
 
+// The team that signs iPad and iPhone builds for a device (Secrets.xcconfig). The Mac app signs with the self-signed
+// "Beat Local Signing" identity instead (project.yml), and Simulator builds need no team.
+DEVELOPMENT_TEAM =
+
 #include? "Secrets.xcconfig"

@@ -59,7 +59,7 @@ private struct QueuePopover: View {
                     Spacer()
                     if !queued.isEmpty {
                         Button("Clear") { queue.clearQueued() }
-                            .buttonStyle(.link)
+                            .linkButtonStyle()
                             .font(.caption)
                     }
                 }

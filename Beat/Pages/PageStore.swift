@@ -202,7 +202,9 @@ final class PageStore {
     /// Evaluates the page's elements that are new or changed since their last result.
     /// Only the page on screen is evaluated, so a deep tree costs nothing until it's opened.
     func evaluate(pageID: UUID, snapshot: LibrarySnapshot, history: [PersistentID: PlayHistoryStore.Stats], key: LibraryKey) async {
-        guard !snapshot.tracks.isEmpty, let page = tree.node(pageID)?.page else { return }
+        // Once the library has loaded (version 1+), even empty: waiting for songs left an empty library's
+        // elements as placeholders for good.
+        guard key.library > 0, let page = tree.node(pageID)?.page else { return }
         if latestKey != key {
             latestKey = key
             prepared = nil

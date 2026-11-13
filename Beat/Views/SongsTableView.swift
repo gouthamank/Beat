@@ -23,7 +23,7 @@ struct SongsTableView: View {
     var body: some View {
         table
             .navigationTitle(title)
-            .navigationSubtitle(SongsSummary.text(model.rows))
+            .pageSubtitle(SongsSummary.text(model.rows))
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Toggle(isOn: $showCovers) { Label("Covers", systemImage: "photo") }
@@ -31,7 +31,7 @@ struct SongsTableView: View {
                 }
                 PlayShuffleToolbar(tracks: model.rows)
             }
-            .searchable(text: $search, placement: .toolbar, prompt: "Songs")
+            .searchable(text: $search, placement: .page, prompt: "Songs")
         .onAppear { refresh(debounce: false) }
         .onChange(of: search) { refresh(debounce: true) }
         .onChange(of: sortOrder) { refresh(debounce: false) }
@@ -145,7 +145,11 @@ struct SongsTableView: View {
                 .defaultVisibility(.hidden)
             }
         }
+        #if os(macOS)
         .tableStyle(.inset(alternatesRowBackgrounds: false))
+        #else
+        .tableStyle(.inset)
+        #endif
         .contextMenu(forSelectionType: Track.ID.self) { ids in
             TrackContextMenu(tracks: model.rows.filter { ids.contains($0.id) })
         } primaryAction: { ids in
@@ -255,7 +259,7 @@ enum SongsSummary {
         let total = rows.reduce(0) { $0 + $1.duration }
         let time = Duration.seconds(total).formatted(.units(allowed: [.days, .hours, .minutes], width: .wide, maximumUnitCount: 2))
         let size = rows.reduce(Int64(0)) { $0 + $1.fileSize }
-        return "\(rows.count.counted("song")) · \(time) · \(size.fileSizeText)"
+        return "\(rows.count.counted("song")) · \(time)" + size.fileSizeSuffix
     }
 }
 
@@ -302,7 +306,7 @@ struct AlbumSongsView: View {
             artWidth: $artWidth,
             currentID: queue.current?.id,
             isPlaying: queue.isPlaying,
-            playbackAccent: NSColor(playbackAccent),
+            playbackAccent: PlatformColor(playbackAccent),
             bottomInset: queue.current == nil ? 0 : NowPlayingBar.reservedHeight,
             scrollToTopToken: navigator.scrollToTop?.item == .songs ? navigator.scrollToTop?.token ?? 0 : 0,
             stores: .init(library: library, queue: queue, navigator: navigator, hero: hero, artwork: artwork)
@@ -313,12 +317,15 @@ struct AlbumSongsView: View {
             }
         }
         .navigationTitle(title)
-        .navigationSubtitle(SongsSummary.text(model.rows))
+        .pageSubtitle(SongsSummary.text(model.rows))
         .toolbar {
+            #if os(macOS)
+            // iPad and iPhone list songs without the optional columns, so there's nothing to choose.
             ToolbarItem(placement: .primaryAction) { columnsMenu }
+            #endif
             PlayShuffleToolbar(tracks: model.playOrder)
         }
-        .searchable(text: navigator.search(.songs, else: .constant("")), placement: .toolbar, prompt: "Songs")
+        .searchable(text: navigator.search(.songs, else: .constant("")), placement: .page, prompt: "Songs")
         .onAppear { refresh(debounce: false) }
         .onChange(of: search) { refresh(debounce: true) }
         .onChange(of: pages.customFields) { refresh(debounce: false) }

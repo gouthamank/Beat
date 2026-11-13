@@ -183,7 +183,7 @@ struct CustomFieldSheet: View {
             }
             .padding(14)
         }
-        .frame(width: 480, height: 540)
+        .sheetSize(width: 480, height: 540)
         .task(id: current) { await runCheck() }
     }
 
@@ -244,7 +244,11 @@ struct CustomFieldsManager: View {
                     .padding(.vertical, 3)
                 }
             }
+            #if os(macOS)
             .listStyle(.inset(alternatesRowBackgrounds: false))
+            #else
+            .listStyle(.inset)
+            #endif
             .overlay {
                 if pages.customFields.isEmpty {
                     ContentUnavailableView("No Custom Fields", systemImage: "function")
@@ -261,13 +265,13 @@ struct CustomFieldsManager: View {
             }
             .padding(14)
         }
-        .frame(width: 460, height: 360)
+        .sheetSize(width: 460, height: 360)
         .sheet(item: $editing) { field in
             CustomFieldSheet(field: field, isNew: !pages.customFields.contains { $0.id == field.id }) { pages.saveCustomField($0) }
         }
         .confirmationDialog("Delete “\(pendingDelete?.name ?? "")”?", isPresented: Binding(
             get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } }
-        )) {
+        ), titleVisibility: .visible) {
             Button("Delete", role: .destructive) {
                 if let field = pendingDelete { pages.deleteCustomField(field.id) }
             }

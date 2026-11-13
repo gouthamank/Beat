@@ -23,7 +23,7 @@ struct ArtworkBackdrop: View {
     }
 
     @Environment(ArtworkCache.self) private var artwork
-    @State private var image: NSImage?
+    @State private var image: PlatformImage?
 
     private var key: BackdropImages.Key? { source.map { .init(source: $0, vivid: vividness == .vivid) } }
 
@@ -33,7 +33,7 @@ struct ArtworkBackdrop: View {
     }
 
     /// The rendered image, else one already cached, so the backdrop never flashes empty when revisited.
-    private var shown: NSImage? { image ?? key.flatMap(BackdropImages.cached) }
+    private var shown: PlatformImage? { image ?? key.flatMap(BackdropImages.cached) }
 
     var body: some View {
         let vivid = vividness == .vivid
@@ -41,7 +41,7 @@ struct ArtworkBackdrop: View {
             .fill(.quaternary)
             .overlay {
                 if let shown {
-                    Image(nsImage: shown)
+                    Image(platformImage: shown)
                         .resizable()
                         .interpolation(.medium)
                         .scaledToFill()
@@ -51,7 +51,7 @@ struct ArtworkBackdrop: View {
             .clipped()
             .aspectRatio(1, contentMode: .fill)
             .opacity(vivid ? 0.9 : 0.55)
-            .overlay(Color(nsColor: .windowBackgroundColor).opacity(vivid ? 0 : 0.35))
+            .overlay(Color.windowBackground.opacity(vivid ? 0 : 0.35))
             .ignoresSafeArea()
             .allowsHitTesting(false)
             // The revision too, so art changed in Music is rendered again.
@@ -73,24 +73,24 @@ enum BackdropImages {
         let vivid: Bool
     }
 
-    private static let cache = NSCache<NSString, NSImage>()
+    private static let cache = NSCache<NSString, PlatformImage>()
 
-    static func cached(_ key: Key) -> NSImage? { cache.object(forKey: name(key)) }
+    static func cached(_ key: Key) -> PlatformImage? { cache.object(forKey: name(key)) }
 
     /// The source's art changed in Music: render its backdrops again when next asked.
     static func forget(_ source: ArtworkSource) {
         for vivid in [false, true] { cache.removeObject(forKey: name(Key(source: source, vivid: vivid))) }
     }
 
-    static func image(_ key: Key, artwork: ArtworkCache) async -> NSImage? {
+    static func image(_ key: Key, artwork: ArtworkCache) async -> PlatformImage? {
         if let hit = cached(key) { return hit }
         guard let art = await artwork.image(key.source, size: .thumbnail),
-              let cg = art.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return nil }
+              let cg = art.cg else { return nil }
         let vivid = key.vivid
         guard let rendered = await Task.detached(priority: .userInitiated, operation: {
             render(cg, blur: vivid ? 60 : 80, saturation: vivid ? 1.9 : 1.4)
         }).value else { return nil }
-        let image = NSImage(cgImage: rendered, size: NSSize(width: rendered.width, height: rendered.height))
+        let image = PlatformImage(cgImage: rendered)
         cache.setObject(image, forKey: name(key))
         return image
     }

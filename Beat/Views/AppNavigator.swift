@@ -104,8 +104,20 @@ final class AppNavigator {
     var editing: ElementDraft?
     /// The sidebar node whose rename prompt is showing.
     var renaming: UUID?
+    /// When `renaming` is an item just created: the selection before it, to go back to if naming is cancelled (which
+    /// removes the item). Nil for a rename of an existing item.
+    var namingNew: NewItem?
+
+    struct NewItem {
+        let id: UUID
+        let previousSelection: SidebarItem?
+    }
     /// The page element whose rename prompt is showing.
     var renamingElement: ElementRef?
+    /// Settings, shown as a sheet on iPad and iPhone (the Mac has its own Settings window).
+    var showingSettings = false
+    /// On a phone: the sidebar drawer is out over the page (`SidebarDrawer`). Never set on the Mac.
+    var sidebarDrawerOpen = false
 
     func openAlbum(_ id: PersistentID) { open(.album(id)) }
     func openArtist(_ id: String) { open(.artist(id)) }
@@ -113,6 +125,15 @@ final class AppNavigator {
 
     /// Set while a tile waits for its page's colours before opening, so a second click doesn't open it twice.
     @ObservationIgnored private var preparingOpen = false
+
+    /// The longest a tile waits for its page's colours. Shorter on iPad and iPhone: there's no hover to work them out
+    /// ahead of the tap, so the full wait ran after every tap, felt like a missed tap, and a second tap then landed
+    /// on the opened page. A page that opens first takes its colours a moment later instead.
+    #if os(macOS)
+    static let colourWait: Duration = .milliseconds(250)
+    #else
+    static let colourWait: Duration = .milliseconds(100)
+    #endif
 
     /// Opens a page from a tile once its cover colours are ready (briefly; see `CoverTint.prepare`), so it
     /// expands already coloured instead of colouring in afterwards.
@@ -122,7 +143,7 @@ final class AppNavigator {
         Task {
             // A frame or two for a probe the click just added to be placed in the window (see AlbumTile).
             try? await Task.sleep(for: .milliseconds(33))
-            await coverTint.prepare(route)
+            await coverTint.prepare(route, within: Self.colourWait)
             preparingOpen = false
             open()
         }
@@ -238,14 +259,30 @@ final class AppNavigator {
     /// Creates a folder or page below the selected page (at its level), or at the end of the
     /// top level, then selects it and asks for a name.
     func create(folder: Bool, in store: PageStore) {
+        let previous = selection
         let id: UUID
         if case .page(let selected) = selection, store.node(selected) != nil {
             id = store.create(folder: folder, below: selected)
         } else {
             id = store.create(folder: folder, in: nil)
         }
+        nameNew(id, folder: folder, previousSelection: previous)
+    }
+
+    /// Asks for a just-created item's name, showing a new page while it's named. Cancelling removes it again
+    /// (`cancelNaming`): created and named first, a Cancel used to leave a "New Page" behind.
+    func nameNew(_ id: UUID, folder: Bool, previousSelection: SidebarItem?) {
         if !folder { selection = .page(id) }
+        namingNew = NewItem(id: id, previousSelection: previousSelection)
         renaming = id
+    }
+
+    /// The name sheet for a new item was dismissed without naming it: back to where things were, item removed.
+    func cancelNaming(in store: PageStore) {
+        guard let new = namingNew else { return }
+        namingNew = nil
+        if selection == .page(new.id) { selection = new.previousSelection }
+        store.delete(new.id)
     }
 }
 

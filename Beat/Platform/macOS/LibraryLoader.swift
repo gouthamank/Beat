@@ -1,8 +1,8 @@
 import Foundation
 import iTunesLibrary
 
-/// Owns the (non-Sendable) ITLibrary and hands out Sendable snapshots and artwork bytes.
-actor LibraryLoader {
+/// The Mac's library source: owns the (non-Sendable) ITLibrary and hands out Sendable snapshots and artwork bytes.
+actor LibraryLoader: LibrarySource {
     enum LoadError: LocalizedError {
         case accessDenied(underlying: Error)
 
@@ -107,3 +107,6 @@ actor LibraryLoader {
         )
     }
 }
+
+/// On the Mac, the library is Music's, read through iTunesLibrary.
+func makeLibrarySource() -> any LibrarySource { LibraryLoader() }

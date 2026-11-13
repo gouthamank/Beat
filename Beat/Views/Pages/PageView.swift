@@ -56,7 +56,7 @@ struct PageView: View {
             }
             .confirmationDialog("Delete “\(pendingDelete?.filter.name ?? "")”?", isPresented: Binding(
                 get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } }
-            )) {
+            ), titleVisibility: .visible) {
                 Button("Delete", role: .destructive) {
                     if let element = pendingDelete { pages.deleteElement(element.id, from: pageID) }
                 }

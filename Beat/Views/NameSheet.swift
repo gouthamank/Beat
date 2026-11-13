@@ -6,15 +6,23 @@ import SwiftUI
 struct NameSheet: View {
     let title: String
     let symbol: String
+    /// "Rename", or "Create" for an item being added.
+    let saveTitle: String
+    /// Runs when the sheet closes without saving (Cancel, Esc, a swipe down): a new item is removed again.
+    let cancel: (() -> Void)?
     let save: (String) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var name: String
     @State private var selection: TextSelection?
     @FocusState private var focused: Bool
+    @State private var saved = false
 
-    init(title: String, symbol: String, name: String, save: @escaping (String) -> Void) {
+    init(title: String, symbol: String, name: String, saveTitle: String = "Rename", cancel: (() -> Void)? = nil,
+         save: @escaping (String) -> Void) {
         self.title = title
         self.symbol = symbol
+        self.saveTitle = saveTitle
+        self.cancel = cancel
         self.save = save
         _name = State(initialValue: name)
     }
@@ -33,7 +41,7 @@ struct NameSheet: View {
                 Spacer()
                 Button("Cancel", role: .cancel) { dismiss() }
                     .keyboardShortcut(.cancelAction)
-                Button("Rename", action: commit)
+                Button(saveTitle, action: commit)
                     .keyboardShortcut(.defaultAction)
                     .beatGlassButtonStyle(prominent: true)
                     .disabled(!canSave)
@@ -41,6 +49,7 @@ struct NameSheet: View {
         }
         .padding(20)
         .frame(width: 320)
+        .onDisappear { if !saved { cancel?() } }
         .onAppear {
             focused = true
             // Select after focus lands; taking focus would otherwise reset the selection to a caret.
@@ -50,6 +59,7 @@ struct NameSheet: View {
 
     private func commit() {
         guard canSave else { return }
+        saved = true
         save(name)
         dismiss()
     }

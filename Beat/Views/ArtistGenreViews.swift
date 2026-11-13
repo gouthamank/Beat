@@ -3,6 +3,7 @@ import SwiftUI
 // MARK: Artists
 
 struct ArtistGridView: View {
+    @Environment(\.pageInset) private var pageInset
     let title: String
     let artists: [Artist]
     /// The sidebar page whose search and scroll this grid remembers; nil for pushed pages.
@@ -21,15 +22,15 @@ struct ArtistGridView: View {
                     ArtistTile(artist: artist).keyboardGridItem(i)
                 }
             }
-            .padding(24)
+            .padding(pageInset)
             .pausesPointerWhileScrolling(scrolling)
         }
         .tracksScrolling(scrolling)
         .remembersScroll(memory)
-        .keyboardGrid(count: visible.count, layout: .adaptive(minimum: 130, spacing: 22, inset: 24), id: { visible[$0].id })
+        .keyboardGrid(count: visible.count, layout: .adaptive(minimum: 130, spacing: 22, inset: pageInset), id: { visible[$0].id })
         .navigationTitle(title)
-        .navigationSubtitle("\(artists.count.counted("artist")) · \(artists.reduce(0) { $0 + $1.fileSize }.fileSizeText)")
-        .searchable(text: searchText, placement: .toolbar, prompt: "Artists")
+        .pageSubtitle(artists.count.counted("artist") + artists.reduce(0) { $0 + $1.fileSize }.fileSizeSuffix)
+        .searchable(text: searchText, placement: .page, prompt: "Artists")
     }
 }
 
@@ -54,6 +55,7 @@ struct ArtistTile: View {
         VStack(spacing: 8) {
             ArtistArtwork(albumIDs: artist.albumIDsNewestFirst, artistID: artist.id)
                 .background { if needsProbe { Color.clear.frameProbe(probe) } }
+                .zoomSource(.artist(artist.id))
                 .keyboardHighlight(gridItem.highlighted, cornerRadius: 10)
                 .opacity(hero.isReturning(to: .artist(artist.id)) ? 0 : 1)
                 .background(ShapeShadow(shape: RoundedRectangle(cornerRadius: 10, style: .continuous),
@@ -96,20 +98,25 @@ struct GenreGridView: View {
     let genres: [Genre]
     /// The sidebar page whose scroll this grid remembers; nil for pushed pages.
     var memory: SidebarItem?
+    @Environment(\.pageInset) private var pageInset
+    @Environment(\.compactLayout) private var compact
+
+    private var tileMinimum: CGFloat { compact ? 140 : 170 }
 
     var body: some View {
         ScrollView {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 170, maximum: 230), spacing: 20)], spacing: 20) {
+            // Two to a row on a phone: 170 pt tiles left room for one.
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: tileMinimum, maximum: 230), spacing: 20)], spacing: 20) {
                 ForEach(Array(genres.enumerated()), id: \.element.id) { i, genre in
                     GenreTile(genre: genre).keyboardGridItem(i)
                 }
             }
-            .padding(24)
+            .padding(pageInset)
         }
         .remembersScroll(memory)
-        .keyboardGrid(count: genres.count, layout: .adaptive(minimum: 170, spacing: 20, inset: 24), id: { genres[$0].id })
+        .keyboardGrid(count: genres.count, layout: .adaptive(minimum: tileMinimum, spacing: 20, inset: pageInset), id: { genres[$0].id })
         .navigationTitle(title)
-        .navigationSubtitle("\(genres.count.counted("genre")) · \(genres.reduce(0) { $0 + $1.fileSize }.fileSizeText)")
+        .pageSubtitle(genres.count.counted("genre") + genres.reduce(0) { $0 + $1.fileSize }.fileSizeSuffix)
     }
 }
 

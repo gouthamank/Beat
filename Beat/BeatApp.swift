@@ -15,9 +15,7 @@ struct BeatApp: App {
     @State private var scrobbler: Scrobbler
 
     init() {
-        // One window, no tabs: View ▸ Show Tab Bar let a second tab open a second copy of the whole UI, which broke
-        // it (the now-playing bar, Now Playing and transitions all assume one window). This removes the tab items.
-        NSWindow.allowsAutomaticWindowTabbing = false
+        configurePlatform()
         let library = LibraryStore()
         let artwork = ArtworkCache(loader: library.loader)
         // Saved thumbnails are named for the art Music has now; changed art is forgotten and loaded again.
@@ -47,33 +45,11 @@ struct BeatApp: App {
 
     var body: some Scene {
         WindowGroup("Beat") {
-            RootView()
-                .environment(library)
-                .environment(artwork)
-                .environment(history)
-                .environment(queue)
-                .environment(pages)
-                .environment(navigator)
-                .environment(hero)
-                .environment(\.lyricsProvider, lyrics)
-                .environment(\.artistInfoProvider, artistInfo)
-                .environment(artistImages)
-                .environment(scrobbler)
-                // Minimum width is set on RootView's detail column (see there).
-                .frame(minHeight: 560)
-                .onAppear {
-                    SpaceBarMonitor.install(queue: queue)
-                    SidebarReclickMonitor.install(navigator: navigator)
-                    SearchFocusMonitor.install()
-                    SwipeBackMonitor.install(navigator: navigator)
-                }
+            withStores(RootView().platformWindow(queue: queue, navigator: navigator))
         }
-        .windowToolbarStyle(.unified)
+        .platformWindowStyle()
         .commands {
-            CommandGroup(replacing: .appInfo) {
-                Button("About Beat") { AboutPanel.show() }
-            }
-            SidebarCommands()
+            PlatformCommands()
             CommandGroup(after: .sidebar) {
                 Button("Back") { navigator.goBack() }
                     .keyboardShortcut("[", modifiers: .command)
@@ -88,33 +64,24 @@ struct BeatApp: App {
             PlaybackCommands(queue: queue, navigator: navigator)
         }
 
-        Settings {
-            // Everything the main window has: Settings hosts the element editor (for new-element defaults),
-            // whose preview renders real elements.
-            SettingsView()
-                .environment(library)
-                .environment(artwork)
-                .environment(history)
-                .environment(queue)
-                .environment(pages)
-                .environment(navigator)
-                .environment(hero)
-                .environment(\.lyricsProvider, lyrics)
-                .environment(\.artistInfoProvider, artistInfo)
-                .environment(artistImages)
-                .environment(scrobbler)
-        }
+        #if os(macOS)
+        settingsWindow
+        #endif
     }
-}
 
-/// The standard About panel, with the build's commit beside its build number: "Version 1.0 (42 · a1b2c3d)".
-@MainActor
-enum AboutPanel {
-    static func show() {
-        let info = Bundle.main.infoDictionary ?? [:]
-        let build = info["CFBundleVersion"] as? String ?? ""
-        let commit = info["BeatCommit"] as? String ?? ""
-        NSApp.orderFrontStandardAboutPanel(options: [.applicationVersion: commit.isEmpty ? build : "\(build) · \(commit)"])
-        NSApp.activate()
+    /// Every store the app's views read, for the main window and the Mac's Settings window alike.
+    func withStores<Content: View>(_ content: Content) -> some View {
+        content
+            .environment(library)
+            .environment(artwork)
+            .environment(history)
+            .environment(queue)
+            .environment(pages)
+            .environment(navigator)
+            .environment(hero)
+            .environment(\.lyricsProvider, lyrics)
+            .environment(\.artistInfoProvider, artistInfo)
+            .environment(artistImages)
+            .environment(scrobbler)
     }
 }
