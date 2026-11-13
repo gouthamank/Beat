@@ -111,6 +111,10 @@ struct NowPlayingView: View {
     /// How far a drag has pulled the view down. It follows the finger (or pointer), so a drag reads as closing before
     /// it's let go, and springs back if it wasn't far enough.
     @State private var pullDown: CGFloat = 0
+    /// On a phone, how far a sideways swipe has moved the song (cover and title): left for the next, right for the
+    /// previous. Which way a drag goes is decided by its first movement (`dragAxis`), so a pull down still closes.
+    @State private var trackSwipe: CGFloat = 0
+    @State private var dragAxis: Axis?
 
     /// Lyrics or the visualizer showing while music plays: the screen shouldn't sleep (`keepScreenAwake`).
     private var watching: Bool { (showLyrics || visualizing) && queue.isPlaying }
@@ -152,9 +156,22 @@ struct NowPlayingView: View {
                 .gesture(
                     // Global, so the view moving with the drag doesn't change the drag's own measurements.
                     DragGesture(minimumDistance: 10, coordinateSpace: .global)
-                        .onChanged { pullDown = max($0.translation.height, 0) }
+                        .onChanged { value in
+                            if dragAxis == nil {
+                                let sideways = abs(value.translation.width) > abs(value.translation.height)
+                                dragAxis = compact && sideways ? .horizontal : .vertical
+                            }
+                            if dragAxis == .horizontal {
+                                trackSwipe = value.translation.width
+                            } else {
+                                pullDown = max(value.translation.height, 0)
+                            }
+                        }
                         .onEnded { value in
-                            if NowPlayingDrag.passes(value, upward: false) {
+                            defer { dragAxis = nil }
+                            if dragAxis == .horizontal {
+                                endTrackSwipe(value)
+                            } else if NowPlayingDrag.passes(value, upward: false) {
                                 close()
                             } else {
                                 withAnimation(.spring(duration: 0.35, bounce: 0.2)) { pullDown = 0 }
@@ -191,6 +208,8 @@ struct NowPlayingView: View {
         #if os(iOS)
         // The status bar too, while Now Playing covers the screen (scenes are drawn on dark). The Mac has no status bar.
         .preferredColorScheme(visualizing && style.isScene ? .dark : colorSchemeForCover)
+        // The visualizer fills the screen, as on the Mac: no clock or battery over it.
+        .statusBarHidden(visualizing)
         #endif
         // On the cover's own colours, playback controls use the colour chosen to read on them.
         .environment(\.playbackAccent, palette?.primary.color ?? playbackAccent)
@@ -246,6 +265,7 @@ struct NowPlayingView: View {
                 .animation(.easeInOut(duration: 0.3), value: showRadial)
                 .modifier(RadialToggle(isOn: $showRadial, enabled: !compact))
                 .frame(maxWidth: showLyrics ? 400 : 640, maxHeight: showLyrics ? 340 : 440)
+                .modifier(TrackSwipeFeedback(offset: trackSwipe))
                 }
                 VStack(spacing: 4) {
                     Text(track.title)
@@ -267,6 +287,8 @@ struct NowPlayingView: View {
                     .lineLimit(1)
                     .help("Show Album")
                 }
+                // With lyrics open the cover is gone; the title moves with the swipe instead.
+                .modifier(TrackSwipeFeedback(offset: compact && showLyrics ? trackSwipe : 0))
                 VStack(spacing: 12) {
                     Scrubber(duration: track.duration, chapters: mixChapters)
                     TransportControls()
@@ -291,7 +313,9 @@ struct NowPlayingView: View {
                         .keyboardShortcut("v", modifiers: [.command, .shift])
                         .help("Visualizer (⇧⌘V)")
                     }
-                    // The file's format, quietly, a little apart from the controls.
+                    // The file's format, quietly, a little apart from the controls. Mac only: on iPad and iPhone
+                    // MediaPlayer gives no bitrate or sample rate, so the line was just "MP3" or "AAC".
+                    #if os(macOS)
                     if let format = track.formatSummary {
                         Text(format)
                             .font(.caption2.monospacedDigit())
@@ -300,6 +324,7 @@ struct NowPlayingView: View {
                             .padding(.top, 10)
                             .accessibilityLabel("Format: \(format)")
                     }
+                    #endif
                 }
                 .frame(maxWidth: 420)
         }
@@ -397,6 +422,12 @@ struct NowPlayingView: View {
         #if os(iOS)
         // No hover on touch: a tap brings the faded controls back.
         .onTapGesture { revealControls() }
+        // On a phone, a sideways swipe steps through the styles, as ← and → do.
+        .gesture(DragGesture(minimumDistance: 20).onEnded { value in
+            guard compact, abs(value.translation.width) > abs(value.translation.height),
+                  abs(value.translation.width) > 60 || abs(value.predictedEndTranslation.width) > 160 else { return }
+            stepStyle(by: value.translation.width < 0 ? 1 : -1)
+        })
         #endif
         .onAppear { revealControls() }
         .onDisappear {
@@ -451,6 +482,19 @@ struct NowPlayingView: View {
         .help(help)
     }
 
+    /// A sideways swipe far enough (or flicked) changes song: left for the next, right for the previous (which, as
+    /// the button does, restarts a song a few seconds in). The new song's cover settles into place from the swipe.
+    private func endTrackSwipe(_ value: DragGesture.Value) {
+        let distance = value.translation.width
+        let flick = value.predictedEndTranslation.width
+        if distance < -80 || flick < -200 {
+            queue.next()
+        } else if distance > 80 || flick > 200 {
+            queue.previous()
+        }
+        withAnimation(.spring(duration: 0.4, bounce: 0.15)) { trackSwipe = 0 }
+    }
+
     /// Closes with the usual morph into the bar, from wherever a drag left the view.
     private func close() {
         navigator.showingNowPlaying = false
@@ -496,5 +540,16 @@ private struct RadialToggle: ViewModifier {
         } else {
             content.accessibilityLabel("Cover")
         }
+    }
+}
+
+/// A song being swiped sideways on a phone: it follows the finger, fading a little the further it goes.
+private struct TrackSwipeFeedback: ViewModifier {
+    let offset: CGFloat
+
+    func body(content: Content) -> some View {
+        content
+            .offset(x: offset)
+            .opacity(1 - min(Double(abs(offset)) / 400, 0.5))
     }
 }

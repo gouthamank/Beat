@@ -32,39 +32,47 @@ struct AlbumSongsTable: View {
     var body: some View {
         // Play order index per song, so a tap plays from that song on through the whole list.
         let position = Dictionary(playOrder.enumerated().map { ($1.id, $0) }, uniquingKeysWith: { a, _ in a })
-        List {
-            ForEach(sections) { section in
-                Section {
-                    ForEach(section.groups) { group in
-                        let songs = VStack(spacing: 0) {
-                            ForEach(group.tracks) { track in
-                                row(track) { stores.queue.play(playOrder, startAt: position[track.id] ?? 0) }
+        ScrollViewReader { proxy in
+            List {
+                ForEach(sections) { section in
+                    Section {
+                        ForEach(section.groups) { group in
+                            let songs = VStack(spacing: 0) {
+                                ForEach(group.tracks) { track in
+                                    row(track) { stores.queue.play(playOrder, startAt: position[track.id] ?? 0) }
+                                }
+                            }
+                            if compact {
+                                // A phone has no room for a cover column: the album is a small header over its songs.
+                                VStack(alignment: .leading, spacing: 8) {
+                                    albumHeader(group.album)
+                                    songs
+                                }
+                                .padding(.vertical, 6)
+                            } else {
+                                HStack(alignment: .top, spacing: 16) {
+                                    CoverBlock(album: group.album, stores: stores)
+                                        .frame(width: artWidth)
+                                    songs
+                                }
+                                .padding(.vertical, 6)
                             }
                         }
-                        if compact {
-                            // A phone has no room for a cover column: the album is a small header over its songs.
-                            VStack(alignment: .leading, spacing: 8) {
-                                albumHeader(group.album)
-                                songs
-                            }
-                            .padding(.vertical, 6)
-                        } else {
-                            HStack(alignment: .top, spacing: 16) {
-                                CoverBlock(album: group.album, stores: stores)
-                                    .frame(width: artWidth)
-                                songs
-                            }
-                            .padding(.vertical, 6)
-                        }
+                    } header: {
+                        artistHeader(section.name)
                     }
-                } header: {
-                    artistHeader(section.name)
                 }
             }
+            .listStyle(.plain)
+            .contentMargins(.bottom, bottomInset, for: .scrollContent)
+            // Not keyed on `generation`: the model bumps it whenever the page reappears, and a list rebuilt from it jumped
+            // back to the top after every album opened from it. Rows update by their own ids.
+            // Back to the top only when asked (`scrollToTopToken`), as the Mac's table does.
+            .onChange(of: scrollToTopToken) {
+                guard let first = sections.first else { return }
+                withAnimation(.snappy) { proxy.scrollTo(first.id, anchor: .top) }
+            }
         }
-        .listStyle(.plain)
-        .contentMargins(.bottom, bottomInset, for: .scrollContent)
-        .id(generation)
     }
 
     /// The album artist, pinned while their albums scroll by. Plain lists draw pinned headers see-through, which
@@ -82,7 +90,9 @@ struct AlbumSongsTable: View {
 
     /// The album over its songs on a phone: a small cover, the title and year; tapping it opens the album.
     private func albumHeader(_ album: Album) -> some View {
-        Button { stores.navigator.openAlbum(album.id) } label: {
+        // Through `openWhenReady`, as every other tile: opened before its colours were known, the page kept the
+        // status bar it started with (white on a pale cover).
+        Button { stores.navigator.openWhenReady(.album(album.id)) { stores.navigator.openAlbum(album.id) } } label: {
             HStack(spacing: 12) {
                 ArtworkView(albumID: album.id, cornerRadius: 6)
                     .frame(width: 56, height: 56)

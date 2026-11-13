@@ -103,6 +103,7 @@ extension View {
         // The status bar follows the cover's lightness here; the window keeps the system's (see `RootView`).
         .toolbarColorScheme(scheme, for: .navigationBar)
         #endif
+        .refreshesStatusBar(for: scheme)
     }
 }
 
