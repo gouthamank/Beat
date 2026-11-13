@@ -27,11 +27,13 @@ final class PlaybackQueue {
     var isShuffled: Bool { state.isShuffled }
     var repeatMode: RepeatMode { state.repeatMode }
 
-    @ObservationIgnored private let player: AudioPlayer
-    /// The output (AirPlay) picker, shared by every now-playing bar so the route survives navigation.
-    @ObservationIgnored let output: OutputRoute
+    @ObservationIgnored private let player: any AudioPlaying
+    /// The output (AirPlay) picker, shared by every now-playing bar so the route survives navigation. Made when a
+    /// bar first shows it, so a queue in tests never attaches one (a second picker drops the route).
+    @ObservationIgnored private(set) lazy var output = OutputRoute(player: player.outputPlayer)
     @ObservationIgnored private let history: PlayHistoryStore
-    @ObservationIgnored private var nowPlaying: NowPlayingController!
+    /// Nil in tests, which leave the system's Now Playing and media keys alone.
+    @ObservationIgnored private var nowPlaying: NowPlayingController?
     @ObservationIgnored private var mute = VolumeMute()
     @ObservationIgnored private var togglingMute = false
     /// Whether the current item has already been counted as a play.
@@ -40,10 +42,10 @@ final class PlaybackQueue {
     /// Whether Last.fm has been told the current item is playing.
     @ObservationIgnored private var announcedCurrent = false
 
-    init(history: PlayHistoryStore, artwork: ArtworkCache, scrobbler: Scrobbler? = nil) {
-        let player = AudioPlayer()
+    /// Tests pass a stand-in player and turn off `publishesNowPlaying`.
+    init(history: PlayHistoryStore, artwork: ArtworkCache, scrobbler: Scrobbler? = nil,
+         player: any AudioPlaying = AudioPlayer(), publishesNowPlaying: Bool = true) {
         self.player = player
-        output = OutputRoute(player: player.outputPlayer)
         self.history = history
         self.scrobbler = scrobbler
         #if os(macOS)
@@ -56,6 +58,7 @@ final class PlaybackQueue {
         player.onTime = { [weak self] in self?.timeChanged($0) }
         player.onAdvanced = { [weak self] in self?.advancedAutomatically() }
         player.onFinished = { [weak self] in self?.finished() }
+        guard publishesNowPlaying else { return }
         nowPlaying = NowPlayingController(artwork: artwork, handlers: .init(
             play: { [weak self] in self?.play() },
             pause: { [weak self] in self?.pause() },
@@ -257,7 +260,7 @@ final class PlaybackQueue {
     }
 
     private func publishNowPlaying() {
-        nowPlaying.update(track: state.current, elapsed: currentTime, isPlaying: isPlaying)
+        nowPlaying?.update(track: state.current, elapsed: currentTime, isPlaying: isPlaying)
     }
 
     /// Skips songs whose file has gone (moved or deleted since Music last saw it). Only files can go missing that

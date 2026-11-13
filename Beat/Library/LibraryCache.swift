@@ -18,7 +18,7 @@ enum LibraryCache {
             .appendingPathComponent("Beat", isDirectory: true)
     }
 
-    private nonisolated static var file: URL? { directory?.appendingPathComponent("library.json") }
+    private nonisolated static func file(in directory: URL?) -> URL? { directory?.appendingPathComponent("library.json") }
 
     nonisolated static func encode(_ tracks: [Track]) throws -> Data {
         try JSONEncoder().encode(Contents(schema: schema, tracks: tracks))
@@ -32,8 +32,8 @@ enum LibraryCache {
 
     /// The saved library, built and ready to show; nil when there's none usable (a bad file is deleted).
     @concurrent
-    nonisolated static func load() async -> LibrarySnapshot? {
-        guard let file, let data = try? Data(contentsOf: file) else { return nil }
+    nonisolated static func load(from directory: URL? = directory) async -> LibrarySnapshot? {
+        guard let file = file(in: directory), let data = try? Data(contentsOf: file) else { return nil }
         guard let tracks = decode(data), !tracks.isEmpty else {
             try? FileManager.default.removeItem(at: file)
             return nil
@@ -42,13 +42,13 @@ enum LibraryCache {
     }
 
     @concurrent
-    nonisolated static func save(_ tracks: [Track]) async {
-        guard let directory, let file, let data = try? encode(tracks) else { return }
+    nonisolated static func save(_ tracks: [Track], in directory: URL? = directory) async {
+        guard let directory, let file = file(in: directory), let data = try? encode(tracks) else { return }
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         try? data.write(to: file, options: .atomic)
     }
 
-    nonisolated static func remove() {
-        if let file { try? FileManager.default.removeItem(at: file) }
+    nonisolated static func remove(from directory: URL? = directory) {
+        if let file = file(in: directory) { try? FileManager.default.removeItem(at: file) }
     }
 }

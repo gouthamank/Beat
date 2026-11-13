@@ -3,7 +3,8 @@ import Foundation
 
 /// A library made of the audio files in Beat's Documents folder, for the Simulator: it has no music library and
 /// Finder can't sync to it. Files dropped onto the Simulator and saved to Files ▸ On My iPad ▸ Beat show up after
-/// a relaunch, with tags and artwork read from the files themselves.
+/// a relaunch, with tags and artwork read from the files themselves. Shared rather than iOS-only so tests on both
+/// platforms can read a folder of fixture files.
 actor FolderLibrarySource: LibrarySource {
     private let folder: URL?
     /// Embedded artwork per song (and per album, its first song's), read during the load.
@@ -28,7 +29,7 @@ actor FolderLibrarySource: LibrarySource {
         guard let folder,
               let walker = FileManager.default.enumerator(at: folder, includingPropertiesForKeys: [.fileSizeKey, .addedToDirectoryDateKey])
         else { return .build(tracks: []) }
-        let files = walker.compactMap { $0 as? URL }.filter { Self.audioExtensions.contains($0.pathExtension.lowercased()) }
+        let files = walker.compactMap { $0 as? URL }.filter(Self.isAudio)
         var tracks: [Track] = []
         var trackArtwork: [PersistentID: Data] = [:]
         for file in files {
@@ -54,6 +55,21 @@ actor FolderLibrarySource: LibrarySource {
         case .album(let id): albumArtwork[id]
         case .track(let id): trackArtwork[id]
         }
+    }
+
+    static func isAudio(_ file: URL) -> Bool { audioExtensions.contains(file.pathExtension.lowercased()) }
+
+    /// What songs of one album share, however their tags are cased: the album artist (else the artist) and album.
+    static func albumKey(albumArtist: String?, artist: String?, album: String?) -> String {
+        "\(albumArtist ?? artist ?? "")\u{1F}\(album ?? "")".lowercased()
+    }
+
+    /// The year from a year or date tag ("2011", "2011-05-02"); 0 without one.
+    static func year(from text: String?) -> Int { text.flatMap { Int($0.prefix(4)) } ?? 0 }
+
+    /// The track number from a tag that may carry the total too ("3/12"); 0 without one.
+    static func trackNumber(from text: String?) -> Int {
+        text.flatMap { Int($0.split(separator: "/").first ?? "") } ?? 0
     }
 
     /// A stable ID from text (FNV-1a), so a song or album keeps its ID across launches, as Music's IDs do.
@@ -89,17 +105,16 @@ actor FolderLibrarySource: LibrarySource {
         let duration = (try? await asset.load(.duration)).map(CMTimeGetSeconds) ?? 0
         let values = try? file.resourceValues(forKeys: [.fileSizeKey, .addedToDirectoryDateKey])
         let relative = String(file.path.dropFirst(folder.path.count))
-        let albumKey = "\(albumArtist ?? artist ?? "")\u{1F}\(album ?? "")".lowercased()
         return (MediaItemFields(
             id: stableID(relative),
             title: title,
             artist: artist,
             albumArtist: albumArtist,
             album: album,
-            albumID: stableID(albumKey),
+            albumID: stableID(albumKey(albumArtist: albumArtist, artist: artist, album: album)),
             genre: genre,
-            year: yearText.flatMap { Int($0.prefix(4)) } ?? 0,
-            trackNumber: trackText.flatMap { Int($0.split(separator: "/").first ?? "") } ?? 0,
+            year: year(from: yearText),
+            trackNumber: trackNumber(from: trackText),
             duration: duration.isFinite ? duration : 0,
             dateAdded: values?.addedToDirectoryDate,
             location: file,

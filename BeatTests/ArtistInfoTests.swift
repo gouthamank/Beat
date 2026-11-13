@@ -1,4 +1,3 @@
-import AppKit
 import XCTest
 @testable import Beat
 
@@ -26,9 +25,7 @@ final class ArtistInfoTests: XCTestCase {
         XCTAssertNil(images.photo(for: "asc"), "no photo saved: the mosaic")
 
         let file = try XCTUnwrap(ArtistInfoProvider.photoURL(forKey: "asc", in: directory))
-        let pixel = NSImage(size: NSSize(width: 1, height: 1))
-        pixel.lockFocus(); NSColor.red.setFill(); NSRect(x: 0, y: 0, width: 1, height: 1).fill(); pixel.unlockFocus()
-        try XCTUnwrap(NSBitmapImageRep(data: XCTUnwrap(pixel.tiffRepresentation))?.representation(using: .png, properties: [:])).write(to: file)
+        try TestImages.png(width: 1).write(to: file)
         XCTAssertNil(images.photo(for: "asc"), "the answer stays put, so nothing changes under a view")
         images.refresh("asc")
         let photo = images.photo(for: "asc")

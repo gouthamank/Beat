@@ -48,6 +48,14 @@ struct ElementRef: Identifiable, Hashable {
 @MainActor
 @Observable
 final class AppNavigator {
+    /// Where the selection and open folders are saved; tests pass their own, so they never touch Beat's.
+    @ObservationIgnored private let defaults: UserDefaults
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        expandedFolders = Self.savedExpandedFolders(in: defaults)
+    }
+
     var selection: SidebarItem? {
         // Each sidebar item keeps its own pushed pages while Beat runs, and the selection survives relaunch.
         didSet {
@@ -58,7 +66,7 @@ final class AppNavigator {
             // ("NavigationAuthority bound path tried to update multiple times per frame").
             path = selection.flatMap { savedPaths[$0] } ?? []
             switchingPages = false
-            UserDefaults.standard.set(selection?.storageString, forKey: Self.selectionKey)
+            defaults.set(selection?.storageString, forKey: Self.selectionKey)
         }
     }
     /// The detail column's pushed pages (albums, artists, See All…).
@@ -86,9 +94,9 @@ final class AppNavigator {
     /// How far a trackpad swipe back has gone, 0...1, for the back chevron; 0 when no swipe is under way.
     var swipeProgress: CGFloat = 0
     /// Open sidebar folders, saved so the sidebar reopens the way it was left.
-    var expandedFolders: Set<UUID> = AppNavigator.savedExpandedFolders() {
+    var expandedFolders: Set<UUID> = [] {
         didSet {
-            UserDefaults.standard.set(expandedFolders.map(\.uuidString).sorted().joined(separator: ","), forKey: Self.expandedKey)
+            defaults.set(expandedFolders.map(\.uuidString).sorted().joined(separator: ","), forKey: Self.expandedKey)
         }
     }
     /// The full Now Playing view, expanded over the window.
@@ -218,8 +226,8 @@ final class AppNavigator {
     static let selectionKey = "sidebar.selection"
     static let expandedKey = "sidebar.expanded"
 
-    private static func savedExpandedFolders() -> Set<UUID> {
-        let saved = UserDefaults.standard.string(forKey: expandedKey) ?? ""
+    private static func savedExpandedFolders(in defaults: UserDefaults) -> Set<UUID> {
+        let saved = defaults.string(forKey: expandedKey) ?? ""
         return Set(saved.split(separator: ",").compactMap { UUID(uuidString: String($0)) })
     }
 
@@ -228,7 +236,7 @@ final class AppNavigator {
     func restoreSavedSelection(tree: PageTree, hidden: Set<LibraryPage>) -> Bool {
         // Deleted folders would otherwise linger in the saved list forever.
         expandedFolders.formIntersection(tree.folders.map(\.node.id))
-        guard let saved = UserDefaults.standard.string(forKey: Self.selectionKey).flatMap(SidebarItem.init(storageString:))
+        guard let saved = defaults.string(forKey: Self.selectionKey).flatMap(SidebarItem.init(storageString:))
         else { return false }
         switch saved {
         case .page(let id):

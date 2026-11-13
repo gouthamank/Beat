@@ -117,7 +117,10 @@ targets:
   BeatTests:
     type: bundle.unit-test
     platform: macOS
-    sources: [BeatTests]
+    sources:
+      # Shared tests plus the Mac's own; iPad and iPhone ones live in BeatTests/iOS.
+      - path: BeatTests
+        excludes: ["iOS/**"]
     settings:
       groups: [macSigning]
       base:
@@ -125,6 +128,27 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: dev.gouthaman.BeatTests
     dependencies:
       - target: Beat
+  # The same shared tests, run inside the iOS app on a Simulator (`make ios-test`).
+  BeatiOSTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: BeatTests
+        excludes: ["macOS/**"]
+    configFiles:
+      Debug: Config/Beat.xcconfig
+      Release: Config/Beat.xcconfig
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: dev.gouthaman.BeatiOSTests
+        CODE_SIGN_STYLE: Automatic
+        # The app is Beat.app (PRODUCT_NAME), not the target's name, which XcodeGen's default host assumes.
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Beat.app/Beat
+        BUNDLE_LOADER: $(TEST_HOST)
+    dependencies:
+      - target: BeatiOS
 schemes:
   Beat:
     build:
@@ -137,5 +161,8 @@ schemes:
     build:
       targets:
         BeatiOS: all
+        BeatiOSTests: [test]
     run:
       config: Debug
+    test:
+      targets: [BeatiOSTests]

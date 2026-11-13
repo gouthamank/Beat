@@ -13,7 +13,7 @@ GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo none)$(shel
 RELEASE_APP := build/Build/Products/Release/Beat.app
 INSTALLED_APP := /Applications/Beat.app
 
-.PHONY: project build test install clean ios-sim-ipad ios-sim-iphone ios-install
+.PHONY: project build test install clean ios-sim-ipad ios-sim-iphone ios-install ios-test
 
 # Regenerate Beat.xcodeproj from project.yml.
 project:
@@ -73,6 +73,13 @@ ios-sim-ipad: project
 
 ios-sim-iphone: project
 	$(call ios_sim,$(IOS_IPHONE))
+
+# Run the unit tests (Debug) inside the iOS app on the iPhone Simulator: the shared tests plus BeatTests/iOS.
+ios-test: project
+	@# Booted and ready first: left to boot it, xcodebuild launched the app before the Simulator had finished starting
+	@# ("Busy: Application failed preflight checks").
+	xcrun simctl bootstatus "$(IOS_IPHONE)" -b
+	$(IOS_BUILD) -configuration Debug -destination "platform=iOS Simulator,name=$(IOS_IPHONE)" test
 
 # Release build for a connected iPad or iPhone, signed with the personal team in Config/Secrets.xcconfig
 # (DEVELOPMENT_TEAM; add the Apple ID in Xcode > Settings > Accounts once). With a free Apple ID the install stops

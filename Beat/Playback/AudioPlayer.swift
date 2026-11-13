@@ -1,9 +1,26 @@
 import AVFoundation
 
+/// What `PlaybackQueue` drives: `AudioPlayer`, or a stand-in in tests that records what it was asked to do.
+@MainActor
+protocol AudioPlaying: AnyObject {
+    var onTime: ((TimeInterval) -> Void)? { get set }
+    var onAdvanced: (() -> Void)? { get set }
+    var onFinished: (() -> Void)? { get set }
+    var volume: Float { get set }
+    var outputPlayer: AVPlayer { get }
+    var samples: SampleBuffer { get }
+    func load(_ url: URL, upcoming: URL?, autoplay: Bool)
+    func setUpcoming(_ url: URL?)
+    func play()
+    func pause()
+    func seek(to seconds: TimeInterval)
+    func stop()
+}
+
 /// Thin wrapper over AVQueuePlayer holding the current item plus one preloaded upcoming item,
 /// so track transitions don't wait on file loading.
 @MainActor
-final class AudioPlayer {
+final class AudioPlayer: AudioPlaying {
     var onTime: ((TimeInterval) -> Void)?
     /// The current item finished and the preloaded upcoming item started.
     var onAdvanced: (() -> Void)?

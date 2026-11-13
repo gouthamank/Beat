@@ -2,7 +2,7 @@
 
 Music player for Mac, iPad and iPhone on top of the music you already have: the Music app's library on the Mac, songs synced to the device on iOS. It reads the library read-only, shows album art, and plays local files itself. The headline feature is a **sidebar of folders and pages**: each page holds elements, and each element owns a **smart filter** (Filter → Sort → Limit) plus its own appearance. Liquid Glass on macOS/iOS 26, frosted materials on macOS 15.
 
-See `ARCHITECTURE.md` for how the pieces fit together (including the platform split).
+See `ARCHITECTURE.md` for how the pieces fit together (including the platform split), and `TESTING.md` for the test suites and their plan.
 
 ## Hard rules
 - **Never write to the Music library.** Reading goes through `iTunesLibrary.framework` (Mac) and MediaPlayer (iOS). Beat's own plays and skips go to `PlayHistoryStore` (`Application Support/Beat/history.json`), never to Music.

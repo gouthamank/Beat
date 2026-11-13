@@ -14,7 +14,19 @@ final class LibraryStore {
     /// Bumped on every successful load; used as a cache key by derived results.
     private(set) var version = 0
 
-    let loader: any LibrarySource = makeLibrarySource()
+    let loader: any LibrarySource
+    /// Where the library saved at the last read lives (`LibraryCache`).
+    @ObservationIgnored private let cacheDirectory: URL?
+    /// When the library was last written (`LibraryWatcher.libraryStamp`), to skip reads that would find nothing new.
+    @ObservationIgnored private let libraryStamp: @Sendable () -> Date?
+
+    /// The defaults are the platform's library; tests pass a stand-in source and their own cache folder.
+    init(loader: any LibrarySource = makeLibrarySource(), cacheDirectory: URL? = LibraryCache.directory,
+         libraryStamp: @escaping @Sendable () -> Date? = LibraryWatcher.libraryStamp) {
+        self.loader = loader
+        self.cacheDirectory = cacheDirectory
+        self.libraryStamp = libraryStamp
+    }
 
     /// Art whose picture changed in Music between reads (the app forwards it to `ArtworkCache.invalidate`).
     @ObservationIgnored var onArtworkChanged: @MainActor (Set<ArtworkSource>) -> Void = { _ in }
@@ -45,7 +57,7 @@ final class LibraryStore {
             // Asks for MediaPlayer access on iPad and iPhone (nothing to ask on the Mac). Without it, the read
             // below fails and the usual "No Access" state shows.
             _ = await loader.requestAccess()
-            if let saved = await LibraryCache.load() {
+            if let saved = await LibraryCache.load(from: cacheDirectory) {
                 snapshot = saved
                 version += 1
                 state = .loaded
@@ -54,7 +66,7 @@ final class LibraryStore {
         repeat {
             reloadRequested = false
             if snapshot.tracks.isEmpty { state = .loading }
-            let stamp = LibraryWatcher.libraryStamp()
+            let stamp = libraryStamp()
             do {
                 let loaded = try await loader.load()
                 readStamp = stamp
@@ -64,8 +76,8 @@ final class LibraryStore {
                     snapshot = loaded
                     version += 1
                     onArtworkChanged(changedArt)
-                    let tracks = loaded.tracks
-                    Task.detached(priority: .utility) { await LibraryCache.save(tracks) }
+                    let tracks = loaded.tracks, cacheDirectory = cacheDirectory
+                    Task.detached(priority: .utility) { await LibraryCache.save(tracks, in: cacheDirectory) }
                 }
                 onRead(snapshot)
                 state = .loaded
@@ -74,7 +86,7 @@ final class LibraryStore {
                     snapshot = .empty
                     version += 1
                 }
-                LibraryCache.remove()
+                LibraryCache.remove(from: cacheDirectory)
                 onAccessLost()
                 state = .failed(error.localizedDescription)
             }
@@ -84,7 +96,7 @@ final class LibraryStore {
     /// Reads Music again only if its library has been written since the last read. Coming back to Beat used to
     /// re-read all ~20k songs (about 4 s of work) every time, though usually nothing had changed.
     func reloadIfMusicChanged() async {
-        if let readStamp, let now = LibraryWatcher.libraryStamp(), now <= readStamp { return }
+        if let readStamp, let now = libraryStamp(), now <= readStamp { return }
         await load()
     }
 
