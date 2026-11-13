@@ -3,16 +3,22 @@ options:
   bundleIdPrefix: dev.gouthaman
   deploymentTarget:
     macOS: "15.0"
+    iOS: "26.0"
   createIntermediateGroups: true
 settings:
   base:
     SWIFT_VERSION: "6.0"
+settingGroups:
+  # The Mac app and its tests. Self-signed certificate in the login keychain: one identity for every build, so
+  # macOS keeps Beat's Music and Keychain permissions across rebuilds (ad-hoc signing changed it each time).
+  # Per target, not project-wide, so the iOS target can sign with an Apple ID's personal team instead.
+  macSigning:
     MACOSX_DEPLOYMENT_TARGET: "15.0"
-    # Self-signed certificate in the login keychain: one identity for every build, so macOS keeps
-    # Beat's Music and Keychain permissions across rebuilds (ad-hoc signing changed it each time).
     CODE_SIGN_IDENTITY: "Beat Local Signing"
     CODE_SIGN_STYLE: Manual
     ENABLE_HARDENED_RUNTIME: NO
+    # The iOS team in Secrets.xcconfig must not reach the Mac's self-signed identity.
+    DEVELOPMENT_TEAM: ""
 # Shown in Xcode's sidebar for editing, not built into any target. Lists whatever is in Config when the
 # project is generated, so Secrets.xcconfig appears once it exists (regenerate after creating it).
 fileGroups:
@@ -21,13 +27,16 @@ targets:
   Beat:
     type: application
     platform: macOS
-    sources: [Beat]
+    sources:
+      # Shared code plus the Mac's own; iPad and iPhone pieces live in Platform/iOS.
+      - path: Beat
+        excludes: ["Platform/iOS/**"]
     info:
       path: Beat/Info.plist
       properties:
         CFBundleDisplayName: Beat
         # The version shown in About Beat; raise it by hand for a release. The build number comes from git (Makefile).
-        CFBundleShortVersionString: "1.0.6"
+        CFBundleShortVersionString: "1.1.0"
         NSHumanReadableCopyright: © 2026 Gouthaman Kumar. MIT License.
         # `make` fills both from git (commit count, short hash); builds from Xcode keep the defaults below.
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
@@ -44,6 +53,7 @@ targets:
       path: Beat/Beat.entitlements
       properties: {}
     settings:
+      groups: [macSigning]
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.gouthaman.Beat
         CURRENT_PROJECT_VERSION: "1"
@@ -52,11 +62,64 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     dependencies:
       - sdk: iTunesLibrary.framework
+  BeatiOS:
+    type: application
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      # Shared code plus iPad and iPhone pieces; the Mac's own (and its Info.plist and entitlements) stay out.
+      - path: Beat
+        excludes: ["Platform/macOS/**", "Info.plist", "Beat.entitlements"]
+    info:
+      path: Beat/Platform/iOS/Info.plist
+      properties:
+        CFBundleDisplayName: Beat
+        CFBundleShortVersionString: "1.1.0"
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        BeatCommit: $(BEAT_COMMIT)
+        LastFMAPIKey: $(LASTFM_API_KEY)
+        LastFMSharedSecret: $(LASTFM_SHARED_SECRET)
+        NSAppleMusicUsageDescription: Beat reads the music on this device to browse and play it. It never changes your library.
+        # Keeps playing with the screen locked or Beat in the background.
+        UIBackgroundModes: [audio]
+        # The Simulator's library is audio files saved to Files > On My iPad > Beat (FolderLibrarySource).
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
+        UILaunchScreen: {}
+        # One window, as on the Mac: the now-playing bar, Now Playing and transitions assume a single one.
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        ITSAppUsesNonExemptEncryption: false
+    configFiles:
+      # DEVELOPMENT_TEAM (an Apple ID's personal team) comes from the git-ignored Secrets.xcconfig, for devices.
+      Debug: Config/Beat.xcconfig
+      Release: Config/Beat.xcconfig
+    settings:
+      base:
+        # Beat.app and module Beat, as on the Mac (not the target's name).
+        PRODUCT_NAME: Beat
+        PRODUCT_BUNDLE_IDENTIFIER: dev.gouthaman.Beat
+        TARGETED_DEVICE_FAMILY: "1,2"
+        CODE_SIGN_STYLE: Automatic
+        CURRENT_PROJECT_VERSION: "1"
+        BEAT_COMMIT: dev
+        GENERATE_INFOPLIST_FILE: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
   BeatTests:
     type: bundle.unit-test
     platform: macOS
     sources: [BeatTests]
     settings:
+      groups: [macSigning]
       base:
         GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: dev.gouthaman.BeatTests
@@ -70,3 +133,9 @@ schemes:
         BeatTests: [test]
     test:
       targets: [BeatTests]
+  BeatiOS:
+    build:
+      targets:
+        BeatiOS: all
+    run:
+      config: Debug

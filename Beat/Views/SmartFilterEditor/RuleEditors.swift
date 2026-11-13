@@ -117,6 +117,9 @@ private struct RuleRow: View {
     @Binding var rule: Rule
     let onDelete: () -> Void
     let onDuplicate: () -> Void
+    /// A phone: the menus take their text's width. Two fixed 150 pt menus and the buttons were wider than the screen,
+    /// and pushed the whole editor past both edges.
+    @Environment(\.compactLayout) private var compact
 
     /// One line when the editor's panel is wide enough; otherwise the value moves under field and operator.
     var body: some View {
@@ -141,22 +144,19 @@ private struct RuleRow: View {
     }
 
     private var fieldPicker: some View {
-        Picker("Field", selection: Binding(get: { rule.field }, set: { setField($0) })) {
-            fieldSection("Text", [.title, .artist, .albumArtist, .album, .composer, .genre, .grouping, .comments, .kind])
-            fieldSection("Numbers", [.rating, .playCount, .skipCount, .year, .duration, .bpm, .bitrate, .sampleRate, .trackNumber, .discNumber])
-            fieldSection("Dates", [.dateAdded, .lastPlayed, .lastSkipped, .dateModified])
-            fieldSection("Other", [.compilation, .hasArtwork])
+        Picker("Field", selection: Binding(get: { rule.field }, set: { rule.setField($0) })) {
+            RuleFieldChoices()
         }
         .labelsHidden()
-        .frame(width: 150)
+        .frame(width: compact ? nil : 150)
     }
 
     private var operatorPicker: some View {
-        Picker("Operator", selection: Binding(get: { rule.op }, set: { setOperator($0) })) {
+        Picker("Operator", selection: Binding(get: { rule.op }, set: { rule.setOperator($0) })) {
             ForEach(rule.field.type.operators, id: \.self) { Text($0.title).tag($0) }
         }
         .labelsHidden()
-        .frame(width: 150)
+        .frame(width: compact ? nil : 150)
     }
 
     private var buttons: some View {
@@ -170,36 +170,54 @@ private struct RuleRow: View {
         .foregroundStyle(.secondary)
     }
 
-    private func fieldSection(_ title: String, _ fields: [Field]) -> some View {
+}
+
+/// A rule's field menu, in sections. Shared by the Mac's rule rows and the phone's rule form.
+struct RuleFieldChoices: View {
+    var body: some View {
+        section("Text", [.title, .artist, .albumArtist, .album, .composer, .genre, .grouping, .comments, .kind])
+        section("Numbers", [.rating, .playCount, .skipCount, .year, .duration, .bpm, .bitrate, .sampleRate, .trackNumber, .discNumber])
+        section("Dates", [.dateAdded, .lastPlayed, .lastSkipped, .dateModified])
+        section("Other", [.compilation, .hasArtwork])
+    }
+
+    private func section(_ title: String, _ fields: [Field]) -> some View {
         Section(title) {
             ForEach(fields, id: \.self) { Text($0.title).tag($0) }
         }
     }
+}
 
-    private func setField(_ field: Field) {
-        if field.type == rule.field.type, field != .rating, rule.field != .rating {
-            rule.field = field
+extension Rule {
+    /// Another field, keeping the operator and value when they still make sense (same kind of field), else
+    /// starting over with that field's defaults. Rating's stars don't carry over to other numbers.
+    mutating func setField(_ field: Field) {
+        if field.type == self.field.type, field != .rating, self.field != .rating {
+            self.field = field
         } else {
-            rule = .make(field: field)
+            self = .make(field: field)
         }
     }
 
-    private func setOperator(_ op: RuleOperator) {
-        rule.op = op
-        if !rule.value.fits(op, field: rule.field) {
-            rule.value = .defaultValue(for: rule.field, op: op)
+    /// Another operator, with a fresh value when the old one doesn't fit it (a range for "is in the range").
+    mutating func setOperator(_ op: RuleOperator) {
+        self.op = op
+        if !value.fits(op, field: field) {
+            value = .defaultValue(for: field, op: op)
         }
     }
 }
 
-private struct RuleValueEditor: View {
+struct RuleValueEditor: View {
     @Binding var rule: Rule
 
     var body: some View {
         switch (rule.field.type, rule.value) {
         case (.text, .text(let s)):
             TextField("Value", text: Binding(get: { s }, set: { rule.value = .text($0) }))
+                #if os(macOS)
                 .textFieldStyle(.roundedBorder)
+                #endif
                 .frame(minWidth: 120, maxWidth: 220)
         case (.number, .number(let n)) where rule.field == .rating:
             StarPicker(stars: Binding(get: { Int(n) }, set: { rule.value = .number(Double($0)) }))
@@ -219,7 +237,11 @@ private struct RuleValueEditor: View {
         case (.date, .date(let d)):
             DatePicker("Date", selection: Binding(get: { d }, set: { rule.value = .date($0) }), displayedComponents: .date)
                 .labelsHidden()
+                #if os(macOS)
                 .datePickerStyle(.field)
+                #else
+                .datePickerStyle(.compact)
+                #endif
         default:
             EmptyView()
         }
@@ -231,7 +253,9 @@ struct NumberField: View {
 
     var body: some View {
         TextField("", value: $value, format: .number.grouping(.never))
+            #if os(macOS)
             .textFieldStyle(.roundedBorder)
+            #endif
             .multilineTextAlignment(.trailing)
             .frame(width: 72)
     }
@@ -259,6 +283,8 @@ struct StarPicker: View {
 struct SortKeysEditor: View {
     @Binding var keys: [EditSortKey]
     let output: ResultKind
+    /// A phone: the field menu takes its text's width, as in `RuleRow`.
+    @Environment(\.compactLayout) private var compact
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -275,7 +301,7 @@ struct SortKeysEditor: View {
                         set: { if let field = $0 { binding.wrappedValue.key.field = field } }
                     ))
                     .labelsHidden()
-                    .frame(width: 170)
+                    .frame(width: compact ? nil : 170)
                     if let labels = Self.orderLabels(key.key.field) {
                         Picker("Order", selection: binding.key.ascending) {
                             Text(labels.descending).tag(false)

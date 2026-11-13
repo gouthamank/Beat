@@ -1,23 +1,8 @@
-import AppKit
 import SwiftUI
-import UniformTypeIdentifiers
 
-/// Beat ▸ Settings… (⌘,), in the standard tabbed preferences window.
-struct SettingsView: View {
-    var body: some View {
-        TabView {
-            Tab("General", systemImage: "gearshape") { GeneralSettings() }
-            Tab("Elements", systemImage: "rectangle.grid.1x2") { ElementSettings() }
-            Tab("Playback", systemImage: "waveform") { PlaybackSettings() }
-            Tab("Lyrics", systemImage: "quote.bubble") { LyricsSettings() }
-            Tab("Artist Info", systemImage: "info.circle") { ArtistInfoSettingsPane() }
-            // Only in builds with a Last.fm key (Config/Secrets.xcconfig); see README.
-            if LastFMCredentials.bundled != nil {
-                Tab("Last.fm", systemImage: "dot.radiowaves.up.forward") { LastFMSettingsPane() }
-            }
-        }
-    }
-}
+// The panes of Beat's settings, shared. Each platform puts them in its own container (`SettingsView`): the Mac's
+// tabbed Settings window, a list of sections on iPad and iPhone (Platform/*/SettingsView+*.swift), and brings its own
+// Export/Import buttons (`SettingsFileButtons`).
 
 /// Every pane is a grouped form of the same width, sized to its content.
 private struct SettingsPane<Content: View>: View {
@@ -26,12 +11,15 @@ private struct SettingsPane<Content: View>: View {
     var body: some View {
         Form { content() }
             .formStyle(.grouped)
+        #if os(macOS)
+            // The Mac's Settings window sizes to its pane; on iPad and iPhone the form fills the screen and scrolls.
             .frame(width: 480)
             .fixedSize(horizontal: false, vertical: true)
+        #endif
     }
 }
 
-private struct Caption: View {
+struct Caption: View {
     let text: String
     init(_ text: String) { self.text = text }
 
@@ -42,11 +30,10 @@ private struct Caption: View {
 
 // MARK: General
 
-private struct GeneralSettings: View {
+struct GeneralSettings: View {
     @AppStorage("appearance.coverColours") private var coverColours = true
     @AppStorage(SidebarTint.key) private var sidebarTint = SidebarTint.full.rawValue
     @AppStorage(LibraryPage.hiddenKey) private var hiddenLibraryPages = ""
-    @Environment(PageStore.self) private var pages
 
     var body: some View {
         SettingsPane {
@@ -76,48 +63,10 @@ private struct GeneralSettings: View {
             }
 
             Section("Settings File") {
-                HStack {
-                    Button("Export…", action: exportSettings)
-                    Button("Import…", action: importSettings)
-                }
-                Caption("Your folders, pages, elements and custom fields, and these preferences, in one file. Only the definitions: tracks are always found in your Music library. Importing replaces what's here. Your Discogs token and play history stay on this Mac.")
+                SettingsFileButtons()
+                Caption("Your folders, pages, elements and custom fields, and these preferences, in one file. Only the definitions: tracks are always found in your Music library. Importing replaces what's here. Your Discogs token and play history stay on \(thisDevice).")
             }
         }
-    }
-
-    private func exportSettings() {
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [.json]
-        panel.nameFieldStringValue = "Beat Settings.json"
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        do {
-            try pages.archive().encoded().write(to: url, options: .atomic)
-        } catch {
-            NSAlert(error: error).runModal()
-        }
-    }
-
-    private func importSettings() {
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.json]
-        panel.allowsMultipleSelection = false
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        let archive: SettingsArchive
-        do {
-            archive = try SettingsArchive.decode(Data(contentsOf: url))
-        } catch {
-            NSAlert(error: error).runModal()
-            return
-        }
-        let confirm = NSAlert()
-        confirm.messageText = "Replace your pages and preferences?"
-        confirm.informativeText = "Your folders, pages, elements and custom fields, and Beat's preferences, will be replaced by the ones in “\(url.lastPathComponent)”. Your Music library and play history aren't affected."
-        confirm.addButton(withTitle: "Replace")
-        confirm.addButton(withTitle: "Cancel")
-        confirm.buttons.first?.hasDestructiveAction = true
-        guard confirm.runModal() == .alertFirstButtonReturn else { return }
-        archive.applyPreferences(to: .standard)
-        pages.replace(with: archive)
     }
 
     private func shown(_ page: LibraryPage) -> Binding<Bool> {
@@ -134,7 +83,7 @@ private struct GeneralSettings: View {
 
 // MARK: Elements
 
-private struct ElementSettings: View {
+struct ElementSettings: View {
     @AppStorage(NewElementDefaults.key) private var savedElementDefaults: Data?
     @Environment(PageStore.self) private var pages
     @State private var editingDefaults: ElementDraft?
@@ -150,7 +99,7 @@ private struct ElementSettings: View {
                     Button("Reset to Built-in") { savedElementDefaults = nil }
                         .disabled(savedElementDefaults == nil)
                 }
-                Caption("The rules and appearance a new element starts with when you click + on a page.")
+                Caption("The rules and appearance a new element starts with when you add one with + on a page.")
             }
         }
         .sheet(item: $editingDefaults) { FilterEditorSheet(draft: $0) }
@@ -165,7 +114,7 @@ private struct ElementSettings: View {
 
 // MARK: Playback
 
-private struct PlaybackSettings: View {
+struct PlaybackSettings: View {
     @AppStorage("visualizer.enabled") private var visualizerEnabled = true
 
     var body: some View {
@@ -180,7 +129,7 @@ private struct PlaybackSettings: View {
 
 // MARK: Lyrics
 
-private struct LyricsSettings: View {
+struct LyricsSettings: View {
     @AppStorage("lyrics.online") private var onlineLyrics = false
     @Environment(\.lyricsProvider) private var lyrics
     @State private var cleared = false
@@ -189,7 +138,7 @@ private struct LyricsSettings: View {
         SettingsPane {
             Section("Lyrics") {
                 Toggle("Find synced lyrics online (LRCLIB)", isOn: $onlineLyrics)
-                Caption("When on, Beat sends each playing song's artist, title, album and length to lrclib.net to look up time-synced lyrics, and saves the answers on this Mac. Lyrics in your files are always used first.")
+                Caption("When on, Beat sends each playing song's artist, title, album and length to lrclib.net to look up time-synced lyrics, and saves the answers on \(thisDevice). Lyrics in your files are always used first.")
                 Button(cleared ? "Downloaded Lyrics Cleared" : "Clear Downloaded Lyrics") {
                     Task {
                         await lyrics?.clearDownloaded()
@@ -204,7 +153,7 @@ private struct LyricsSettings: View {
 
 // MARK: Artist info
 
-private struct ArtistInfoSettingsPane: View {
+struct ArtistInfoSettingsPane: View {
     @AppStorage(ArtistInfoSettings.onlineKey) private var artistInfoOnline = false
     @Environment(\.artistInfoProvider) private var artistInfo
     @Environment(ArtistImages.self) private var artistImages: ArtistImages?
@@ -219,7 +168,7 @@ private struct ArtistInfoSettingsPane: View {
                     .onChange(of: discogsToken) { _, token in Keychain.set(token, for: ArtistInfoSettings.tokenAccount) }
                 Link("Get a personal access token from Discogs…", destination: URL(string: "https://www.discogs.com/settings/developers")!)
                     .font(.callout)
-                Caption("When on, Beat sends artist names to Discogs, with your token, to show photos, bios, members and links on artist pages, and saves the answers on this Mac. With it off, Beat makes no requests to Discogs. Data provided by Discogs.")
+                Caption("When on, Beat sends artist names to Discogs, with your token, to show photos, bios, members and links on artist pages, and saves the answers on \(thisDevice). With it off, Beat makes no requests to Discogs. Data provided by Discogs.")
                 Button(cleared ? "Downloaded Artist Info Cleared" : "Clear Downloaded Artist Info") {
                     Task {
                         await artistInfo?.clearDownloaded()
@@ -236,7 +185,7 @@ private struct ArtistInfoSettingsPane: View {
 
 // MARK: Last.fm
 
-private struct LastFMSettingsPane: View {
+struct LastFMSettingsPane: View {
     @AppStorage(LastFMSettings.enabledKey) private var enabled = false
     @Environment(Scrobbler.self) private var scrobbler
 

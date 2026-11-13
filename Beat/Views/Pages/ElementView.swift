@@ -7,6 +7,7 @@ struct ElementRoute: Hashable {
 
 /// One element on a page: a header plus its smart filter's result, laid out by its appearance.
 struct ElementView: View {
+    @Environment(\.pageInset) private var pageInset
     let element: PageElement
     let pageID: UUID
     let result: FilterResult?
@@ -20,6 +21,9 @@ struct ElementView: View {
     @Environment(AppNavigator.self) private var navigator
 
     private var look: ElementAppearance { element.appearance }
+    @Environment(\.compactLayout) private var compact
+    /// A list's columns: one at a time on a phone (the rest page sideways), as set elsewhere.
+    private var listColumns: Int { compact ? 1 : look.columns }
 
     var body: some View {
         let isEmpty = result?.count == 0
@@ -35,7 +39,7 @@ struct ElementView: View {
                 }
                 if let result {
                     if result.count == 0 {
-                        Text("No matches").font(.callout).foregroundStyle(.secondary).padding(.horizontal, 24)
+                        Text("No matches").font(.callout).foregroundStyle(.secondary).padding(.horizontal, pageInset)
                     } else {
                         content(result)
                     }
@@ -88,7 +92,7 @@ struct ElementView: View {
                 .allowsHitTesting(!isPreview)
             }
         }
-        .padding(.horizontal, 24)
+        .padding(.horizontal, pageInset)
     }
 
     private var title: some View {
@@ -124,14 +128,14 @@ struct ElementView: View {
     @ViewBuilder
     private func content(_ result: FilterResult) -> some View {
         let gap = look.spacing.itemGap
-        let width = look.size.tileWidth(for: result.kind)
+        let width = look.size.tileWidth(for: result.kind, compact: compact)
         let footer = look.showFooter
         // Footers under tiles need a little extra room between rows; art alone doesn't.
         let tileRowGap = footer ? gap + 6 : gap
         switch (result.kind, look.layout) {
         case (.songs, .list):
             let tracks = result.tracks
-            ColumnList(count: tracks.count, rows: look.rows, columns: look.columns, fill: look.effectiveFill, spacing: gap) { i in
+            ColumnList(count: tracks.count, rows: look.rows, columns: listColumns, fill: look.effectiveFill, spacing: gap) { i in
                 SongCell(track: tracks[i], context: tracks, index: i)
             }
         case (.songs, _):
@@ -141,15 +145,16 @@ struct ElementView: View {
             }
         case (.albums, .list):
             let albums = result.albums
-            ColumnList(count: albums.count, rows: look.rows, columns: look.columns, fill: look.effectiveFill, spacing: gap) { AlbumListCell(album: albums[$0]) }
+            ColumnList(count: albums.count, rows: look.rows, columns: listColumns, fill: look.effectiveFill, spacing: gap) { AlbumListCell(album: albums[$0]) }
         case (.artists, .list):
             let artists = result.artists
-            ColumnList(count: artists.count, rows: look.rows, columns: look.columns, fill: look.effectiveFill, spacing: gap) { ArtistListCell(artist: artists[$0]) }
+            ColumnList(count: artists.count, rows: look.rows, columns: listColumns, fill: look.effectiveFill, spacing: gap) { ArtistListCell(artist: artists[$0]) }
         case (.genres, .list):
             let genres = result.genres
-            ColumnList(count: genres.count, rows: look.rows, columns: look.columns, fill: look.effectiveFill, spacing: gap) { GenreListCell(genre: genres[$0]) }
+            ColumnList(count: genres.count, rows: look.rows, columns: listColumns, fill: look.effectiveFill, spacing: gap) { GenreListCell(genre: genres[$0]) }
         case (.albums, .coverFlow):
-            CoverFlowElement(albums: result.albums, side: CoverFlowGeometry.side(for: look.size),
+            // Large covers are capped on a phone, so the centre one and its neighbours fit the screen.
+            CoverFlowElement(albums: result.albums, side: compact ? min(CoverFlowGeometry.side(for: look.size), 200) : CoverFlowGeometry.side(for: look.size),
                              spread: CoverFlowGeometry.spread(for: look.spacing))
         case (.albums, .timeline):
             let albums = result.albums
@@ -202,7 +207,7 @@ extension ElementView {
     var placeholder: some View {
         let kind = element.filter.output
         let gap = look.spacing.itemGap
-        let width = look.size.tileWidth(for: kind)
+        let width = look.size.tileWidth(for: kind, compact: compact)
         let footer = look.showFooter
         let tileRowGap = footer ? gap + 6 : gap
         let allRows = look.rows == ElementAppearance.allRows
@@ -326,7 +331,16 @@ private struct CoverFlowPlaceholder: View {
 }
 
 extension ElementAppearance.Size {
-    func tileWidth(for kind: ResultKind) -> CGFloat {
+    func tileWidth(for kind: ResultKind, compact: Bool = false) -> CGFloat {
+        // A phone's ~340-410 pt fits three, two or one cover across with these. The Mac's widths gave two at Small
+        // and one at both Medium and Large, so the larger two sizes looked the same.
+        if compact, kind != .songs {
+            return switch self {
+            case .small: 100
+            case .medium: 150
+            case .large: 300
+            }
+        }
         let widths: (CGFloat, CGFloat, CGFloat) = switch kind {
         case .albums: (132, 168, 210)
         case .artists: (110, 140, 176)
@@ -364,6 +378,7 @@ extension ElementAppearance.Spacing {
 /// Items in `rows` rows that scroll sideways together, like Apple Music's shelves. Across (the default) runs
 /// each row all the way along; Down fills column by column.
 private struct Shelf<Cell: View>: View {
+    @Environment(\.pageInset) private var pageInset
     let count: Int
     let rows: Int
     let fill: ElementAppearance.Fill
@@ -385,7 +400,7 @@ private struct Shelf<Cell: View>: View {
                     }
                 }
             }
-            .padding(.horizontal, 24)
+            .padding(.horizontal, pageInset)
             .padding(.vertical, 6)
         }
         .keyboardGrid(count: count, layout: .order(.slots(columns)))
@@ -395,6 +410,7 @@ private struct Shelf<Cell: View>: View {
 /// Columns of items that scroll sideways and snap to a column, for capped grids and lists: rows × columns is
 /// one screenful, and the rest continue to the right. `columns` comes from `ElementPaging.columns`.
 private struct PagedColumns<Cell: View>: View {
+    @Environment(\.pageInset) private var pageInset
     let count: Int
     let columns: [[Int]]
     let columnWidth: CGFloat
@@ -417,7 +433,7 @@ private struct PagedColumns<Cell: View>: View {
             }
             .scrollTargetLayout()
         }
-        .contentMargins(.horizontal, 24, for: .scrollContent)
+        .contentMargins(.horizontal, pageInset, for: .scrollContent)
         .scrollTargetBehavior(.viewAligned)
         .keyboardGrid(count: count, layout: .order(.slots(columns)))
     }
@@ -425,6 +441,7 @@ private struct PagedColumns<Cell: View>: View {
 
 /// Fixed columns that share the row evenly, each a `VStack` of its items: grids and lists that fit, filled down.
 private struct FittedColumns<Cell: View>: View {
+    @Environment(\.pageInset) private var pageInset
     let count: Int
     let columns: [[Int]]
     /// How many columns the row is divided into, even when fewer are used.
@@ -450,7 +467,7 @@ private struct FittedColumns<Cell: View>: View {
                 }
             }
         }
-        .padding(.horizontal, 24)
+        .padding(.horizontal, pageInset)
         .keyboardGrid(count: count, layout: .order(.slots(columns)))
     }
 }
@@ -458,6 +475,7 @@ private struct FittedColumns<Cell: View>: View {
 /// An adaptive grid; the column count comes from the measured width. With a row limit and more items
 /// than fit, it scrolls sideways instead (`PagedColumns`); with Rows set to All, every item shows.
 private struct TileGrid<Cell: View>: View {
+    @Environment(\.pageInset) private var pageInset
     let count: Int
     let rows: Int
     let fill: ElementAppearance.Fill
@@ -469,11 +487,11 @@ private struct TileGrid<Cell: View>: View {
     @Environment(\.elementPreview) private var previewing
 
     var body: some View {
-        let columns = GridNavigation.adaptiveColumns(width: width, minimum: minimum, spacing: spacing, inset: 24)
+        let columns = GridNavigation.adaptiveColumns(width: width, minimum: minimum, spacing: spacing, inset: pageInset)
         Group {
             if rows != ElementAppearance.allRows, ElementPaging.isCapped(count: count, rows: rows, columns: columns) {
                 // Tiles sized so a screenful holds exactly `columns` of them.
-                let tile = max(minimum, (width - 48 - spacing * CGFloat(columns - 1)) / CGFloat(columns))
+                let tile = max(minimum, (width - pageInset * 2 - spacing * CGFloat(columns - 1)) / CGFloat(columns))
                 PagedColumns(count: count, columns: ElementPaging.columns(count: count, rows: rows, fill: fill),
                              columnWidth: tile, columnSpacing: spacing, rowSpacing: rowSpacing, cell: cell)
             } else if fill == .down, width > 0 {
@@ -492,7 +510,7 @@ private struct TileGrid<Cell: View>: View {
                 LazyVGrid(columns: gridColumns, spacing: rowSpacing) {
                     ForEach(0..<count, id: \.self) { cell($0).allowsHitTesting(!previewing).keyboardGridItem($0) }
                 }
-                .padding(.horizontal, 24)
+                .padding(.horizontal, pageInset)
                 .keyboardGrid(count: count, layout: .order(.rows(columns: columns)))
             }
         }
@@ -503,6 +521,7 @@ private struct TileGrid<Cell: View>: View {
 /// Items in equal-width columns, across each row (the default) or down each column. With more than
 /// rows × columns it scrolls sideways a column at a time; with Rows set to All it grows to fit everything.
 private struct ColumnList<Cell: View>: View {
+    @Environment(\.pageInset) private var pageInset
     let count: Int
     let rows: Int
     let columns: Int
@@ -522,7 +541,7 @@ private struct ColumnList<Cell: View>: View {
                                             fill: fill)
         Group {
             if capped {
-                let columnWidth = max(160, (width - 48 - columnGap * CGFloat(columns - 1)) / CGFloat(columns))
+                let columnWidth = max(160, (width - pageInset * 2 - columnGap * CGFloat(columns - 1)) / CGFloat(columns))
                 PagedColumns(count: count, columns: laidOut, columnWidth: columnWidth, columnSpacing: columnGap,
                              rowSpacing: rowGap, cell: cell)
             } else {
@@ -652,6 +671,8 @@ private struct ListCellContent: View {
             }
                 .frame(width: 42, height: 42)
                 .background { if let probe, hovering || keepsProbe { Color.clear.frameProbe(probe) } }
+                // Rows that open a page (they carry a probe); genre rows don't.
+                .zoomSource(probe == nil ? nil : artistID.map(HeroSubject.artist) ?? albumID.map(HeroSubject.album))
                 .clipShape(round ? AnyShape(Circle()) : AnyShape(RoundedRectangle(cornerRadius: 5)))
                 .opacity(hidesArt ? 0 : 1)
             VStack(alignment: .leading, spacing: 2) {

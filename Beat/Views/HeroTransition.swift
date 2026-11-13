@@ -1,14 +1,14 @@
-import AppKit
 import SwiftUI
 
 // Cross-hierarchy transitions (album zoom, Now Playing morph) measure views in window coordinates
-// through tiny AppKit probes. `matchedGeometryEffect` and SwiftUI's `.global` space don't reach across
+// through tiny platform views (probes). `matchedGeometryEffect` and SwiftUI's `.global` space don't reach across
 // macOS's separately hosted split-view columns and pushed pages, but window coordinates do.
 
-/// A handle to a probed view's frame, in window coordinates with a top-left origin.
+/// A handle to a probed view's frame, in window coordinates with a top-left origin. The probe view itself is per
+/// platform (`FrameProbeView`, `FrameProbeReader` in Platform/*/FrameProbe.swift).
 @MainActor
 final class FrameProbe {
-    fileprivate weak var view: FrameProbeView?
+    weak var view: FrameProbeView?
 
     var windowRect: CGRect? {
         guard let rect = view?.windowRect(), rect.width > 0, rect.height > 0 else { return nil }
@@ -16,33 +16,7 @@ final class FrameProbe {
     }
 
     /// The size of the window's content area, for drawing something as if it covered the whole window.
-    var windowSize: CGSize? { view?.window?.contentView?.bounds.size }
-
-}
-
-final class FrameProbeView: NSView {
-    /// Never takes clicks; it only measures.
-    override func hitTest(_ point: NSPoint) -> NSView? { nil }
-
-    func windowRect() -> CGRect? {
-        guard let window, let content = window.contentView else { return nil }
-        let r = convert(bounds, to: nil)
-        return CGRect(x: r.minX, y: content.bounds.height - r.maxY, width: r.width, height: r.height)
-    }
-}
-
-private struct FrameProbeReader: NSViewRepresentable {
-    let probe: FrameProbe
-
-    func makeNSView(context: Context) -> FrameProbeView {
-        let view = FrameProbeView()
-        probe.view = view
-        return view
-    }
-
-    func updateNSView(_ view: FrameProbeView, context: Context) {
-        probe.view = view
-    }
+    var windowSize: CGSize? { view?.windowContentSize }
 }
 
 extension View {
@@ -125,7 +99,16 @@ final class HeroTransition {
 
     static let headerCornerRadius: CGFloat = 12
 
+    /// Beat flies the art itself on the Mac. iPad and iPhone use the system's zoom transition (`zoomSource`), which
+    /// follows a swipe down back into the tile; a flight of Beat's own would run alongside it.
+    #if os(macOS)
+    static let flies = true
+    #else
+    static let flies = false
+    #endif
+
     func depart(_ subject: HeroSubject, from rect: CGRect) {
+        guard Self.flies else { return }
         flight = Flight(subject: subject, from: rect)
     }
 
@@ -145,7 +128,7 @@ final class HeroTransition {
     /// The page is leaving the front (popped, covered, or its sidebar page switched away): keep its colours
     /// on screen a moment longer and fade them. Called while the page still measures.
     func fadeBackdrop(_ subject: HeroSubject) {
-        guard let page, page.subject == subject, let albumID = page.albumID, let rect = page.probe.windowRect else { return }
+        guard Self.flies, let page, page.subject == subject, let albumID = page.albumID, let rect = page.probe.windowRect else { return }
         backdropFade = BackdropFade(albumID: albumID, rect: rect)
     }
 
@@ -202,7 +185,7 @@ final class HeroTransition {
     /// The page is being popped: fly its header art back to a tile. Called before the page is removed, so
     /// the header still measures.
     func returnFlight(_ subject: HeroSubject) {
-        guard !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion,
+        guard Self.flies, !systemReducesMotion(),
               let rect = targetRect(for: subject) else { return }
         flight = Flight(subject: subject, from: rect, direction: .close)
     }
@@ -268,7 +251,7 @@ struct HeroOverlay: View {
     @ViewBuilder
     private func cover(_ albumID: PersistentID) -> some View {
         if let image = artwork.cachedImage(album: albumID, size: .large) ?? artwork.cachedImage(album: albumID, size: .thumbnail) {
-            Image(nsImage: image)
+            Image(platformImage: image)
                 .resizable()
                 .scaledToFill()
         } else {
@@ -359,7 +342,7 @@ struct ArtViewerOverlay: View {
     @State private var origin = FrameProbe()
     @State private var shown: ArtViewerRequest?
     @State private var expanded = false
-    @State private var image: NSImage?
+    @State private var image: PlatformImage?
 
     var body: some View {
         GeometryReader { proxy in
@@ -396,7 +379,7 @@ struct ArtViewerOverlay: View {
     @ViewBuilder
     private func cover(_ albumID: PersistentID) -> some View {
         if let image {
-            Image(nsImage: image).resizable().scaledToFill()
+            Image(platformImage: image).resizable().scaledToFill()
         } else {
             ArtworkView(albumID: albumID, size: .large, cornerRadius: 0)
         }

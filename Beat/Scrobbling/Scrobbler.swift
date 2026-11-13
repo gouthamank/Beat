@@ -1,4 +1,4 @@
-import AppKit
+import Foundation
 import Observation
 
 /// Scrobbles to Last.fm: now-playing updates as songs start, and every play Beat counts (half the song or
@@ -160,7 +160,7 @@ final class Scrobbler {
                 status = .failed("Couldn't start signing in to Last.fm.")
                 return
             }
-            NSWorkspace.shared.open(url)
+            openExternally(url)
             for _ in 0..<100 {
                 try? await Task.sleep(for: .seconds(3))
                 guard !Task.isCancelled else { return }

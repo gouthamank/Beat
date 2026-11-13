@@ -19,6 +19,16 @@ struct AlbumsLibraryView: View {
     /// Below this the grid needs the room more than the list does.
     private static let listMinimumWindowWidth: CGFloat = 700
 
+    /// Whether the page is wide enough for the list. Where it isn't (an iPhone), its toggle goes too: a button that
+    /// did nothing. The Mac keeps it at every width, as before.
+    private var listFits: Bool {
+        #if os(macOS)
+        true
+        #else
+        width >= Self.listMinimumWindowWidth
+        #endif
+    }
+
     var body: some View {
         let snapshot = library.snapshot
         HStack(spacing: 0) {
@@ -42,9 +52,11 @@ struct AlbumsLibraryView: View {
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
         .onChange(of: navigator.albumArtistFilter) { navigator.requestScrollToTop(.albums) }
         .toolbar {
-            ToolbarItem(placement: .navigation) {
-                Toggle(isOn: $showsList) { Label("Artists", systemImage: "sidebar.squares.left") }
-                    .help(showsList ? "Hide Artist List" : "Show Artist List")
+            if listFits {
+                ToolbarItem(placement: .navigation) {
+                    Toggle(isOn: $showsList) { Label("Artists", systemImage: "sidebar.squares.left") }
+                        .help(showsList ? "Hide Artist List" : "Show Artist List")
+                }
             }
         }
     }

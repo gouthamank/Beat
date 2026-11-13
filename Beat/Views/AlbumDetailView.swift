@@ -18,7 +18,13 @@ struct AlbumBackground: View {
             }
             .transition(.opacity)
         } else {
+            #if os(macOS)
             ArtworkBackdrop(albumID: albumID)
+            #else
+            // Nothing until the colours are worked out. The Mac works them out on hover, so they're usually ready;
+            // a touch screen has no hover, and the plain blur of a pale cover flashed white before the colours came.
+            Color.clear
+            #endif
         }
     }
 }
@@ -29,24 +35,44 @@ extension View {
     /// draws its own tinted bar under the strip (`CoverPageTopBar`) and puts back and its title there as items
     /// (`coverPageToolbar`).
     func coverPageChrome() -> some View {
+        #if os(macOS)
         toolbarBackground(.hidden, for: .windowToolbar)
             .toolbar(removing: .title)
             .navigationBarBackButtonHidden(true)
+        #else
+        // The navigation bar's equivalent: see-through and no system back button. The system title gives way to
+        // the compact one, which `coverPageToolbar` puts in the centre. A clear background rather than a hidden one:
+        // iOS ignores the bar's colour scheme while its background is hidden, and that scheme sets the status bar.
+        toolbarBackground(Color.clear, for: .navigationBar)
+            .toolbarBackgroundVisibility(.visible, for: .navigationBar)
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true)
+            // Hiding back also turned off the back swipe.
+            .background { SwipeBackEnabler() }
+        #endif
     }
 
     /// Clicking the cover shows it full-window, growing out of `probe`'s view. Albums without artwork do
     /// nothing: a full-window placeholder isn't worth seeing.
-    func coverViewerOnClick(_ album: Album, from probe: FrameProbe) -> some View {
-        modifier(CoverViewerClick(album: album, probe: probe))
+    /// `onAlbumPage`: only while that album's page is the front page. A page swiped away on iPad and iPhone stays on
+    /// screen while it shrinks into its tile, and a tap meant for the grid under it opened its cover full screen.
+    func coverViewerOnClick(_ album: Album, from probe: FrameProbe, onAlbumPage: Bool = false) -> some View {
+        modifier(CoverViewerClick(album: album, probe: probe, onAlbumPage: onAlbumPage))
+    }
+
+    /// A cover page header: the art beside its text on the Mac and iPad, stacked and centred on a phone. One
+    /// `AnyLayout`, so switching keeps the children's identity.
+    func coverPageHeaderLayout<Content: View>(_ compact: Bool, @ViewBuilder content: () -> Content) -> some View {
+        let layout = compact ? AnyLayout(VStackLayout(alignment: .center, spacing: 18))
+                             : AnyLayout(HStackLayout(alignment: .bottom, spacing: 24))
+        return layout(content).frame(maxWidth: .infinity, alignment: compact ? .center : .leading)
     }
 
     /// The page's margins. The top is small: back and the compact title live in the window toolbar
     /// (`coverPageToolbar`), so the header starts just under it. It used to reserve 62 pt for a back button
     /// floating over the page, below an empty toolbar strip.
     func coverPageContentPadding() -> some View {
-        padding(.horizontal, 28)
-            .padding(.bottom, 28)
-            .padding(.top, 16)
+        modifier(CoverPageContentPadding())
     }
 
     /// Back, and the page's art and title fading in as the header scrolls away, as window toolbar items. Apply
@@ -58,28 +84,50 @@ extension View {
             ToolbarItem(placement: .navigation) {
                 CoverPageBackButton().environment(\.colorScheme, scheme)
             }
+            #if os(macOS)
             ToolbarItem(placement: .navigation) {
                 CoverPageToolbarTitle(title: title, collapse: collapse, palette: palette, art: art)
                     .environment(\.colorScheme, scheme)
             }
+            #else
+            // In the centre, without a glass pill: beside back, it shared back's pill, which clipped the title to a
+            // few letters.
+            ToolbarItem(placement: .principal) {
+                CoverPageToolbarTitle(title: title, collapse: collapse, palette: palette, art: art)
+                    .environment(\.colorScheme, scheme)
+            }
+            .sharedBackgroundVisibility(.hidden)
+            #endif
         }
+        #if os(iOS)
+        // The status bar follows the cover's lightness here; the window keeps the system's (see `RootView`).
+        .toolbarColorScheme(scheme, for: .navigationBar)
+        #endif
     }
 }
 
 private struct CoverViewerClick: ViewModifier {
     let album: Album
     let probe: FrameProbe
+    let onAlbumPage: Bool
     @Environment(LibraryStore.self) private var library
     @Environment(AppNavigator.self) private var navigator
+    /// When the album page appeared: a tap repeated because the first seemed slow (the page waits briefly for its
+    /// colours) landed on the newly opened page's cover and opened it full screen.
+    @State private var appeared = Date.distantPast
 
     func body(content: Content) -> some View {
         let hasArtwork = library.snapshot.hasArtwork(album)
         content
             .onTapGesture {
                 guard hasArtwork else { return }
+                if onAlbumPage {
+                    guard navigator.path.last == .album(album.id), Date.now.timeIntervalSince(appeared) > 0.5 else { return }
+                }
                 navigator.artViewer = ArtViewerRequest(albumID: album.id, from: probe.windowRect)
             }
-            .pointerStyle(hasArtwork ? .link : nil)
+            .onAppear { appeared = .now }
+            .linkPointer(hasArtwork)
             .help(hasArtwork ? "View Cover" : "")
     }
 }
@@ -209,7 +257,13 @@ struct CoverPageBackground: View {
 
     var body: some View {
         ZStack {
-            Color(nsColor: .windowBackgroundColor)
+            #if os(macOS)
+            Color.windowBackground
+            #else
+            // The cover's own colour under the backdrop while it fades in. The window turns light with a pale cover
+            // at once, so the plain background flashed white over a dark system appearance.
+            palette?.background.color ?? Color.windowBackground
+            #endif
             if let albumID {
                 WindowAlignedAlbumBackground(albumID: albumID, palette: palette)
                     .opacity(shown ? 1 : 0)
@@ -273,6 +327,7 @@ struct AlbumDetailView: View {
     @Environment(HeroTransition.self) private var hero
     @Environment(AppNavigator.self) private var navigator
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.compactLayout) private var compact
     /// The cover's colours, from `CoverTint` (the same source as the sidebar), once they're this page's.
     /// Nil shows the standard look: Plain in Settings, or still settling.
     private var palette: ArtworkPalette? {
@@ -350,24 +405,26 @@ struct AlbumDetailView: View {
     }
 
     private func header(_ album: Album, tracks: [Track]) -> some View {
-        HStack(alignment: .bottom, spacing: 24) {
+        // A row beside the cover, or on a phone stacked under it. One layout either way, so the probed cover keeps
+        // its identity (see the FrameProbe gotcha).
+        coverPageHeaderLayout(compact) {
             ArtworkView(albumID: album.id, size: .large, cornerRadius: 12)
-                .frame(width: 230, height: 230)
+                .frame(width: compact ? 240 : 230, height: compact ? 240 : 230)
                 .frameProbe(artProbe)
                 // Drawn from the outline: SwiftUI's `.shadow` was redrawn on every scrolled frame.
                 .background(ShapeShadow(shape: RoundedRectangle(cornerRadius: 12, style: .continuous),
                                         opacity: 0.3, radius: 20, y: 10))
                 // Hidden while the zoom's flying copy is on its way here.
                 .opacity(hero.isFlying(to: album.id) ? 0 : 1)
-                .coverViewerOnClick(album, from: artProbe)
+                .coverViewerOnClick(album, from: artProbe, onAlbumPage: true)
 
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: compact ? .center : .leading, spacing: 6) {
                 Text(album.title)
-                    .font(.largeTitle.bold())
+                    .font(compact ? .title.bold() : .largeTitle.bold())
                     .foregroundStyle(palette?.primary.color ?? Color.primary)
-                    .lineLimit(2)
+                    .lineLimit(compact ? 3 : 2)
                 Text(album.artist)
-                    .font(.title2)
+                    .font(compact ? .title3 : .title2)
                     .foregroundStyle(palette.map { AnyShapeStyle($0.secondary.color) } ?? AnyShapeStyle(.secondary))
                 Text(metadataLine(album, trackCount: tracks.count))
                     .font(.callout)
@@ -384,6 +441,7 @@ struct AlbumDetailView: View {
                 }
                 .padding(.top, 10)
             }
+            .multilineTextAlignment(compact ? .center : .leading)
         }
     }
 
@@ -402,6 +460,10 @@ struct AlbumDetailView: View {
                 }
                 ForEach(discTracks) { track in
                     let index = tracks.firstIndex(of: track) ?? 0
+                    // On a phone, a plain list with separators (inset to the titles) in place of the card.
+                    if compact, track.id != discTracks.first?.id {
+                        Divider().padding(.leading, TrackRow.compactTitleInset)
+                    }
                     TrackRow(track: track, showArtist: track.displayArtist != album.artist, palette: palette) {
                         queue.play(tracks, startAt: index)
                     }
@@ -412,8 +474,7 @@ struct AlbumDetailView: View {
         }
         // One column: up and down move through the songs, Space or Return plays.
         .keyboardGrid(count: tracks.count, layout: .order(.columns(rows: tracks.count)), id: { tracks[$0].id })
-        .padding(8)
-        .beatGlass(in: RoundedRectangle(cornerRadius: 18, style: .continuous), tint: palette?.background.color)
+        .modifier(TrackListCard(compact: compact, tint: palette?.background.color))
     }
 
     private func metadataLine(_ album: Album, trackCount: Int) -> String {
@@ -427,7 +488,27 @@ struct AlbumDetailView: View {
     }
 }
 
+/// The track list's glass card on the Mac and iPad. On a phone the rows go without: the card's padding, the row's
+/// and the page margin together took ~36 pt from each side of a ~375 pt screen.
+private struct TrackListCard: ViewModifier {
+    let compact: Bool
+    let tint: Color?
+
+    func body(content: Content) -> some View {
+        if compact {
+            content
+        } else {
+            content
+                .padding(8)
+                .beatGlass(in: RoundedRectangle(cornerRadius: 18, style: .continuous), tint: tint)
+        }
+    }
+}
+
 struct TrackRow: View {
+    /// Where a phone's titles start, for separators that line up with them: number column, gap and row padding.
+    static let compactTitleInset: CGFloat = 4 + 20 + 10
+
     let track: Track
     var showArtist = false
     /// The album page's cover colours, when it has them.
@@ -437,6 +518,7 @@ struct TrackRow: View {
     @Environment(PlaybackQueue.self) private var queue
     @Environment(\.gridItem) private var gridItem
     @Environment(\.playbackAccent) private var playbackAccent
+    @Environment(\.compactLayout) private var compact
     @State private var hovering = false
 
     private var secondaryStyle: AnyShapeStyle {
@@ -445,7 +527,7 @@ struct TrackRow: View {
 
     var body: some View {
         let isCurrent = queue.current?.id == track.id
-        HStack(spacing: 14) {
+        HStack(spacing: compact ? 10 : 14) {
             Group {
                 if isCurrent {
                     PlayingIndicator(isAnimating: queue.isPlaying, color: palette?.primary.color ?? playbackAccent)
@@ -455,7 +537,7 @@ struct TrackRow: View {
                 }
             }
             .font(.callout.monospacedDigit())
-            .frame(width: 26, alignment: .trailing)
+            .frame(width: compact ? 20 : 26, alignment: .trailing)
             VStack(alignment: .leading, spacing: 1) {
                 Text(track.title).lineLimit(1)
                     .fontWeight(isCurrent ? .semibold : .regular)
@@ -469,13 +551,19 @@ struct TrackRow: View {
                 .font(.callout.monospacedDigit())
                 .foregroundStyle(secondaryStyle)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        // A phone's rows are a little taller (easier to tap) and barely padded at the sides (no card around them).
+        .padding(.horizontal, compact ? 4 : 12)
+        .padding(.vertical, compact ? 11 : 8)
         .background(rowFill(isCurrent: isCurrent), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
         .keyboardHighlight(gridItem.highlighted, cornerRadius: 6)
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
+        // Double-click plays on the Mac (a click selects nothing here, but it's the Mac's convention); a tap on touch.
+        #if os(macOS)
         .onTapGesture(count: 2, perform: play)
+        #else
+        .onTapGesture(perform: play)
+        #endif
         .onChange(of: gridItem.activation) { _, serial in if serial != nil { play() } }
     }
 
@@ -504,6 +592,10 @@ extension Int {
 extension Int64 {
     /// Bytes as Finder shows a file's size: "412 MB", "41.2 GB".
     var fileSizeText: String { ByteCountFormatter.string(fromByteCount: self, countStyle: .file) }
+
+    /// " · 41.2 GB" to follow a count, or nothing when no size is known: MediaPlayer reports none on iPad and
+    /// iPhone, and every page read "0 KB".
+    var fileSizeSuffix: String { self > 0 ? " · \(fileSizeText)" : "" }
 }
 
 /// "Play Next" / "Add to Queue" for any set of tracks.
@@ -515,5 +607,17 @@ struct TrackContextMenu: View {
         Button("Play", systemImage: "play") { queue.play(tracks) }
         Button("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") { queue.playNext(tracks) }
         Button("Add to Queue", systemImage: "text.line.last.and.arrowtriangle.forward") { queue.addToQueue(tracks) }
+    }
+}
+
+/// The cover pages' margins: narrower on a phone, where 28 pt a side took a seventh of the screen.
+private struct CoverPageContentPadding: ViewModifier {
+    @Environment(\.compactLayout) private var compact
+
+    func body(content: Content) -> some View {
+        content
+            .padding(.horizontal, compact ? 16 : 28)
+            .padding(.bottom, 28)
+            .padding(.top, 16)
     }
 }

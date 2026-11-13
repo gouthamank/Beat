@@ -84,6 +84,7 @@ struct NowPlayingView: View {
     @Environment(ArtworkCache.self) private var artwork
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.playbackAccent) private var playbackAccent
+    @Environment(\.compactLayout) private var compact
     @AppStorage("appearance.coverColours") private var coverColours = true
     /// Remembered in UserDefaults but held in `@State`: toggling an `@AppStorage` value from a click made the clicked
     /// button jump to its new place while the rest of the column slid (the write lands outside the animation).
@@ -105,6 +106,14 @@ struct NowPlayingView: View {
     @State private var shownRevision = 0
     /// Counts backdrop swaps; a new layer fades in above the old one, which stays until it's covered.
     @State private var backdropGeneration = 0
+    /// The playing mix's tracks, for the progress line (see `ChapterScrubber`).
+    @State private var mixChapters: [MixChapter] = []
+    /// How far a drag has pulled the view down. It follows the finger (or pointer), so a drag reads as closing before
+    /// it's let go, and springs back if it wasn't far enough.
+    @State private var pullDown: CGFloat = 0
+
+    /// Lyrics or the visualizer showing while music plays: the screen shouldn't sleep (`keepScreenAwake`).
+    private var watching: Bool { (showLyrics || visualizing) && queue.isPlaying }
 
     /// The cover's colours, unless the Plain appearance is chosen in Settings.
     private var palette: ArtworkPalette? { coverColours ? extracted : nil }
@@ -118,10 +127,16 @@ struct NowPlayingView: View {
                 visualizerScreen
                     .transition(.opacity)
             } else {
-                HStack(spacing: 56) {
+                // Side by side on the Mac and iPad; on a phone the lyrics take the top and the cover steps aside.
+                (compact ? AnyLayout(VStackLayout(spacing: 20)) : AnyLayout(HStackLayout(spacing: 56))) {
+                    if compact, showLyrics {
+                        LyricsView(track: track, palette: palette)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .transition(.opacity)
+                    }
                     player
-                        .frame(maxWidth: showLyrics ? 400 : 520)
-                    if showLyrics {
+                        .frame(maxWidth: compact ? .infinity : showLyrics ? 400 : 520)
+                    if !compact, showLyrics {
                         LyricsView(track: track, palette: palette)
                             .frame(maxWidth: 560, maxHeight: 640)
                             .transition(.move(edge: .trailing).combined(with: .opacity))
@@ -129,24 +144,54 @@ struct NowPlayingView: View {
                 }
                 .animation(.spring(duration: 0.45, bounce: 0.1), value: showLyrics)
                 .onChange(of: showLyrics) { UserDefaults.standard.set(showLyrics, forKey: "nowPlaying.showLyrics") }
-                .padding(48)
+                .padding(compact ? 20 : 48)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                // Dragging down anywhere that isn't a control closes it. A click does nothing.
+                // Dragging down anywhere that isn't a control pulls the view down with it, and closes it if far
+                // enough. A click does nothing. This is the way out (and Esc), in place of a close button.
                 .contentShape(Rectangle())
                 .gesture(
-                    DragGesture(minimumDistance: 10, coordinateSpace: .global).onEnded { value in
-                        if NowPlayingDrag.passes(value, upward: false) { navigator.showingNowPlaying = false }
-                    }
+                    // Global, so the view moving with the drag doesn't change the drag's own measurements.
+                    DragGesture(minimumDistance: 10, coordinateSpace: .global)
+                        .onChanged { pullDown = max($0.translation.height, 0) }
+                        .onEnded { value in
+                            if NowPlayingDrag.passes(value, upward: false) {
+                                close()
+                            } else {
+                                withAnimation(.spring(duration: 0.35, bounce: 0.2)) { pullDown = 0 }
+                            }
+                        }
                 )
-                .overlay(alignment: .topLeading) { closeButton }
+                .background {
+                    // Esc, from a hardware keyboard too; invisible but present (a `.hidden()` button can lose its shortcut).
+                    Button("Close", action: close)
+                        .keyboardShortcut(.cancelAction)
+                        .opacity(0)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
+                .accessibilityAction(.escape, close)
                 .transition(.opacity)
             }
         }
         .animation(.easeInOut(duration: 0.35), value: visualizing)
         .opacity(contentOpacity)
         .background { backdrop }
+        // Pulled down: the whole view, backdrop included, slides with the drag, shrinks a little and rounds its
+        // corners, showing the page underneath, as a card being pulled away.
+        .clipShape(RoundedRectangle(cornerRadius: min(pullDown / 4, 28), style: .continuous))
+        .scaleEffect(1 - min(pullDown / 2000, 0.05), anchor: .top)
+        .offset(y: pullDown)
+        .loadsMixChapters(of: track, into: $mixChapters)
+        // Lyrics and the visualizer are watched, not touched: the screen stays on for them while music plays.
+        .onAppear { keepScreenAwake(watching) }
+        .onChange(of: watching) { _, on in keepScreenAwake(on) }
+        .onDisappear { keepScreenAwake(false) }
         // Controls and glass follow the cover's lightness rather than the system's.
         .environment(\.colorScheme, colorSchemeForCover)
+        #if os(iOS)
+        // The status bar too, while Now Playing covers the screen (scenes are drawn on dark). The Mac has no status bar.
+        .preferredColorScheme(visualizing && style.isScene ? .dark : colorSchemeForCover)
+        #endif
         // On the cover's own colours, playback controls use the colour chosen to read on them.
         .environment(\.playbackAccent, palette?.primary.color ?? playbackAccent)
         // The playing track's own art and colours: an album whose tracks carry different art changes with each.
@@ -189,21 +234,19 @@ struct NowPlayingView: View {
     private var player: some View {
         VStack(spacing: 22) {
                 // Original shape, so wide covers aren't cropped; the frame caps whichever side is longer.
-                // Clicking it shows Radial around it.
-                RadialCover(active: showRadial, colour: palette?.primary.color ?? playbackAccent) {
+                // Clicking it shows Radial around it. On a phone it makes way for lyrics.
+                if !(compact && showLyrics) {
+                // Not on a phone: there the ring crowds a small cover, and a tap meant for the screen set it off.
+                RadialCover(active: showRadial && !compact, colour: palette?.primary.color ?? playbackAccent) {
                     ArtworkView(source: shownSource ?? ArtworkSource(track), size: .large, cornerRadius: 16, framing: .original)
                         // From the outline: the cover scales with the music, and SwiftUI's `.shadow` would redraw.
                         .background(ShapeShadow(shape: RoundedRectangle(cornerRadius: 16, style: .continuous),
                                                 opacity: 0.35, radius: 30, y: 14))
                 }
                 .animation(.easeInOut(duration: 0.3), value: showRadial)
-                .contentShape(Rectangle())
-                .onTapGesture { showRadial.toggle() }
-                .help("Show or hide the spectrum")
-                .accessibilityAddTraits(.isButton)
-                .accessibilityLabel("Cover")
-                .accessibilityHint("Shows or hides the spectrum around the cover")
+                .modifier(RadialToggle(isOn: $showRadial, enabled: !compact))
                 .frame(maxWidth: showLyrics ? 400 : 640, maxHeight: showLyrics ? 340 : 440)
+                }
                 VStack(spacing: 4) {
                     Text(track.title)
                         .font(.title.bold())
@@ -225,7 +268,7 @@ struct NowPlayingView: View {
                     .help("Show Album")
                 }
                 VStack(spacing: 12) {
-                    Scrubber(duration: track.duration)
+                    Scrubber(duration: track.duration, chapters: mixChapters)
                     TransportControls()
                         .scaleEffect(1.3)
                         .padding(.vertical, 6)
@@ -305,7 +348,9 @@ struct NowPlayingView: View {
                     Color.clear.frame(width: 36, height: 36)
                 }
                 Spacer()
-                HStack(alignment: .bottom, spacing: 24) {
+                // Title, controls and a balancing space in a row; on a phone the title sits over the controls.
+                (compact ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+                         : AnyLayout(HStackLayout(alignment: .bottom, spacing: 24))) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(track.title).font(.headline).foregroundStyle(style.isScene ? AnyShapeStyle(.white) : primary).lineLimit(1)
                         Text(track.displayArtist).font(.subheadline).foregroundStyle(captionStyle).lineLimit(1)
@@ -315,14 +360,16 @@ struct NowPlayingView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     VStack(spacing: 8) {
-                        Scrubber(duration: track.duration)
+                        Scrubber(duration: track.duration, chapters: mixChapters)
                         TransportControls()
                     }
-                    .frame(width: 380)
-                    Color.clear.frame(maxWidth: .infinity, maxHeight: 1)
+                    .frame(width: compact ? nil : 380)
+                    if !compact {
+                        Color.clear.frame(maxWidth: .infinity, maxHeight: 1)
+                    }
                 }
             }
-            .padding(.horizontal, 28)
+            .padding(.horizontal, compact ? 20 : 28)
             .padding(.top, 44)
             .padding(.bottom, 28)
             // Scenes draw their own dark ground, whatever the cover's lightness: controls go dark to match, and
@@ -347,6 +394,10 @@ struct NowPlayingView: View {
         .onContinuousHover { phase in
             if case .active = phase { revealControls() }
         }
+        #if os(iOS)
+        // No hover on touch: a tap brings the faded controls back.
+        .onTapGesture { revealControls() }
+        #endif
         .onAppear { revealControls() }
         .onDisappear {
             hideControls?.cancel()
@@ -382,7 +433,9 @@ struct NowPlayingView: View {
             try? await Task.sleep(for: .seconds(3))
             guard !Task.isCancelled else { return }
             controlsVisible = false
+            #if os(macOS)
             NSCursor.setHiddenUntilMouseMoves(true)
+            #endif
         }
     }
 
@@ -398,25 +451,16 @@ struct NowPlayingView: View {
         .help(help)
     }
 
-    private var closeButton: some View {
-            Button { navigator.showingNowPlaying = false } label: {
-                Image(systemName: "chevron.down")
-                    .font(.title3.weight(.semibold))
-                    .frame(width: 36, height: 36)
-                    .contentShape(Circle())
-            }
-            .buttonStyle(.plain)
-            .beatGlass(in: Circle(), interactive: true)
-            .keyboardShortcut(.cancelAction)
-            .help("Close (Esc)")
-            .padding(.leading, 20)
-            .padding(.top, 44)
+    /// Closes with the usual morph into the bar, from wherever a drag left the view.
+    private func close() {
+        navigator.showingNowPlaying = false
+        withAnimation(Motion.morphClose) { pullDown = 0 }
     }
 
     /// A vivid blur of the cover under a wash of the palette background; cross-fades between tracks.
     private var backdrop: some View {
         ZStack {
-            Color(nsColor: .windowBackgroundColor)
+            Color.windowBackground
             ZStack {
                 palette?.background.color
                 ArtworkBackdrop(source: shownSource ?? ArtworkSource(track), vividness: palette == nil ? .subtle : .vivid)
@@ -432,5 +476,25 @@ struct NowPlayingView: View {
         }
         // No `.animation` here: the swap carries its own (none when opening, a cross-fade when changing songs).
         .ignoresSafeArea()
+    }
+}
+
+/// Clicking or tapping the cover shows or hides Radial around it, on the Mac and iPad. A phone's cover takes no tap.
+private struct RadialToggle: ViewModifier {
+    @Binding var isOn: Bool
+    let enabled: Bool
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content
+                .contentShape(Rectangle())
+                .onTapGesture { isOn.toggle() }
+                .help("Show or hide the spectrum")
+                .accessibilityAddTraits(.isButton)
+                .accessibilityLabel("Cover")
+                .accessibilityHint("Shows or hides the spectrum around the cover")
+        } else {
+            content.accessibilityLabel("Cover")
+        }
     }
 }

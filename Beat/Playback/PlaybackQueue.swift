@@ -46,7 +46,12 @@ final class PlaybackQueue {
         output = OutputRoute(player: player.outputPlayer)
         self.history = history
         self.scrobbler = scrobbler
+        #if os(macOS)
         self.volume = UserDefaults.standard.object(forKey: "volume") as? Float ?? 0.8
+        #else
+        // Full: on iPad and iPhone Beat's volume control is the system volume (SystemVolume).
+        self.volume = 1
+        #endif
         player.volume = volume
         player.onTime = { [weak self] in self?.timeChanged($0) }
         player.onAdvanced = { [weak self] in self?.advancedAutomatically() }
@@ -255,8 +260,12 @@ final class PlaybackQueue {
         nowPlaying.update(track: state.current, elapsed: currentTime, isPlaying: isPlaying)
     }
 
+    /// Skips songs whose file has gone (moved or deleted since Music last saw it). Only files can go missing that
+    /// way: synced songs on iPad and iPhone are `ipod-library://` addresses, which the file check rejected, so
+    /// nothing played.
     private static func isPlayable(_ track: Track) -> Bool {
-        FileManager.default.fileExists(atPath: track.location.path)
+        guard track.location.isFileURL else { return true }
+        return FileManager.default.fileExists(atPath: track.location.path)
     }
 }
 

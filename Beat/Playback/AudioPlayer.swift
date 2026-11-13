@@ -32,13 +32,19 @@ final class AudioPlayer {
     private var pendingPlay: Task<Void, Never>?
     private var observers: [NSObjectProtocol] = []
     private var timeObserver: Any?
+    /// Seeks still on their way. Meanwhile the periodic observer keeps reporting the old position, and passing it
+    /// on made the progress bar jump back and forth between the old and new points after a tap to seek.
+    private var pendingSeeks = 0
 
     init() {
         player.actionAtItemEnd = .advance
         timeObserver = player.addPeriodicTimeObserver(
             forInterval: CMTime(seconds: 0.25, preferredTimescale: 600), queue: .main
         ) { [weak self] time in
-            MainActor.assumeIsolated { self?.onTime?(time.seconds) }
+            MainActor.assumeIsolated {
+                guard let self, self.pendingSeeks == 0 else { return }
+                self.onTime?(time.seconds)
+            }
         }
         for name in [AVPlayerItem.didPlayToEndTimeNotification, AVPlayerItem.failedToPlayToEndTimeNotification] {
             observers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
@@ -101,7 +107,20 @@ final class AudioPlayer {
     }
 
     func seek(to seconds: TimeInterval) {
-        player.seek(to: CMTime(seconds: seconds, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
+        pendingSeeks += 1
+        player.seek(to: CMTime(seconds: seconds, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero,
+                    completionHandler: Self.seekCompletion(for: self))
+    }
+
+    /// Made outside the main actor: AVFoundation calls it on its own queue (see the CLAUDE.md gotcha on callbacks
+    /// created in `@MainActor` code). A seek replaced by a newer one finishes too, unfinished, so each one counts down.
+    private nonisolated static func seekCompletion(for player: AudioPlayer) -> @Sendable (Bool) -> Void {
+        { [weak player] _ in
+            Task { @MainActor in
+                guard let player else { return }
+                player.pendingSeeks = max(player.pendingSeeks - 1, 0)
+            }
+        }
     }
 
     func stop() {

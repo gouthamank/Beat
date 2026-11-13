@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 
 /// An artist's art: their photo from Discogs when one has been downloaded, else up to four of their covers
@@ -20,7 +19,7 @@ struct ArtistArtwork: View {
             .aspectRatio(1, contentMode: .fit)
             .overlay {
                 if let artistID, let photo = images?.photo(for: artistID) {
-                    Image(nsImage: photo).resizable().scaledToFill()
+                    Image(platformImage: photo).resizable().scaledToFill()
                 } else {
                     mosaic
                 }
@@ -53,13 +52,13 @@ struct ArtistArtwork: View {
 /// worked out the first time any view asks and shared by every view after, so a tile, the page header and
 /// the zoom's flying copy always agree, and none of them changes what it shows after appearing.
 ///
-/// Answering is synchronous and cheap: a file-exists check, and `NSImage(byReferencing:)`, which only
+/// Answering is synchronous and cheap: a file-exists check, and `PlatformImage(byReferencing:)`, which only
 /// decodes the photo when it's first drawn.
 @MainActor
 @Observable
 final class ArtistImages {
     private struct Answer {
-        let image: NSImage?
+        let image: PlatformImage?
         /// The photo file's date, so a refresh can tell whether anything actually changed.
         let modified: Date?
     }
@@ -73,7 +72,7 @@ final class ArtistImages {
         self.directory = directory
     }
 
-    func photo(for artistID: String) -> NSImage? {
+    func photo(for artistID: String) -> PlatformImage? {
         _ = version
         if let answer = answers[artistID] { return answer.image }
         let answer = look(artistID)
@@ -102,7 +101,7 @@ final class ArtistImages {
               let attributes = try? FileManager.default.attributesOfItem(atPath: url.path) else {
             return Answer(image: nil, modified: nil)
         }
-        return Answer(image: NSImage(byReferencing: url), modified: attributes[.modificationDate] as? Date ?? .distantPast)
+        return Answer(image: PlatformImage.referencing(url), modified: attributes[.modificationDate] as? Date ?? .distantPast)
     }
 }
 

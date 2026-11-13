@@ -23,12 +23,14 @@ struct SidebarView: View {
     @State private var iconTarget: SidebarNode?
     @State private var dropTargetingTopLevel = false
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.compactLayout) private var compact
     @AppStorage(LibraryPage.hiddenKey) private var hiddenLibraryPages = ""
     @AppStorage(SidebarTint.key) private var tintSetting = SidebarTint.full.rawValue
 
     /// The album page's colours, when the sidebar should take them.
     private var tint: (palette: ArtworkPalette, style: SidebarTint)? {
-        guard let style = SidebarTint(rawValue: tintSetting), style != .off,
+        // Not as a phone's glass drawer, which shows the album page itself through it.
+        guard !compact, let style = SidebarTint(rawValue: tintSetting), style != .off,
               let palette = navigator.coverTint.current?.palette else { return nil }
         return (palette, style)
     }
@@ -48,8 +50,15 @@ struct SidebarView: View {
         }
         .listStyle(.sidebar)
         .safeAreaInset(edge: .bottom, spacing: 0) { bottomBar }
+        #if os(iOS)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { navigator.showingSettings = true } label: { Label("Settings", systemImage: "gearshape") }
+            }
+        }
+        #endif
         // On album pages the sidebar takes the cover's colours, so the window reads as one surface.
-        .scrollContentBackground(tint == nil ? .automatic : .hidden)
+        .scrollContentBackground(tint == nil && !compact ? .automatic : .hidden)
         .background {
             if let tint, let albumID = navigator.coverTint.current?.albumID {
                 // The same window-sized backdrop as the album page, so its blur carries on into the sidebar.
@@ -66,11 +75,18 @@ struct SidebarView: View {
             get: { navigator.renaming.flatMap { pages.node($0) } },
             set: { if $0 == nil { navigator.renaming = nil } }
         )) { node in
-            NameSheet(title: node.isFolder ? "Folder Name" : "Page Name", symbol: node.symbol, name: node.name) {
+            let isNew = navigator.namingNew?.id == node.id
+            NameSheet(
+                title: isNew ? (node.isFolder ? "New Folder" : "New Page") : (node.isFolder ? "Folder Name" : "Page Name"),
+                symbol: node.symbol, name: node.name, saveTitle: isNew ? "Create" : "Rename",
+                // A new item that isn't named (Cancel, Esc, a swipe down) isn't kept.
+                cancel: isNew ? { navigator.cancelNaming(in: pages) } : nil
+            ) {
                 pages.rename(node.id, to: $0)
+                if isNew { navigator.namingNew = nil }
             }
         }
-        .confirmationDialog(deleteTitle, isPresented: Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } })) {
+        .confirmationDialog(deleteTitle, isPresented: Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } }), titleVisibility: .visible) {
             Button("Delete", role: .destructive) {
                 if let node = pendingDelete { pages.delete(node.id) }
             }
@@ -126,9 +142,9 @@ struct SidebarView: View {
     }
 
     private func create(folder: Bool) {
+        let previous = navigator.selection
         let id = pages.create(folder: folder, in: nil)
-        if !folder { selection = .page(id) }
-        navigator.renaming = id
+        navigator.nameNew(id, folder: folder, previousSelection: previous)
     }
 
     private var deleteTitle: String {
@@ -236,7 +252,12 @@ private struct SidebarTree: View {
 }
 
 extension SidebarRow {
+    /// The disclosure chevron's column. Wider on iPad and iPhone, whose list icons are larger and sat right against it.
+    #if os(macOS)
     static let chevronWidth: CGFloat = 14
+    #else
+    static let chevronWidth: CGFloat = 24
+    #endif
     static func indent(_ depth: Int) -> CGFloat { CGFloat(depth) * 14 }
 }
 
@@ -325,10 +346,10 @@ private struct NodeMenu: View {
     }
 
     private func create(folder: Bool, inside: Bool) {
+        let previous = navigator.selection
         let id = inside ? pages.create(folder: folder, in: node.id) : pages.create(folder: folder, below: node.id)
         // Expand the folder so the new item is visible.
         if inside { actions.expand(node.id) }
-        if !folder { navigator.selection = .page(id) }
-        navigator.renaming = id
+        navigator.nameNew(id, folder: folder, previousSelection: previous)
     }
 }

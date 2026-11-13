@@ -27,7 +27,7 @@ struct ArtworkView: View {
     }
 
     @Environment(ArtworkCache.self) private var artwork
-    @State private var image: NSImage?
+    @State private var image: PlatformImage?
 
     private struct Load: Hashable {
         let source: ArtworkSource?
@@ -39,7 +39,7 @@ struct ArtworkView: View {
     /// The source's cached image first, so a new source that's already in memory shows at once (in whatever
     /// animation changed it) instead of a frame later; else the last loaded image, which stays up while a new one
     /// loads; else a cached thumbnail for a large request, so a view never flashes the placeholder.
-    private var shown: NSImage? {
+    private var shown: PlatformImage? {
         if let source, let hit = artwork.cachedImage(source, size: size) { return hit }
         if let image { return image }
         guard let source, size == .large else { return nil }
@@ -64,7 +64,7 @@ struct ArtworkView: View {
     @ViewBuilder
     private var content: some View {
         if framing == .original, let image = shown {
-            Image(nsImage: image)
+            Image(platformImage: image)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
@@ -79,7 +79,7 @@ struct ArtworkView: View {
             .fill(.quaternary)
             .overlay {
                 if let image = shown {
-                    Image(nsImage: image)
+                    Image(platformImage: image)
                         .resizable()
                         .scaledToFill()
                         .transition(.opacity)

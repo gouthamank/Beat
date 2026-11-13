@@ -1,4 +1,5 @@
-// Renders the Beat app icon (same geometry as AppIcon.svg) into the asset catalog.
+// Renders the Beat app icon (same geometry as AppIcon.svg) into the asset catalog: the Mac's sizes, and one
+// full-bleed 1024 px image for iPad and iPhone.
 // Run from the repo root: swift Design/AppIcon/render.swift
 import CoreGraphics
 import Foundation
@@ -20,21 +21,29 @@ func strokeWidth(forPixels px: Int) -> CGFloat {
     }
 }
 
-func render(pixels px: Int) -> CGImage {
+/// `fullBleed` is the iPad and iPhone icon: the tile fills the square, opaque, with no corners or shadow (iOS
+/// rounds icons itself). The Mac icon is the shaped tile with its shadow, on transparency.
+func render(pixels px: Int, fullBleed: Bool = false) -> CGImage {
     let ctx = CGContext(data: nil, width: px, height: px, bitsPerComponent: 8, bytesPerRow: 0,
                         space: CGColorSpace(name: CGColorSpace.sRGB)!,
-                        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+                        bitmapInfo: fullBleed ? CGImageAlphaInfo.noneSkipLast.rawValue : CGImageAlphaInfo.premultipliedLast.rawValue)!
     let s = CGFloat(px) / 1024
     // Work in the SVG's top-left, 1024-unit space.
     ctx.translateBy(x: 0, y: CGFloat(px))
     ctx.scaleBy(x: s, y: -s)
+    if fullBleed {
+        // The 824-unit tile (100...924) scaled up to fill the square.
+        ctx.scaleBy(x: 1024 / 824, y: 1024 / 824)
+        ctx.translateBy(x: -100, y: -100)
+    }
 
-    let body = CGPath(roundedRect: CGRect(x: 100, y: 100, width: 824, height: 824),
-                      cornerWidth: 185, cornerHeight: 185, transform: nil)
+    let body = fullBleed
+        ? CGPath(rect: CGRect(x: 100, y: 100, width: 824, height: 824), transform: nil)
+        : CGPath(roundedRect: CGRect(x: 100, y: 100, width: 824, height: 824), cornerWidth: 185, cornerHeight: 185, transform: nil)
 
     // Shadow offsets are in device space (y up), so negative y drops it below the body.
     ctx.saveGState()
-    if px >= 64 {
+    if px >= 64, !fullBleed {
         ctx.setShadow(offset: CGSize(width: 0, height: -8 * s), blur: 20 * s,
                       color: CGColor(gray: 0, alpha: 0.3))
     }
@@ -82,6 +91,9 @@ for point in [16, 32, 128, 256, 512] {
         entries.append(#"    { "idiom" : "mac", "scale" : "\#(scale)x", "size" : "\#(point)x\#(point)", "filename" : "\#(name)" }"#)
     }
 }
+// iPad and iPhone: one 1024 px image, which the system scales for every size.
+write(render(pixels: 1024, fullBleed: true), to: outDir.appendingPathComponent("icon_ios_1024.png"))
+entries.append(#"    { "idiom" : "universal", "platform" : "ios", "size" : "1024x1024", "filename" : "icon_ios_1024.png" }"#)
 let contents = "{\n  \"images\" : [\n" + entries.joined(separator: ",\n")
     + "\n  ],\n  \"info\" : { \"author\" : \"xcode\", \"version\" : 1 }\n}\n"
 try contents.write(to: outDir.appendingPathComponent("Contents.json"), atomically: true, encoding: .utf8)

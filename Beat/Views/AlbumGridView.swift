@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct AlbumGridView: View {
+    @Environment(\.pageInset) private var pageInset
     let title: String
     let albums: [Album]
     /// The sidebar page whose search and scroll this grid remembers; nil for pushed pages.
@@ -24,17 +25,17 @@ struct AlbumGridView: View {
                     AlbumTile(album: album).keyboardGridItem(i)
                 }
             }
-            .padding(24)
+            .padding(pageInset)
             .pausesPointerWhileScrolling(scrolling)
         }
         .tracksScrolling(scrolling)
         .remembersScroll(memory)
         // Outside the scroll modifiers: it wraps the scroll view in a reader.
-        .keyboardGrid(count: shown.count, layout: .adaptive(minimum: Self.tile.minimum, spacing: Self.tile.spacing, inset: 24),
+        .keyboardGrid(count: shown.count, layout: .adaptive(minimum: Self.tile.minimum, spacing: Self.tile.spacing, inset: pageInset),
                       id: { shown[$0].id })
         .navigationTitle(title)
-        .navigationSubtitle("\(albums.count.counted("album")) · \(albums.reduce(0) { $0 + $1.fileSize }.fileSizeText)")
-        .searchable(text: navigator.search(memory, else: $localSearch), placement: .toolbar, prompt: "Albums")
+        .pageSubtitle(albums.count.counted("album") + albums.reduce(0) { $0 + $1.fileSize }.fileSizeSuffix)
+        .searchable(text: navigator.search(memory, else: $localSearch), placement: .page, prompt: "Albums")
     }
 }
 
@@ -64,6 +65,7 @@ struct AlbumTile: View {
         VStack(alignment: .leading, spacing: 6) {
             ArtworkView(albumID: album.id, cornerRadius: 10)
                 .background { if needsProbe { Color.clear.frameProbe(probe) } }
+                .zoomSource(.album(album.id))
                 .keyboardHighlight(gridItem.highlighted, cornerRadius: 10)
                 .opacity(hero.isReturning(to: album.id) ? 0 : 1)
                 // Drawn from the outline: SwiftUI's `.shadow` was redrawn for every tile on every scrolled frame.
