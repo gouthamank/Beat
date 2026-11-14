@@ -378,6 +378,9 @@ struct AlbumDetailView: View {
             CoverPageTopBar.collapse(scrollOffset: $0.contentOffset.y + $0.contentInsets.top)
         } action: { _, progress in collapse.progress = progress }
         .opacity(revealed ? 1 : 0)
+        // On the scroll view, before the background: that's drawn as if it covered the whole window, and UI tests
+        // measuring the page column got the window's frame.
+        .accessibilityIdentifier("albumPage")
         .background {
             CoverPageBackground(albumID: album.id, palette: palette, shown: backgroundShown)
                 .frameProbe(pageProbe)
@@ -391,7 +394,6 @@ struct AlbumDetailView: View {
             ArtworkView(albumID: album.id, cornerRadius: 0)
         }
         .navigationTitle(album.title)
-        .accessibilityIdentifier("albumPage")
         .onAppear {
             hero.setTarget(artProbe, for: album.id)
             hero.setPage(pageProbe, for: album.id)
@@ -435,6 +437,7 @@ struct AlbumDetailView: View {
                 BeatGlassContainer(spacing: 10) {
                     HStack(spacing: 10) {
                         Button { queue.play(tracks) } label: { Label("Play", systemImage: "play.fill").frame(minWidth: 70) }
+                            .accessibilityIdentifier("albumPage.play")
                             .beatGlassButtonStyle(prominent: true)
                         Button { queue.play(tracks, shuffled: true) } label: { Label("Shuffle", systemImage: "shuffle").frame(minWidth: 70) }
                             .beatGlassButtonStyle()

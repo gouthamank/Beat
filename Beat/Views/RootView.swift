@@ -100,7 +100,9 @@ struct RootView: View {
             pageStack
         } else {
             NavigationSplitView {
-                sidebar.navigationSplitViewColumnWidth(min: 180, ideal: 220, max: 300)
+                // Never narrower than its ideal width: SwiftUI works out the window's minimum at launch from the ideal,
+                // but while resizing from the current width, so a window shrunk with a narrower sidebar reopened wider.
+                sidebar.navigationSplitViewColumnWidth(min: 220, ideal: 220, max: 300)
             } detail: {
                 pageStack
             }

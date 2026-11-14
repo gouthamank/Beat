@@ -97,20 +97,25 @@ genre, Library ▸ Albums, Library ▸ Songs; not Home, whose presets count back
   open Music.
 - **Isolated app state**, in two parts:
   - **Its own app:** UI tests run the UITest configuration, Debug under the bundle ID `dev.gouthaman.Beat.uitest`. Its
-    settings (every `@AppStorage`, the window's saved size and split) are its own domain, never the user's Beat's;
-    on iOS it's a separate app with its own container. `-BeatFreshSettings` clears them at launch; a test that
-    relaunches to check what was kept leaves it out.
-  - **A temporary home for files:** a UI test sets `CFFIXED_USER_HOME` to a temporary folder. Foundation's folders
+    settings (every `@AppStorage`, the window's saved size and split) are its own domain, never the user's Beat's
+    (on the Mac they're in `~/Library/Preferences/dev.gouthaman.Beat.uitest.plist`); on iOS it's a separate app with
+    its own container.
+  - **A temporary home for files:** a UI test sets `CFFIXED_USER_HOME` to a folder in /tmp. Foundation's folders
     (Application Support, Caches, Documents) follow it, so `pages.json`, history, caches and thumbnails land there
-    with no store changed. Settings don't follow it on macOS (they're written by `cfprefsd`, which ignores it):
-    hence the bundle ID. The Keychain is shared, but Beat only touches it with Last.fm or Discogs switched on, which
-    fresh settings never are.
+    with no store changed. Settings don't follow it on macOS (they're written by `cfprefsd`), hence the bundle ID.
+    **The folder must exist before Beat launches:** with it missing, settings couldn't see the system's (light mode,
+    the default blue accent) and nothing saved stuck. The Mac tests share `/tmp/BeatUITests`, which `make test-ui`
+    makes before running (the sandboxed test runner can't). The Keychain is shared, but Beat only touches it with
+    Last.fm or Discogs switched on, which fresh settings never are.
+  - **A fresh start per test:** `-BeatFreshStart` clears the UI-test app's settings key by key and deletes `Library/`
+    in the home, before any store reads anything. A test that relaunches to check what was kept leaves it out.
 - **The guard:** `LaunchOptions.checkIsolation()`, first thing in `BeatApp.init`. When `-BeatFixtureLibrary` is
-  given (even without its folder), Beat stops (`fatalError`) unless the fixture folder exists, it's the UI-test build,
-  the temporary home is set and every data folder is inside it. A test that silently wrote to the real folders could
-  lose the user's pages, so a launch that can't prove isolation doesn't start. `LaunchOptionsTests` covers the rules.
-- **By hand:** `make run-fixtures` builds the UI-test app and opens it on the fixture songs in a fresh temporary
-  home: what a UI test sees.
+  given (even without its folder), Beat stops (`fatalError`) unless the fixture folder exists, it's the UI-test
+  build, and the temporary home is in /tmp, already exists and holds every data folder. A test that silently wrote
+  to the real folders could lose the user's pages, so a launch that can't prove isolation doesn't start, and a fresh
+  start only ever deletes inside a home in /tmp. `LaunchOptionsTests` covers the rules.
+- **By hand:** `make run-fixtures` builds the UI-test app and opens it on the fixture songs, fresh: what a UI test
+  sees. `make run-fixtures KEEP=1` reopens it as it was left, to check what a relaunch keeps.
 - **Accessibility identifiers** on what UI tests touch, dot-separated, with a name where there's one per item:
 
   | Identifier | What |

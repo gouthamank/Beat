@@ -50,8 +50,9 @@ final class LaunchOptionsTests: XCTestCase {
 
     func testIsolatedOnlyAsTheUITestBuildWithEveryFolderInTheTemporaryHome() {
         let inside = URL(fileURLWithPath: "/tmp/BeatUITests-1/Library/Application Support")
-        func problem(app: String? = "dev.gouthaman.Beat.uitest", home: String? = "/tmp/BeatUITests-1", folders: [URL?]) -> String? {
-            LaunchOptions.isolationProblem(bundleID: app, home: home, dataFolders: folders)
+        func problem(app: String? = "dev.gouthaman.Beat.uitest", home: String? = "/tmp/BeatUITests-1", exists: Bool = true,
+                     folders: [URL?]) -> String? {
+            LaunchOptions.isolationProblem(bundleID: app, home: home, homeExists: exists, dataFolders: folders)
         }
         XCTAssertNil(problem(folders: [inside, URL(fileURLWithPath: "/tmp/BeatUITests-1/Library/Caches")]))
         XCTAssertNotNil(problem(app: "dev.gouthaman.Beat", folders: [inside]), "the real app: its settings are the user's")
@@ -62,5 +63,9 @@ final class LaunchOptionsTests: XCTestCase {
         XCTAssertNotNil(problem(folders: [URL(fileURLWithPath: "/tmp/BeatUITests-1-other/Library")]),
                         "a sibling folder whose name starts the same isn't inside")
         XCTAssertNotNil(problem(folders: [nil]), "a folder that couldn't be found")
+        XCTAssertNotNil(problem(exists: false, folders: [inside]), "a home made after launch is too late for settings")
+        XCTAssertNotNil(problem(home: "/Users/me", folders: [URL(fileURLWithPath: "/Users/me/Library/Caches")]),
+                        "a fresh start deletes inside the home, so it must be in /tmp")
+        XCTAssertNil(problem(home: "/private/tmp/BeatUITests-1", folders: [URL(fileURLWithPath: "/private/tmp/BeatUITests-1/Library")]))
     }
 }

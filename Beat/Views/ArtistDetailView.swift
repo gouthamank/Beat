@@ -88,6 +88,9 @@ struct ArtistDetailView: View {
         .tracksScrolling(scrolling)
         // As on album pages: while the art zooms in from a tile, the page fades in around it.
         .opacity(revealed ? 1 : 0)
+        // On the scroll view, before the background: that's drawn as if it covered the whole window, and UI tests
+        // measuring the page column got the window's frame.
+        .accessibilityIdentifier("artistPage")
         .onScrollGeometryChange(for: Double.self) {
             CoverPageTopBar.collapse(scrollOffset: $0.contentOffset.y + $0.contentInsets.top)
         } action: { _, progress in collapse.progress = progress }
@@ -105,7 +108,6 @@ struct ArtistDetailView: View {
             ArtistArtwork(albumIDs: artist.albumIDsNewestFirst, artistID: artist.id, cornerRadius: 0)
         }
         .navigationTitle(artist.name)
-        .accessibilityIdentifier("artistPage")
         .onAppear {
             buildLocalContent(artist)
             hero.setTarget(artProbe, for: .artist(artist.id))

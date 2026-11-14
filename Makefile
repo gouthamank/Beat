@@ -13,7 +13,7 @@ GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo none)$(shel
 RELEASE_APP := build/Build/Products/Release/Beat.app
 INSTALLED_APP := /Applications/Beat.app
 
-.PHONY: project build test test-record run-fixtures install clean ios-sim-ipad ios-sim-iphone ios-install ios-test ios-test-record
+.PHONY: project build test test-record test-ui run-fixtures install clean ios-sim-ipad ios-sim-iphone ios-install ios-test ios-test-record
 
 # Regenerate Beat.xcodeproj from project.yml.
 project:
@@ -32,15 +32,24 @@ test: project
 test-record: project
 	TEST_RUNNER_SNAPSHOT_TESTING_RECORD=failed $(XCODEBUILD) test
 
+# Mac UI tests: launch the UI-test build on the fixture songs, each test in a fresh temporary home, and drive it with
+# the keyboard and mouse, so leave the Mac alone while they run. The first run asks once to let the test runner
+# control the Mac (System Settings > Privacy & Security > Accessibility).
+test-ui: project
+	rm -rf /tmp/BeatUITests && mkdir -p /tmp/BeatUITests
+	xcodebuild -project Beat.xcodeproj -scheme BeatUITests -derivedDataPath build -quiet \
+		-destination "platform=macOS,arch=$(shell uname -m)" ONLY_ACTIVE_ARCH=YES test
+
 # The UI-test build (its own bundle ID, so its own settings) on the fixture songs in Fixtures/Library, with its files
-# in a temporary home: what a UI test sees, starting fresh. Your own library, pages and settings aren't read or
-# touched. Quit it to return.
+# in a temporary home: what a UI test sees, starting fresh. `make run-fixtures KEEP=1` reopens it as it was left
+# instead (same home and settings), to check what a relaunch keeps. Your own library, pages and settings aren't
+# read or touched. Quit it to return.
 FIXTURE_HOME := /tmp/beat-fixtures-home
 run-fixtures: project
 	$(XCODEBUILD) -configuration UITest build
-	rm -rf "$(FIXTURE_HOME)" && mkdir -p "$(FIXTURE_HOME)"
+	$(if $(KEEP),,rm -rf "$(FIXTURE_HOME)" && mkdir -p "$(FIXTURE_HOME)")
 	CFFIXED_USER_HOME="$(FIXTURE_HOME)" "build/Build/Products/UITest/Beat.app/Contents/MacOS/Beat" \
-		-BeatFixtureLibrary "$(CURDIR)/Fixtures/Library" -BeatFreshSettings
+		-BeatFixtureLibrary "$(CURDIR)/Fixtures/Library" $(if $(KEEP),,-BeatFreshStart)
 
 # Release build, replace the installed copy, and relaunch it. Beat is quit politely first so it can
 # finish saving; the first run asks once to let Terminal control Beat.

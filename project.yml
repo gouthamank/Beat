@@ -171,6 +171,18 @@ targets:
     dependencies:
       - target: BeatiOS
       - package: SnapshotTesting
+  # Mac UI tests: launch the UI-test build on the fixture songs and drive it (`make test-ui`, TESTING.md).
+  BeatUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources: [BeatUITests]
+    settings:
+      groups: [macSigning]
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: dev.gouthaman.BeatUITests
+    dependencies:
+      - target: Beat
 schemes:
   Beat:
     build:
@@ -179,6 +191,15 @@ schemes:
         BeatTests: [test]
     test:
       targets: [BeatTests]
+  # The UITest configuration: the app under its own bundle ID, so tests never touch the user's Beat.
+  BeatUITests:
+    build:
+      targets:
+        Beat: all
+        BeatUITests: [test]
+    test:
+      config: UITest
+      targets: [BeatUITests]
   BeatiOS:
     build:
       targets:
