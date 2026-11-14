@@ -14,6 +14,8 @@ struct AlbumSongsTable: NSViewRepresentable {
     }
 
     let sections: [ArtistSection]
+    /// `sections` as rows, built by `SongsModel` off the main actor; nil only before its first update.
+    let layout: AlbumSongsLayout?
     /// Changes whenever the rows do, so the table reloads only then.
     let generation: Int
     let playOrder: [Track]
@@ -28,6 +30,9 @@ struct AlbumSongsTable: NSViewRepresentable {
     /// Changes when the sidebar's Songs item is clicked again at the top level.
     let scrollToTopToken: Int
     let stores: Stores
+
+    /// Row heights for `SongsModel`, which builds the layout in the background.
+    static var layoutMetrics: AlbumSongsLayout.Metrics? { Coordinator.metrics }
 
     static let artRange: ClosedRange<Double> = 90...360
 
@@ -192,7 +197,7 @@ struct AlbumSongsTable: NSViewRepresentable {
             }
             if parent.generation != generation {
                 generation = parent.generation
-                layout = AlbumSongsLayout(sections: parent.sections, metrics: Self.metrics)
+                layout = parent.layout ?? AlbumSongsLayout(sections: parent.sections, metrics: Self.metrics)
                 table.deselectAll(nil)
                 table.reloadData()
                 currentID = parent.currentID

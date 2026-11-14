@@ -105,6 +105,9 @@ struct LibrarySnapshot: Sendable {
     var genresByID: [String: Genre] = [:]
     /// Per album: title, album artist and every track artist, folded for search.
     var albumSearchText: [PersistentID: String] = [:]
+    /// Per song: `SongsQuery.searchText`, folded here once so a keystroke only checks substrings (folding ~20k
+    /// songs on every search was most of the wait on Library ▸ Songs).
+    var trackSearchText: [PersistentID: String] = [:]
 
     static let empty = LibrarySnapshot()
 
@@ -215,7 +218,8 @@ extension LibrarySnapshot {
             artistsByID: artistsByKey,
             genres: genres,
             genresByID: genresByKey,
-            albumSearchText: albumSearchText
+            albumSearchText: albumSearchText,
+            trackSearchText: Dictionary(tracks.map { ($0.id, SongsQuery.searchText($0)) }, uniquingKeysWith: { a, _ in a })
         )
     }
 }

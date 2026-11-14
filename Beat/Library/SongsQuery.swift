@@ -42,11 +42,14 @@ enum SongsQuery {
         case number(Double?)
     }
 
+    /// `searchText` is `LibrarySnapshot.trackSearchText`, folded once per library load; a song missing from it
+    /// (or an empty map, in tests) is folded on the spot.
     static func apply(_ tracks: [Track], search: String, sort: [TrackSort],
-                      customValues: [UUID: [PersistentID: String]]) -> [Track] {
+                      customValues: [UUID: [PersistentID: String]],
+                      searchText: [PersistentID: String] = [:]) -> [Track] {
         let words = SearchText.words(search)
         let filtered = words.isEmpty ? tracks : tracks.filter { t in
-            SearchText.matches(SearchText.fold("\(t.title) \(t.artist) \(t.albumArtist) \(t.album)"), words)
+            SearchText.matches(searchText[t.id] ?? Self.searchText(t), words)
         }
         guard !sort.isEmpty else { return filtered }
         // Index as the last tie-breaker keeps equal rows in library order.
@@ -57,6 +60,11 @@ enum SongsQuery {
             }
             return x.offset < y.offset
         }.map(\.element)
+    }
+
+    /// What a songs search looks in: title, artist, album artist and album, folded.
+    static func searchText(_ t: Track) -> String {
+        SearchText.fold("\(t.title) \(t.artist) \(t.albumArtist) \(t.album)")
     }
 
     /// Missing values (empty text, no date, no custom match) sort last in either direction.

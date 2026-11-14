@@ -17,6 +17,22 @@ final class SongsQueryTests: XCTestCase {
         XCTAssertEqual(ids(SongsQuery.apply(library, search: "  ", sort: [], customValues: [:])), [1, 2, 3])
     }
 
+    /// The text folded once per library load gives the same results as folding on every search.
+    func testPreparedSearchTextMatchesFoldingEachTime() {
+        let prepared = LibrarySnapshot.build(tracks: library).trackSearchText
+        XCTAssertEqual(prepared.count, library.count)
+        for search in ["lynx raw", "lynx glass", "cafe", "CAFÉ", "truth", "nothing", "  "] {
+            XCTAssertEqual(ids(SongsQuery.apply(library, search: search, sort: [], customValues: [:], searchText: prepared)),
+                           ids(SongsQuery.apply(library, search: search, sort: [], customValues: [:])), search)
+        }
+    }
+
+    /// Songs missing from the prepared text (a page's songs ahead of a library reload) are still found.
+    func testSongsMissingFromPreparedTextAreFoldedOnTheSpot() {
+        let prepared = LibrarySnapshot.build(tracks: [library[0]]).trackSearchText
+        XCTAssertEqual(ids(SongsQuery.apply(library, search: "cafe", sort: [], customValues: [:], searchText: prepared)), [2])
+    }
+
     func testTextSortsNaturally() {
         let tracks = ["Track 10", "Track 2", "Track 1"].enumerated().map { Track.fixture(id: PersistentID($0.offset + 1), title: $0.element) }
         let sorted = SongsQuery.apply(tracks, search: "", sort: [TrackSort(column: .title)], customValues: [:])

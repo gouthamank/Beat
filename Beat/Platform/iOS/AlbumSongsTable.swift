@@ -14,6 +14,8 @@ struct AlbumSongsTable: View {
     }
 
     let sections: [ArtistSection]
+    /// The Mac table's rows; the list here lays itself out, so it's always nil.
+    let layout: AlbumSongsLayout?
     let generation: Int
     let playOrder: [Track]
     let extras: [ExtraColumn]
@@ -27,6 +29,8 @@ struct AlbumSongsTable: View {
     let stores: Stores
 
     static let artRange: ClosedRange<Double> = 90...360
+    /// No layout to build in the background (see `layout`).
+    static var layoutMetrics: AlbumSongsLayout.Metrics? { nil }
     @Environment(\.compactLayout) private var compact
 
     var body: some View {

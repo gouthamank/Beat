@@ -42,7 +42,8 @@ struct SongsTableView: View {
 
     private func refresh(debounce: Bool) {
         model.update(tracks: tracks, search: search, sort: sortOrder, fields: pages.customFields,
-                     albums: library.snapshot.albums, grouped: false, debounce: debounce)
+                     albums: library.snapshot.albums, searchText: library.snapshot.trackSearchText, grouped: false,
+                     debounce: debounce)
     }
 
     // MARK: Table
@@ -208,6 +209,8 @@ final class SongsModel {
     private(set) var groups: [SongGroup] = []
     /// Those albums under their album artists, for the pinned artist headers.
     private(set) var sections: [ArtistSection] = []
+    /// `sections` as the Mac table's rows, built off the main actor with them; nil without `layoutMetrics`.
+    private(set) var layout: AlbumSongsLayout?
     /// The songs in the order shown, for Play, Shuffle and double-click.
     private(set) var playOrder: [Track] = []
     /// Custom field values per field and track, worked out once per library or field change.
@@ -219,7 +222,8 @@ final class SongsModel {
     @ObservationIgnored private var valuesKey: Int?
 
     func update(tracks: [Track], search: String, sort: [TrackSort], fields: [CustomField], albums: [Album],
-                grouped: Bool, debounce: Bool) {
+                searchText: [PersistentID: String], grouped: Bool, layoutMetrics: AlbumSongsLayout.Metrics? = nil,
+                debounce: Bool) {
         task?.cancel()
         // A cheap identity for "same tracks and fields", so values aren't re-extracted on every keystroke.
         var hasher = Hasher()
@@ -232,15 +236,18 @@ final class SongsModel {
 
         task = Task {
             if debounce {
-                try? await Task.sleep(for: .milliseconds(150))
+                // Just long enough to skip the keystrokes of a word typed quickly; the search itself is cheap now.
+                try? await Task.sleep(for: .milliseconds(60))
                 guard !Task.isCancelled else { return }
             }
-            let (values, rows, groups, sections, playOrder) = await Task.detached(priority: .userInitiated) {
+            let (values, rows, groups, sections, layout, playOrder) = await Task.detached(priority: .userInitiated) {
                 let values = cached ?? SongsQuery.customValues(fields, for: tracks)
-                let rows = SongsQuery.apply(tracks, search: search, sort: sort, customValues: values)
-                guard grouped else { return (values, rows, [SongGroup](), [ArtistSection](), rows) }
+                let rows = SongsQuery.apply(tracks, search: search, sort: sort, customValues: values, searchText: searchText)
+                guard grouped else { return (values, rows, [SongGroup](), [ArtistSection](), AlbumSongsLayout?.none, rows) }
                 let groups = SongsQuery.groupByAlbum(rows, albums: albums)
-                return (values, rows, groups, SongsQuery.sectionsByArtist(groups), groups.flatMap(\.tracks))
+                let sections = SongsQuery.sectionsByArtist(groups)
+                let layout = layoutMetrics.map { AlbumSongsLayout(sections: sections, metrics: $0) }
+                return (values, rows, groups, sections, layout, groups.flatMap(\.tracks))
             }.value
             guard !Task.isCancelled else { return }
             customValues = values
@@ -248,6 +255,7 @@ final class SongsModel {
             self.rows = rows
             self.groups = groups
             self.sections = sections
+            self.layout = layout
             self.playOrder = playOrder
             generation += 1
         }
@@ -300,6 +308,7 @@ struct AlbumSongsView: View {
     var body: some View {
         AlbumSongsTable(
             sections: model.sections,
+            layout: model.layout,
             generation: model.generation,
             playOrder: model.playOrder,
             extras: shown,
@@ -336,7 +345,8 @@ struct AlbumSongsView: View {
 
     private func refresh(debounce: Bool) {
         model.update(tracks: tracks, search: search, sort: [], fields: pages.customFields,
-                     albums: library.snapshot.albums, grouped: true, debounce: debounce)
+                     albums: library.snapshot.albums, searchText: library.snapshot.trackSearchText, grouped: true,
+                     layoutMetrics: AlbumSongsTable.layoutMetrics, debounce: debounce)
     }
 
     private var columnsMenu: some View {

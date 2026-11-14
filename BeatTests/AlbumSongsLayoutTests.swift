@@ -90,4 +90,25 @@ final class AlbumSongsLayoutTests: XCTestCase {
         XCTAssertEqual(layout.section(atRow: layout.rows.count - 1), 1, "the last album's bottom row is artist B's")
         XCTAssertNil(layout.section(atRow: layout.rows.count))
     }
+
+    /// `SongsModel` builds the rows in the background with the search, only when given row heights (the Mac table).
+    @MainActor
+    func testSongsModelBuildsTheLayoutWithItsRows() async throws {
+        let tracks = sections.flatMap(\.groups).flatMap(\.tracks)
+        let albums = sections.flatMap(\.groups).map(\.album)
+        for metrics in [metrics, nil] {
+            let model = SongsModel()
+            model.update(tracks: tracks, search: "", sort: [], fields: [], albums: albums, searchText: [:], grouped: true,
+                         layoutMetrics: metrics, debounce: false)
+            for _ in 0..<300 where model.generation == 0 { try await Task.sleep(for: .milliseconds(10)) }
+            XCTAssertEqual(model.generation, 1)
+            if let metrics {
+                let layout = try XCTUnwrap(model.layout)
+                XCTAssertEqual(layout.rows, AlbumSongsLayout(sections: model.sections, metrics: metrics).rows)
+                XCTAssertEqual(layout.rowOfTrack.count, tracks.count)
+            } else {
+                XCTAssertNil(model.layout)
+            }
+        }
+    }
 }
