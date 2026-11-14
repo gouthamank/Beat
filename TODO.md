@@ -55,20 +55,6 @@ and `skipped date` are writable, and tracks match by persistent ID. Costs:
 Options: A keep them separate; B opt-in automatic sync (off by default, batched, only while Music runs);
 C a manual "Send Beat's plays to Music" button. Leaning B plus C's button for plays already recorded.
 
-## Quick Open (noted Nov 2026)
-Jump anywhere by typing: a ⌘K panel over the window that finds albums, artists, genres, sidebar pages and
-songs as you type, and opens or plays the pick. With ~3k albums and a deep sidebar tree, it's the fastest way
-around the library.
-
-Ideas:
-- Results grouped by kind (pages, albums, artists, genres, songs), best matches first; ↑ ↓ to move, Return to
-  open, ⌥Return (or similar) to play.
-- Open through `AppNavigator.openAlbum/openArtist/openGenre` and sidebar selection, so the navigation rules
-  (nesting, the cover zoom) hold.
-- Match on folded text built once per library load: `LibrarySnapshot.albumSearchText` already has it per album,
-  and the smart-filter `FoldedText` folds song fields once. Search off the main actor; keep keystrokes cheap.
-- Glass panel via `beatGlass`; Esc or a click outside closes it.
-
 ## Sort buttons on page elements (noted Nov 2026)
 Change an element's order straight from its header, without opening the filter editor, like the album sort
 menu on artist pages (`AlbumSortMenu` in `ArtistDetailView.swift`).

@@ -34,6 +34,8 @@ struct GeneralSettings: View {
     @AppStorage("appearance.coverColours") private var coverColours = true
     @AppStorage(SidebarTint.key) private var sidebarTint = SidebarTint.full.rawValue
     @AppStorage(LibraryPage.hiddenKey) private var hiddenLibraryPages = ""
+    @AppStorage(QuickOpenSongAction.key) private var quickOpenSong = QuickOpenSongAction.album
+    @AppStorage(QuickOpenAlbumAction.key) private var quickOpenAlbum = QuickOpenAlbumAction.open
 
     var body: some View {
         SettingsPane {
@@ -62,11 +64,54 @@ struct GeneralSettings: View {
                 Caption("Choose which Library pages appear in the sidebar. Hiding one doesn't change your own pages or your Music library.")
             }
 
+            Section("Quick Open") {
+                Caption(quickOpenIntro)
+                Picker("Choosing a song", selection: $quickOpenSong) {
+                    ForEach(QuickOpenSongAction.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
+                Caption(quickOpenSongCaption)
+                Picker("Choosing an album", selection: $quickOpenAlbum) {
+                    ForEach(QuickOpenAlbumAction.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
+                #if os(macOS)
+                // On iPad and iPhone the choice's name says it all ("Opens the album" only repeated it).
+                Caption(quickOpenAlbum == .play ? "Return plays the album; ⌥Return opens it." : "Return opens the album; ⌥Return plays it.")
+                #endif
+            }
+
             Section("Settings File") {
                 SettingsFileButtons()
                 Caption("Your folders, pages, elements and custom fields, and these preferences, in one file. Only the definitions: tracks are always found in your Music library. Importing replaces what's here. Your Discogs token and play history stay on \(thisDevice).")
             }
         }
+    }
+
+    // On the Mac each choice's caption says what Return and ⌥Return do. iPad and iPhone have no ⌥Return (a tap does
+    // what's chosen), so their captions name no keys.
+
+    private var quickOpenIntro: String {
+        #if os(macOS)
+        "Find albums, artists, genres, songs and pages with ⌘K."
+        #else
+        "Find albums, artists, genres, songs and pages with the search button at the top of the sidebar."
+        #endif
+    }
+
+    /// A played song carries on through the rest of its album.
+    private var quickOpenSongCaption: String {
+        #if os(macOS)
+        switch quickOpenSong {
+        case .album: "Return opens its album with the song highlighted; ⌥Return plays it, then the rest of the album."
+        case .songs: "Return shows it in Library ▸ Songs; ⌥Return plays it, then the rest of the album."
+        case .play: "Return plays it, then the rest of the album; ⌥Return opens its album."
+        }
+        #else
+        switch quickOpenSong {
+        case .album: "Opens its album with the song highlighted."
+        case .songs: "Shows it in Library ▸ Songs."
+        case .play: "Plays it, then the rest of the album."
+        }
+        #endif
     }
 
     private func shown(_ page: LibraryPage) -> Binding<Bool> {

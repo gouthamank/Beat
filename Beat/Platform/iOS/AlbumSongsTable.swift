@@ -26,12 +26,15 @@ struct AlbumSongsTable: View {
     let playbackAccent: PlatformColor
     let bottomInset: CGFloat
     let scrollToTopToken: Int
+    /// A song to scroll to and highlight for a moment (Quick Open's Show in Songs), once it's in the list.
+    let highlight: TrackHighlight?
     let stores: Stores
 
     static let artRange: ClosedRange<Double> = 90...360
     /// No layout to build in the background (see `layout`).
     static var layoutMetrics: AlbumSongsLayout.Metrics? { nil }
     @Environment(\.compactLayout) private var compact
+    @State private var flashed: PersistentID?
 
     var body: some View {
         // Play order index per song, so a tap plays from that song on through the whole list.
@@ -75,6 +78,20 @@ struct AlbumSongsTable: View {
             .onChange(of: scrollToTopToken) {
                 guard let first = sections.first else { return }
                 withAnimation(.snappy) { proxy.scrollTo(first.id, anchor: .top) }
+            }
+            // Again with each new set of rows: a cleared search brings the song back a moment later.
+            .task(id: [highlight?.token ?? -1, generation]) {
+                guard let request = highlight,
+                      let group = sections.lazy.flatMap(\.groups).first(where: { $0.tracks.contains { $0.id == request.trackID } })
+                else { return }
+                // A list row is the whole album, so that's what scrolls into view; the song itself is highlighted.
+                withAnimation(.snappy) { proxy.scrollTo(group.id, anchor: .center) }
+                flashed = request.trackID
+                stores.navigator.songsHighlight = nil
+                Task {
+                    try? await Task.sleep(for: .seconds(1.6))
+                    withAnimation(.easeOut(duration: 0.6)) { if flashed == request.trackID { flashed = nil } }
+                }
             }
         }
     }
@@ -133,6 +150,9 @@ struct AlbumSongsTable: View {
                     .foregroundStyle(.secondary)
             }
             .padding(.vertical, 7)
+            // The system accent, as on album pages: a highlight, not playback (`playbackAccent`).
+            .background(flashed == track.id ? Color.accentColor.opacity(0.3) : .clear,
+                        in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

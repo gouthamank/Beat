@@ -367,6 +367,8 @@ struct AlbumDetailView: View {
     /// How far the header has scrolled away, for the compact top bar.
     @State private var collapse = ScrollCollapse()
     @State private var scrolling = ScrollActivity()
+    /// The song Quick Open asked for, highlighted for a moment.
+    @State private var flashedTrack: PersistentID?
 
     var body: some View {
         if let album = library.snapshot.albumsByID[albumID] {
@@ -388,6 +390,7 @@ struct AlbumDetailView: View {
             .frame(maxWidth: 980)
             .frame(maxWidth: .infinity)
             .followsKeyboardHighlight()
+            .modifier(TrackHighlighter(albumID: albumID, flashed: $flashedTrack))
             // Each track row has hover and tap handlers, and checking them all on every scrolled frame was a
             // fifth of the main thread's work while scrolling.
             .pausesPointerWhileScrolling(scrolling)
@@ -513,7 +516,8 @@ struct AlbumDetailView: View {
                     if compact, track.id != discTracks.first?.id {
                         Divider().padding(.leading, TrackRow.compactTitleInset)
                     }
-                    TrackRow(track: track, showArtist: track.displayArtist != album.artist, palette: palette) {
+                    TrackRow(track: track, showArtist: track.displayArtist != album.artist, palette: palette,
+                             flashed: flashedTrack == track.id) {
                         queue.play(tracks, startAt: index)
                     }
                     .contextMenu { TrackContextMenu(tracks: [track]) }
@@ -534,6 +538,34 @@ struct AlbumDetailView: View {
         parts.append(Duration.seconds(album.duration).formatted(.units(allowed: [.hours, .minutes], width: .abbreviated)))
         if album.fileSize > 0 { parts.append(album.fileSize.fileSizeText) }
         return parts.joined(separator: " · ")
+    }
+}
+
+/// Brings the song Quick Open asked for (`AppNavigator.trackHighlight`) into view and highlights it for a moment,
+/// once the page has zoomed or slid in. Inside the scroll view, like `followsKeyboardHighlight`.
+private struct TrackHighlighter: ViewModifier {
+    let albumID: PersistentID
+    @Binding var flashed: PersistentID?
+    @Environment(AppNavigator.self) private var navigator
+
+    func body(content: Content) -> some View {
+        ScrollViewReader { proxy in
+            content.task(id: navigator.trackHighlight) {
+                guard let request = navigator.trackHighlight, request.albumID == albumID else { return }
+                // After the page's transition: a scroll during it was lost, and the highlight went unseen.
+                try? await Task.sleep(for: .milliseconds(450))
+                guard !Task.isCancelled else { return }
+                // Handled: coming back to this album later shouldn't highlight it again. Clearing it ends this task,
+                // so the highlight fades from a task of its own.
+                navigator.trackHighlight = nil
+                withAnimation(.snappy) { proxy.scrollTo(request.trackID, anchor: .center) }
+                flashed = request.trackID
+                Task {
+                    try? await Task.sleep(for: .seconds(1.6))
+                    withAnimation(.easeOut(duration: 0.6)) { if flashed == request.trackID { flashed = nil } }
+                }
+            }
+        }
     }
 }
 
@@ -562,6 +594,8 @@ struct TrackRow: View {
     var showArtist = false
     /// The album page's cover colours, when it has them.
     var palette: ArtworkPalette?
+    /// Highlighted for a moment: the song picked in Quick Open.
+    var flashed = false
     /// Double-click, or Space/Return while the keyboard highlight is on this row.
     var play: () -> Void = {}
     @Environment(PlaybackQueue.self) private var queue
@@ -617,6 +651,7 @@ struct TrackRow: View {
     }
 
     private func rowFill(isCurrent: Bool) -> AnyShapeStyle {
+        if flashed { return AnyShapeStyle((palette?.primary.color ?? Color.accentColor).opacity(0.3)) }
         if isCurrent { return AnyShapeStyle((palette?.primary.color ?? playbackAccent).opacity(hovering ? 0.22 : 0.16)) }
         return AnyShapeStyle(.primary.opacity(hovering ? 0.06 : 0))
     }

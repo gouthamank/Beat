@@ -31,6 +31,14 @@ enum Route: Hashable {
     case element(ElementRoute)
 }
 
+/// A song to scroll to and briefly highlight when its album page shows (from Quick Open). `token` tells a repeat of
+/// the same song apart, so it highlights again.
+struct TrackHighlight: Equatable {
+    let albumID: PersistentID
+    let trackID: PersistentID
+    let token: Int
+}
+
 struct ScrollToTopRequest: Equatable {
     let item: SidebarItem
     let token: Int
@@ -126,8 +134,49 @@ final class AppNavigator {
     var showingSettings = false
     /// On a phone: the sidebar drawer is out over the page (`SidebarDrawer`). Never set on the Mac.
     var sidebarDrawerOpen = false
+    /// Quick Open's panel is showing over the window (⌘K, or the sidebar's search button on iPad and iPhone).
+    var showingQuickOpen = false
+    /// The song an album page should bring into view and highlight; the page clears it once shown.
+    var trackHighlight: TrackHighlight?
+    /// The song Library ▸ Songs should bring into view and select; the list clears it once shown.
+    var songsHighlight: TrackHighlight?
 
     func openAlbum(_ id: PersistentID) { open(.album(id)) }
+    /// Opens the album, or goes back to it if it's already in the trail, with `track` scrolled to and highlighted.
+    func openAlbum(_ id: PersistentID, highlighting track: PersistentID) {
+        highlight(track, on: id)
+        open(.album(id))
+    }
+
+    /// Quick Open's "go to": selects the Library page that lists `route`, with just that page open on it, so the
+    /// sidebar shows where you are and Back goes to the grid. With that Library page hidden, it opens on the current
+    /// page instead, like a tile.
+    func goTo(_ route: Route, in library: LibraryPage, hidden: Set<LibraryPage>, highlighting track: PersistentID? = nil) {
+        if case .album(let id) = route, let track { highlight(track, on: id) }
+        guard !hidden.contains(library) else { return open(route) }
+        guard selection != library.item else { path = [route]; return }
+        // One path write: the selection's didSet swaps this in (a second write in the same frame is rejected).
+        savedPaths[library.item] = [route]
+        selection = library.item
+    }
+
+    /// Quick Open's "Show in Songs": Library ▸ Songs at its top level, scrolled to the song. `clearingSearch` when the
+    /// page's search would hide it. With Songs hidden, the song's album opens instead.
+    func showInSongs(_ track: PersistentID, album: PersistentID, hidden: Set<LibraryPage>, clearingSearch: Bool) {
+        guard !hidden.contains(.songs) else { return goTo(.album(album), in: .albums, hidden: hidden, highlighting: track) }
+        if clearingSearch { searches[.songs] = nil }
+        songsHighlight = TrackHighlight(albumID: album, trackID: track, token: (songsHighlight?.token ?? 0) + 1)
+        guard selection != .songs else {
+            if !path.isEmpty { path = [] }
+            return
+        }
+        savedPaths[.songs] = []
+        selection = .songs
+    }
+
+    private func highlight(_ track: PersistentID, on album: PersistentID) {
+        trackHighlight = TrackHighlight(albumID: album, trackID: track, token: (trackHighlight?.token ?? 0) + 1)
+    }
     func openArtist(_ id: String) { open(.artist(id)) }
     func openGenre(_ id: String) { open(.genre(id)) }
 

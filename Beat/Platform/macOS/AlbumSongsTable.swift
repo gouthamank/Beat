@@ -29,6 +29,8 @@ struct AlbumSongsTable: NSViewRepresentable {
     let bottomInset: CGFloat
     /// Changes when the sidebar's Songs item is clicked again at the top level.
     let scrollToTopToken: Int
+    /// A song to scroll to and select (Quick Open's Show in Songs), once its row is in the table.
+    let highlight: TrackHighlight?
     let stores: Stores
 
     /// Row heights for `SongsModel`, which builds the layout in the background.
@@ -90,6 +92,7 @@ struct AlbumSongsTable: NSViewRepresentable {
         /// table's own zero offset mustn't overwrite it.
         private var restoredScroll = false
         private var scrollToTopToken: Int?
+        private var shownHighlight: Int?
         /// Set while the code (not the user) changes column widths, so resize callbacks ignore it.
         private var adjustingColumns = false
 
@@ -231,7 +234,28 @@ struct AlbumSongsTable: NSViewRepresentable {
                 scroll.contentInsets = insets
                 scroll.scrollerInsets = insets
             }
+            // After the rows and the remembered scroll: a cleared search reloads the rows first, so this may wait for
+            // a later update.
+            if let request = parent.highlight, request.token != shownHighlight, let row = layout.rowOfTrack[request.trackID] {
+                shownHighlight = request.token
+                reveal(row)
+                let navigator = parent.stores.navigator
+                Task { @MainActor in if navigator.songsHighlight == request { navigator.songsHighlight = nil } }
+            }
             layoutCovers()
+        }
+
+        /// Centres the row and selects it, with the table taking the keyboard so Return plays it and arrows move on.
+        private func reveal(_ row: Int) {
+            guard let scroll, let table else { return }
+            table.layoutSubtreeIfNeeded()
+            let visible = scroll.contentView.bounds.height
+            let bottom = max(0, table.bounds.height + scroll.contentInsets.bottom - visible)
+            let y = min(max(0, table.rect(ofRow: row).midY - visible / 2), bottom)
+            scroll.contentView.scroll(to: NSPoint(x: 0, y: y))
+            scroll.reflectScrolledClipView(scroll.contentView)
+            table.selectRowIndexes([row], byExtendingSelection: false)
+            table.window?.makeFirstResponder(table)
         }
 
         private func scrollToTop() {

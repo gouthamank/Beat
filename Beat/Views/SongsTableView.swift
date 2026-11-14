@@ -319,6 +319,7 @@ struct AlbumSongsView: View {
             playbackAccent: PlatformColor(playbackAccent),
             bottomInset: queue.current == nil ? 0 : NowPlayingBar.reservedHeight,
             scrollToTopToken: navigator.scrollToTop?.item == .songs ? navigator.scrollToTop?.token ?? 0 : 0,
+            highlight: navigator.songsHighlight,
             stores: .init(library: library, queue: queue, navigator: navigator, hero: hero, artwork: artwork)
         )
         .overlay {

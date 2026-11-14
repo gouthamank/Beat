@@ -61,6 +61,9 @@ struct BeatApp: App {
                 Button("Back") { navigator.goBack() }
                     .keyboardShortcut("[", modifiers: .command)
                     .disabled(!navigator.canGoBack)
+                Button("Quick Open…") { navigator.showingQuickOpen.toggle() }
+                    .keyboardShortcut("k")
+                    .disabled(navigator.showingNowPlaying || navigator.artViewer != nil)
             }
             CommandGroup(replacing: .newItem) {
                 Button("New Page") { navigator.create(folder: false, in: pages) }

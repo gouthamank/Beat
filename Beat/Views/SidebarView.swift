@@ -57,6 +57,14 @@ struct SidebarView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Button { navigator.showingSettings = true } label: { Label("Settings", systemImage: "gearshape") }
             }
+            // Quick Open for touch; with a keyboard, ⌘K. On a phone the drawer gets out of the panel's way.
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    navigator.sidebarDrawerOpen = false
+                    navigator.showingQuickOpen = true
+                } label: { Label("Quick Open", systemImage: "magnifyingglass") }
+                .accessibilityIdentifier("sidebar.quickOpen")
+            }
         }
         #endif
         // On album pages the sidebar takes the cover's colours, so the window reads as one surface.

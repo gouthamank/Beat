@@ -28,6 +28,8 @@ struct SettingsArchive: Codable {
         "visualizer.style",
         "nowPlaying.showLyrics",
         "nowPlaying.radial",
+        QuickOpenSongAction.key,
+        QuickOpenAlbumAction.key,
     ]
 
     enum ArchiveError: LocalizedError {

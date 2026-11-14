@@ -170,6 +170,7 @@ struct RootView: View {
         .overlay { HeroOverlay() }
         .overlay { NowPlayingOverlay() }
         .overlay { ArtViewerOverlay() }
+        .overlay { QuickOpenOverlay() }
         .modifier(PlaybackAccent())
         // These full-window views cover the toolbar's area, so its items would only float over them.
         .windowToolbar(navigator.showingNowPlaying || navigator.artViewer != nil ? .hidden : .automatic)

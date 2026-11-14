@@ -50,6 +50,74 @@ final class AppNavigatorTests: XCTestCase {
         XCTAssertEqual(navigator.path, [.artist("asc")])
     }
 
+    func testOpeningAnAlbumAtASongAsksItsPageToHighlightIt() {
+        navigator.selection = .page(home)
+        navigator.openAlbum(1, highlighting: 10)
+        XCTAssertEqual(navigator.path, [.album(1)])
+        let first = try! XCTUnwrap(navigator.trackHighlight)
+        XCTAssertEqual([first.albumID, first.trackID], [1, 10])
+        navigator.openAlbum(1, highlighting: 10)
+        XCTAssertEqual(navigator.path, [.album(1)], "the album already in front isn't stacked again")
+        XCTAssertNotEqual(navigator.trackHighlight?.token, first.token, "the same song asked again highlights again")
+        navigator.trackHighlight = nil
+        navigator.openAlbum(2)
+        XCTAssertNil(navigator.trackHighlight, "a plain open highlights nothing")
+    }
+
+    func testGoingToAnArtistSelectsArtistsWithOnlyThatArtistOpen() {
+        navigator.selection = .page(home)
+        navigator.openAlbum(1)
+        navigator.goTo(.artist("blocks"), in: .artists, hidden: [])
+        XCTAssertEqual(navigator.selection, .artists)
+        XCTAssertEqual(navigator.path, [.artist("blocks")])
+        navigator.selection = .page(home)
+        XCTAssertEqual(navigator.path, [.album(1)], "the page you were on keeps its own path")
+    }
+
+    func testGoingToAnAlbumOnTheLibraryPageAlreadyShowingReplacesItsPath() {
+        navigator.selection = .albums
+        navigator.openAlbum(1)
+        navigator.openArtist("blocks")
+        navigator.goTo(.album(2), in: .albums, hidden: [], highlighting: 20)
+        XCTAssertEqual(navigator.selection, .albums)
+        XCTAssertEqual(navigator.path, [.album(2)])
+        XCTAssertEqual(navigator.trackHighlight?.trackID, 20)
+        XCTAssertEqual(navigator.trackHighlight?.albumID, 2)
+    }
+
+    func testGoingToAHiddenLibraryPageOpensOnTheCurrentPage() {
+        navigator.selection = .page(home)
+        navigator.goTo(.genre("rock"), in: .genres, hidden: [.genres])
+        XCTAssertEqual(navigator.selection, .page(home))
+        XCTAssertEqual(navigator.path, [.genre("rock")])
+    }
+
+    func testShowingASongInSongsSelectsSongsAtItsTopLevel() {
+        navigator.selection = .songs
+        navigator.openArtist("blocks")
+        navigator.searches[.songs] = "nothing like it"
+        navigator.selection = .page(home)
+        navigator.showInSongs(3, album: 8, hidden: [], clearingSearch: true)
+        XCTAssertEqual(navigator.selection, .songs)
+        XCTAssertEqual(navigator.path, [], "back at the list, not the artist left open on it")
+        XCTAssertNil(navigator.searches[.songs], "a search hiding the song is cleared")
+        XCTAssertEqual(navigator.songsHighlight?.trackID, 3)
+        let first = navigator.songsHighlight?.token
+        navigator.showInSongs(3, album: 8, hidden: [], clearingSearch: false)
+        XCTAssertNotEqual(navigator.songsHighlight?.token, first, "the same song again highlights again")
+    }
+
+    func testShowingASongInHiddenSongsOpensItsAlbum() {
+        navigator.selection = .page(home)
+        navigator.searches[.songs] = "kept"
+        navigator.showInSongs(3, album: 8, hidden: [.songs], clearingSearch: true)
+        XCTAssertEqual(navigator.selection, .albums)
+        XCTAssertEqual(navigator.path, [.album(8)])
+        XCTAssertEqual(navigator.trackHighlight?.trackID, 3)
+        XCTAssertNil(navigator.songsHighlight)
+        XCTAssertEqual(navigator.searches[.songs], "kept")
+    }
+
     func testGoBack() {
         navigator.selection = .albums
         XCTAssertFalse(navigator.canGoBack)
