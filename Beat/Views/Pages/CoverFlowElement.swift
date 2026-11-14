@@ -82,6 +82,15 @@ struct CoverFlowElement: View {
     @State private var dragged: CGFloat = 0
     @FocusState private var focused: Bool
 
+    /// `startingAt` puts that album in front at first instead of the first one: for snapshot tests, which can't flip.
+    init(albums: [Album], side: CGFloat, spread: CGFloat, startingAt start: PersistentID? = nil) {
+        self.albums = albums
+        self.side = side
+        self.spread = spread
+        _centreID = State(initialValue: start)
+        _lastCentre = State(initialValue: start.flatMap { id in albums.firstIndex { $0.id == id } } ?? 0)
+    }
+
     /// The centre cover's scale, so the zoom's stand-in matches it exactly.
     private var centreScale: CGFloat { CoverFlowGeometry.place(distance: 0, side: side).scale }
 
@@ -198,6 +207,8 @@ struct CoverFlowElement: View {
     private func caption(_ album: Album) -> some View {
         VStack(spacing: 2) {
             Text(album.title).font(.callout.weight(.semibold)).lineLimit(1)
+                // The album in front, for the Mac's UI test as it flips through.
+                .accessibilityIdentifier("coverFlow.caption")
             Text(album.artist).font(.caption).foregroundStyle(.secondary).lineLimit(1)
         }
         .frame(maxWidth: side * 2.5)

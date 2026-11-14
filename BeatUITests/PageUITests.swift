@@ -2,15 +2,6 @@ import XCTest
 
 /// Making and changing pages and their elements.
 final class PageUITests: BeatUITestCase {
-    /// A new page (⌘N) named `name`. The name sheet selects the placeholder, so typing replaces it.
-    @discardableResult
-    private func createPage(_ name: String) -> XCUIElement {
-        app.typeKey("n", modifierFlags: .command)
-        waitFor("nameSheet.name").typeText(name)
-        waitFor("nameSheet.save").click()
-        return waitFor("sidebar.page.\(name)")
-    }
-
     /// Picks `item` from the element's right-click menu.
     private func menu(_ element: XCUIElement, _ item: String) {
         element.rightClick()

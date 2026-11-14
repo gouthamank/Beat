@@ -32,14 +32,12 @@ extension BeatApp {
     }
 }
 
-/// The standard About panel, with the build's commit beside its build number: "Version 1.0 (42 · a1b2c3d)".
+/// The standard About panel: "Version 1.2.0 (26fab3d)", the commit in the brackets where the panel puts the build
+/// number by default.
 @MainActor
 enum AboutPanel {
     static func show() {
-        let info = Bundle.main.infoDictionary ?? [:]
-        let build = info["CFBundleVersion"] as? String ?? ""
-        let commit = info["BeatCommit"] as? String ?? ""
-        NSApp.orderFrontStandardAboutPanel(options: [.applicationVersion: commit.isEmpty ? build : "\(build) · \(commit)"])
+        NSApp.orderFrontStandardAboutPanel(options: [.applicationVersion: AppVersion.version, .version: AppVersion.commit])
         NSApp.activate()
     }
 }

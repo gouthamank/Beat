@@ -47,7 +47,7 @@ targets:
       properties:
         CFBundleDisplayName: Beat
         # The version shown in About Beat; raise it by hand for a release. The build number comes from git (Makefile).
-        CFBundleShortVersionString: "1.1.3"
+        CFBundleShortVersionString: "1.2.0"
         NSHumanReadableCopyright: © 2026 Gouthaman Kumar. MIT License.
         # `make` fills both from git (commit count, short hash); builds from Xcode keep the defaults below.
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
@@ -89,7 +89,7 @@ targets:
       path: Beat/Platform/iOS/Info.plist
       properties:
         CFBundleDisplayName: Beat
-        CFBundleShortVersionString: "1.1.3"
+        CFBundleShortVersionString: "1.2.0"
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         BeatCommit: $(BEAT_COMMIT)
         LastFMAPIKey: $(LASTFM_API_KEY)

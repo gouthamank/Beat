@@ -55,11 +55,16 @@ Without a key (or with the example's placeholder values) Beat builds and runs no
 ### Build and install
 
 ```sh
-make install   # Release build, copied to /Applications and launched
-make build     # Release build into build/
-make test      # unit tests
-make clean     # delete build/
+make                   # lists every target
+make install           # menu: Mac (Release, copied to /Applications and launched) or a connected iPad/iPhone
+make sim               # menu: run in the iPad or iPhone Simulator
+make test              # menu: Mac tests, iOS Simulator tests, Mac UI tests, or all
+make snapshot-record   # menu: re-record the snapshots or screenshots a design change altered
+make clean             # delete build/
 ```
+
+Each menu also takes its choice up front, e.g. `make install on=mac`, and the targets they lead to run directly too
+(`make mac-install`, `make ios-test`, …): see `TESTING.md` for the tests.
 
 To work in Xcode instead, run `xcodegen generate` and open `Beat.xcodeproj`.
 

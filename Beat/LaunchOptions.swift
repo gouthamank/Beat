@@ -8,7 +8,8 @@ import Foundation
 enum LaunchOptions {
     static let fixtureLibraryArgument = "-BeatFixtureLibrary"
     /// Starts as on a first launch: the UI-test app's settings cleared and its files in the home deleted. Left out when
-    /// a test relaunches to check what was kept.
+    /// a test relaunches to check what was kept. Given as `-BeatFreshStart YES`: a bare flag with arguments after it
+    /// left one over, which AppKit took for a file to open, and Beat made no window.
     static let freshStartArgument = "-BeatFreshStart"
     static let homeVariable = "CFFIXED_USER_HOME"
     static let uiTestBundleSuffix = ".uitest"
@@ -36,7 +37,7 @@ enum LaunchOptions {
         guard let home, !home.isEmpty else { return "\(homeVariable) isn't set" }
         let root = URL(fileURLWithPath: home, isDirectory: true).standardizedFileURL.path
         guard root.hasPrefix("/tmp/") || root.hasPrefix("/private/tmp/") else { return "\(root) isn't in /tmp" }
-        guard homeExists else { return "\(root) doesn't exist; it must be made before Beat launches (make test-ui does)" }
+        guard homeExists else { return "\(root) doesn't exist; it must be made before Beat launches (make mac-test-ui does)" }
         for folder in dataFolders {
             guard let path = folder?.standardizedFileURL.path else { return "a data folder couldn't be found" }
             guard path == root || path.hasPrefix(root + "/") else { return "\(path) is outside \(root)" }

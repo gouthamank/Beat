@@ -14,12 +14,13 @@ The user runs every suite, from Xcode or `make`; nothing runs in CI. For the rul
 ## Where things stand
 
 - **Unit tests:** XCTest files in `BeatTests`: shared ones at the top, `macOS/` and `iOS/` for each platform's own.
-  `make test` runs them on the Mac, `make ios-test` inside the iOS app on the iPhone Simulator.
+  `make mac-test` runs them on the Mac, `make ios-test` inside the iOS app on the iPhone Simulator.
   Everything CLAUDE.md lists as pure logic is covered, plus the stores (phase 2).
 - **Snapshot tests:** `BeatTests/Snapshots/`, in the same runs: elements, pages and chrome, light and dark, at Mac
   width on the Mac and iPad and iPhone widths on iOS (326 tests in all on each; one skipped on the Mac).
-- **UI tests:** groundwork done (phase 4: fixture songs, an isolated UI-test build, accessibility identifiers); the
-  tests themselves are phases 5 and 6.
+- **UI tests (Mac):** `BeatUITests`, run with `make mac-test-ui` (about 3 minutes; leave the Mac alone): the window,
+  navigation, Now Playing, pages and elements, and Cover Flow from screenshots. See "UI tests: how they work".
+- **UI tests (iPhone and iPad):** phase 6.
 
 ## Snapshot tests: how they work
 
@@ -29,12 +30,12 @@ The user runs every suite, from Xcode or `make`; nothing runs in CI. For the rul
   `SnapshotStores.provide`; keep it in step with `BeatApp.withStores` when a store is added.
 - **Recording:** a test without a reference records one and fails once; run it again.
 - **After a deliberate design change** (say, rounder covers), the snapshots it touches fail. Then:
-  1. `make test`: the failures name each test and device, with the reference (`@−`) and the new capture (`@+`).
+  1. `make mac-test`: the failures name each test and device, with the reference (`@−`) and the new capture (`@+`).
      Xcode's Report navigator (after ⌘U) shows both and their difference.
   2. Look at every one. Only the intended change should show; anything else that moved is a regression to fix.
-  3. `make test-record`: re-records exactly the snapshots that didn't match (they report as failures while they
+  3. `make mac-test-record`: re-records exactly the snapshots that didn't match (they report as failures while they
      record). It runs with `SNAPSHOT_TESTING_RECORD=failed`, passed through as `TEST_RUNNER_…`.
-  4. `make test` again: it passes.
+  4. `make mac-test` again: it passes.
   5. The same on iOS with `make ios-test-record`; the references are separate. Commit the new images with the
      change, so the history shows what it looked like.
 
@@ -48,12 +49,35 @@ The user runs every suite, from Xcode or `make`; nothing runs in CI. For the rul
   files: its own `UserDefaults` (`.defaultAppStorage`, and `defaults:` on `AppNavigator`, `PlaybackQueue`,
   `NowPlayingView`), in-memory stores, a `FakePlayer`, no system Now Playing, cover colours forced on.
 - **Known limits on the Mac** (its capture draws the layer tree, not the window server's picture):
-  - Cover Flow is skipped: 3D transforms come out flat. Covered on iOS, and planned as a Mac UI-test screenshot.
+  - Cover Flow is skipped: 3D transforms come out flat. Covered on iOS, and on the Mac by `CoverFlowUITests`.
   - Vibrancy is left out: the sidebar's icons draw black in dark mode. Layout still compares.
   - The offscreen window is never key, so the harness sets `controlActiveState` to `.key` for lists to draw active.
 - **On iOS** the harness captures its own window (`drawHierarchy`, which keeps 3D transforms) once two frames in a
   row match, in 8-bit sRGB: the library's own hosting gave navigation bars no margins, a fixed wait caught pages
   still fading in, and wide-colour captures never matched their saved PNGs on soft shadows.
+
+## UI tests: how they work
+
+- **Running:** `make mac-test-ui` makes the shared home `/tmp/BeatUITests`, builds the UITest configuration and drives
+  it. The first run asks once to let the test runner control the Mac (Accessibility). Each test launches Beat with
+  `-BeatFixtureLibrary`, `CFFIXED_USER_HOME` and `-BeatFreshStart YES` (see phase 4), and with
+  `-ApplePersistenceIgnoreState NO`, so windows save and restore as on a launch from the Dock.
+- **Writing one:** subclass `BeatUITestCase`; `launch()`, `waitFor(identifier)`, `eventually`, `quit()`,
+  `createPage`, `openAlbum`, `playAlbum`, `resizeWindow` (which fails if the size didn't change). Find things by
+  identifier (the table under phase 4). The Albums grid is lazy, so only tiles on screen exist: use albums near the
+  top. Query buttons in `app.windows` when the Touch Bar may have a copy (a confirmation's Delete did).
+- **Launch arguments come in pairs** (`-name value`): a bare flag followed by another argument left that one's value
+  over, AppKit took it for a file to open, and Beat made no window.
+- **Mac text:** a static text's string is its accessibility *value*; its label is empty.
+- **Screenshots** (`ScreenshotReference`): swift-snapshot-testing can't be used in a UI-test bundle (Xcode builds
+  those with Swift Testing switched off, and the library imports it), and the runner is sandboxed, so it can't
+  touch the repo (`ENABLE_APP_SANDBOX` doesn't reach it). References in `BeatUITests/__Snapshots__` are built into
+  the test bundle, which it can read; one passes when at most 1% of pixels differ. A missing or different
+  screenshot fails the test and is attached to the results; `make mac-test-ui-record` runs the tests and saves those
+  attachments as references (`Scripts/save-ui-screenshots.py`). Look at the failures first: whatever was attached
+  is saved. Screenshot tests launch with `pinnedLook` (dark, blue accent), so the Mac's own appearance doesn't
+  matter, and crop to the page column: an element's own screenshot is its whole frame on screen, which can run past
+  the window.
 
 ## The plan
 
@@ -104,7 +128,7 @@ genre, Library ▸ Albums, Library ▸ Songs; not Home, whose presets count back
     (Application Support, Caches, Documents) follow it, so `pages.json`, history, caches and thumbnails land there
     with no store changed. Settings don't follow it on macOS (they're written by `cfprefsd`), hence the bundle ID.
     **The folder must exist before Beat launches:** with it missing, settings couldn't see the system's (light mode,
-    the default blue accent) and nothing saved stuck. The Mac tests share `/tmp/BeatUITests`, which `make test-ui`
+    the default blue accent) and nothing saved stuck. The Mac tests share `/tmp/BeatUITests`, which `make mac-test-ui`
     makes before running (the sandboxed test runner can't). The Keychain is shared, but Beat only touches it with
     Last.fm or Discogs switched on, which fresh settings never are.
   - **A fresh start per test:** `-BeatFreshStart` clears the UI-test app's settings key by key and deletes `Library/`
@@ -114,8 +138,8 @@ genre, Library ▸ Albums, Library ▸ Songs; not Home, whose presets count back
   build, and the temporary home is in /tmp, already exists and holds every data folder. A test that silently wrote
   to the real folders could lose the user's pages, so a launch that can't prove isolation doesn't start, and a fresh
   start only ever deletes inside a home in /tmp. `LaunchOptionsTests` covers the rules.
-- **By hand:** `make run-fixtures` builds the UI-test app and opens it on the fixture songs, fresh: what a UI test
-  sees. `make run-fixtures KEEP=1` reopens it as it was left, to check what a relaunch keeps.
+- **By hand:** `make mac-run-fixtures` builds the UI-test app and opens it on the fixture songs, fresh: what a UI test
+  sees. `make mac-run-fixtures KEEP=1` reopens it as it was left, to check what a relaunch keeps.
 - **Accessibility identifiers** on what UI tests touch, dot-separated, with a name where there's one per item:
 
   | Identifier | What |
@@ -129,18 +153,16 @@ genre, Library ▸ Albums, Library ▸ Songs; not Home, whose presets count back
   | `nowPlayingBar`, `nowPlaying` | The bar and full Now Playing (containers: their controls stay reachable; Esc closes Now Playing) |
   | `editor.name`, `editor.save`, `editor.cancel` | The element editor's name and buttons |
   | `nameSheet.name`, `nameSheet.save`, `nameSheet.cancel` | The name sheet for new and renamed pages |
+  | `editor.tab`, `editor.find`, `editor.layout` | The Mac editor's Rules/Appearance, Find and Layout pickers (segments by name) |
+  | `coverFlow`, `coverFlow.caption` | Cover Flow and the album named under its centre cover |
 
   Phases 5 and 6 add more as tests need them.
 
-### 5. Mac UI tests
-`BeatUITests` target, `make test-ui`. The first run asks for Accessibility permission for the test runner (once).
-In order of value:
-1. Launch, resize the window, check the now-playing bar follows the page column; quit and relaunch, check the
-   window keeps its size (the 1.1.2 regressions).
-2. Open an album from a tile and go back (⌘[); open and close Now Playing; switch sidebar pages.
-3. Create, rename and delete a page; edit an element's rules and see the page update; Cancel leaves nothing behind.
-4. Cover Flow on a page, from a screenshot: XCUITest's come from the window server and keep 3D transforms, which
-   the Mac's snapshot capture leaves out (its Cover Flow snapshot is skipped).
+### 5. Mac UI tests (done)
+`BeatUITests`, 11 tests: the bar following window resizes and the window keeping its size (the 1.1.2 regressions);
+opening an album and going back, sidebar pages keeping their place, Now Playing opening and closing; creating,
+renaming and deleting a page, a fresh start forgetting the last launch's pages, cancelling a new page or element,
+adding an element; Cover Flow at its start, middle and end. See "UI tests: how they work".
 
 ### 6. iPhone and iPad UI tests
 `BeatiOSUITests` target, `make ios-test-ui`: the same paths with swipe back, plus the sidebar drawer, swiping

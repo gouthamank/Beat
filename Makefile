@@ -1,4 +1,5 @@
-# Command-line shortcuts. `make install` builds a Release copy and puts it in /Applications.
+# Command-line shortcuts. `make install`, `sim`, `test` and `snapshot-record` show a menu in a terminal (or take their
+# choice as on=…, e.g. `make install on=mac`); the targets they lead to can also be run directly.
 
 export DEVELOPER_DIR := /Applications/Xcode.app/Contents/Developer
 
@@ -12,48 +13,71 @@ GIT_COUNT := $(shell git rev-list --count HEAD 2>/dev/null || echo 0)
 GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo none)$(shell git status --porcelain 2>/dev/null | grep -q . && echo -dirty)
 RELEASE_APP := build/Build/Products/Release/Beat.app
 INSTALLED_APP := /Applications/Beat.app
+# Asks which target a menu target leads to (Scripts/menu.sh): on=… if given, else a menu in a terminal.
+MENU := bash Scripts/menu.sh
+SUBMAKE := $(MAKE) --no-print-directory
 
-.PHONY: project build test test-record test-ui run-fixtures install clean ios-sim-ipad ios-sim-iphone ios-install ios-test ios-test-record
+# A bare `make` lists the targets (help, below).
+.DEFAULT_GOAL := help
+
+.PHONY: help install sim test snapshot-record project clean mac-build mac-install mac-test mac-test-record mac-test-ui \
+	mac-test-ui-record mac-run-fixtures ios-sim-ipad ios-sim-iphone ios-install ios-test ios-test-record
+
+##@ Menus (pick from a list, or give the choice: make install on=mac)
+
+# Every target with a `## description` on its line, under the `##@` headings: this list can't drift from the targets.
+help: ## This list
+	@awk 'BEGIN { FS = ":.*## " } /^##@/ { printf "\n%s\n", substr($$0, 5) } /^[a-z-]+:.*## / { printf "  make %-20s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
+	@echo
+
+# Install Beat on the Mac or a connected iPad or iPhone.
+install: ## Mac or a connected iPad/iPhone (on=mac|ios)
+	@key=$$($(MENU) "Install Beat on" "$(on)" mac="Mac" ios="iPad or iPhone (connected)") && \
+		$(SUBMAKE) $$key-install
+
+# Build and launch Beat in a Simulator.
+sim: ## iPad or iPhone Simulator (on=ipad|iphone)
+	@key=$$($(MENU) "Run Beat in" "$(on)" ipad="iPad Simulator" iphone="iPhone Simulator") && \
+		$(SUBMAKE) ios-sim-$$key
+
+# Run tests. "All" runs every suite, carrying on past a failing one.
+test: ## Mac, iOS Simulator, Mac UI tests, or all (on=mac|ios|ui|all)
+	@key=$$($(MENU) "Run" "$(on)" mac="Mac tests" ios="iOS Simulator tests" ui="Mac UI tests" all="All of them") && \
+		case $$key in \
+			mac) $(SUBMAKE) mac-test ;; \
+			ios) $(SUBMAKE) ios-test ;; \
+			ui) $(SUBMAKE) mac-test-ui ;; \
+			all) $(SUBMAKE) -k mac-test ios-test mac-test-ui ;; \
+		esac
+
+# Re-record the snapshots or screenshots that changed (after a deliberate design change: look at the failures first).
+snapshot-record: ## Re-record changed snapshots: Mac, iOS, or Mac UI screenshots (on=mac|ios|ui)
+	@key=$$($(MENU) "Re-record" "$(on)" mac="Mac snapshots" ios="iOS snapshots" ui="Mac UI screenshots") && \
+		case $$key in \
+			mac) $(SUBMAKE) mac-test-record ;; \
+			ios) $(SUBMAKE) ios-test-record ;; \
+			ui) $(SUBMAKE) mac-test-ui-record ;; \
+		esac
+
+##@ Both platforms
 
 # Regenerate Beat.xcodeproj from project.yml.
-project:
+project: ## Regenerate Beat.xcodeproj from project.yml
 	xcodegen generate
 
+# Delete build products (the installed app is left alone).
+clean: ## Delete build products
+	rm -rf build
+
+##@ Mac
+
 # Release build into build/.
-build: project
+mac-build: project ## Release build into build/
 	$(XCODEBUILD) -configuration Release CURRENT_PROJECT_VERSION=$(GIT_COUNT) BEAT_COMMIT=$(GIT_COMMIT) build
-
-# Run the unit tests (Debug).
-test: project
-	$(XCODEBUILD) test
-
-# The same, re-recording every snapshot that doesn't match its reference (after a deliberate design change: look at
-# the failures from `make test` first). xcodebuild passes TEST_RUNNER_ variables on to the tests without the prefix.
-test-record: project
-	TEST_RUNNER_SNAPSHOT_TESTING_RECORD=failed $(XCODEBUILD) test
-
-# Mac UI tests: launch the UI-test build on the fixture songs, each test in a fresh temporary home, and drive it with
-# the keyboard and mouse, so leave the Mac alone while they run. The first run asks once to let the test runner
-# control the Mac (System Settings > Privacy & Security > Accessibility).
-test-ui: project
-	rm -rf /tmp/BeatUITests && mkdir -p /tmp/BeatUITests
-	xcodebuild -project Beat.xcodeproj -scheme BeatUITests -derivedDataPath build -quiet \
-		-destination "platform=macOS,arch=$(shell uname -m)" ONLY_ACTIVE_ARCH=YES test
-
-# The UI-test build (its own bundle ID, so its own settings) on the fixture songs in Fixtures/Library, with its files
-# in a temporary home: what a UI test sees, starting fresh. `make run-fixtures KEEP=1` reopens it as it was left
-# instead (same home and settings), to check what a relaunch keeps. Your own library, pages and settings aren't
-# read or touched. Quit it to return.
-FIXTURE_HOME := /tmp/beat-fixtures-home
-run-fixtures: project
-	$(XCODEBUILD) -configuration UITest build
-	$(if $(KEEP),,rm -rf "$(FIXTURE_HOME)" && mkdir -p "$(FIXTURE_HOME)")
-	CFFIXED_USER_HOME="$(FIXTURE_HOME)" "build/Build/Products/UITest/Beat.app/Contents/MacOS/Beat" \
-		-BeatFixtureLibrary "$(CURDIR)/Fixtures/Library" $(if $(KEEP),,-BeatFreshStart)
 
 # Release build, replace the installed copy, and relaunch it. Beat is quit politely first so it can
 # finish saving; the first run asks once to let Terminal control Beat.
-install: build
+mac-install: mac-build ## Release build into /Applications, relaunched
 	@if pgrep -xq Beat; then \
 		osascript -e 'tell application "Beat" to quit'; \
 		while pgrep -xq Beat; do sleep 0.2; done; \
@@ -62,11 +86,42 @@ install: build
 	ditto "$(RELEASE_APP)" "$(INSTALLED_APP)"
 	open "$(INSTALLED_APP)"
 
-# Delete build products (the installed app is left alone).
-clean:
-	rm -rf build
+# Run the unit tests (Debug).
+mac-test: project ## Unit and snapshot tests
+	$(XCODEBUILD) test
 
-# --- iPad and iPhone (the BeatiOS target). The Mac targets above are unchanged.
+# The same, re-recording every snapshot that doesn't match its reference (after a deliberate design change: look at
+# the failures from `make mac-test` first). xcodebuild passes TEST_RUNNER_ variables on to the tests without the prefix.
+mac-test-record: project ## Re-record the snapshots that changed
+	TEST_RUNNER_SNAPSHOT_TESTING_RECORD=failed $(XCODEBUILD) test
+
+# Mac UI tests: launch the UI-test build on the fixture songs, each test in a fresh temporary home, and drive it with
+# the keyboard and mouse, so leave the Mac alone while they run. The first run asks once to let the test runner
+# control the Mac (System Settings > Privacy & Security > Accessibility).
+mac-test-ui: project ## UI tests (leave the Mac alone, about 3 minutes)
+	rm -rf /tmp/BeatUITests && mkdir -p /tmp/BeatUITests
+	xcodebuild -project Beat.xcodeproj -scheme BeatUITests -derivedDataPath build -quiet \
+		-destination "platform=macOS,arch=$(shell uname -m)" ONLY_ACTIVE_ARCH=YES test
+
+# Runs the Mac UI tests, then saves the screenshots they attached (missing references, or ones a design change altered)
+# as the new references in BeatUITests/__Snapshots__: the sandboxed test runner can't write to the repo itself. Look at
+# the failures from `make mac-test-ui` first; run `make mac-test-ui` again afterwards to check.
+mac-test-ui-record: project ## UI tests, then save their changed screenshots
+	-$(SUBMAKE) mac-test-ui
+	python3 -I Scripts/save-ui-screenshots.py
+
+# The UI-test build (its own bundle ID, so its own settings) on the fixture songs in Fixtures/Library, with its files
+# in a temporary home: what a UI test sees, starting fresh. `make mac-run-fixtures KEEP=1` reopens it as it was left
+# instead (same home and settings), to check what a relaunch keeps. Your own library, pages and settings aren't
+# read or touched. Quit it to return.
+FIXTURE_HOME := /tmp/beat-fixtures-home
+mac-run-fixtures: project ## The UI-test build on the fixture songs (KEEP=1: as left)
+	$(XCODEBUILD) -configuration UITest build
+	$(if $(KEEP),,rm -rf "$(FIXTURE_HOME)" && mkdir -p "$(FIXTURE_HOME)")
+	CFFIXED_USER_HOME="$(FIXTURE_HOME)" "build/Build/Products/UITest/Beat.app/Contents/MacOS/Beat" \
+		-BeatFixtureLibrary "$(CURDIR)/Fixtures/Library" $(if $(KEEP),,-BeatFreshStart YES)
+
+##@ iPad and iPhone
 
 IOS_BUILD := xcodebuild -project Beat.xcodeproj -scheme BeatiOS -derivedDataPath build/ios -quiet \
 	CURRENT_PROJECT_VERSION=$(GIT_COUNT) BEAT_COMMIT=$(GIT_COMMIT)
@@ -92,31 +147,32 @@ define ios_sim
 	xcrun simctl launch "$(1)" dev.gouthaman.Beat
 endef
 
-ios-sim-ipad: project
+# Debug build, installed and launched in the iPad Simulator.
+ios-sim-ipad: project ## Debug build in the iPad Simulator
 	$(call ios_sim,$(IOS_IPAD))
 
-ios-sim-iphone: project
+# Debug build, installed and launched in the iPhone Simulator.
+ios-sim-iphone: project ## Debug build in the iPhone Simulator
 	$(call ios_sim,$(IOS_IPHONE))
 
 # Run the unit tests (Debug) inside the iOS app on the iPhone Simulator: the shared tests plus BeatTests/iOS.
-ios-test: project
+ios-test: project ## Unit and snapshot tests in the iPhone Simulator
 	@# Booted and ready first: left to boot it, xcodebuild launched the app before the Simulator had finished starting
 	@# ("Busy: Application failed preflight checks").
 	xcrun simctl bootstatus "$(IOS_IPHONE)" -b
 	$(IOS_BUILD) -configuration Debug -destination "platform=iOS Simulator,name=$(IOS_IPHONE)" test
 
-# The same, re-recording every iOS snapshot that doesn't match its reference (see `test-record`).
-ios-test-record: project
+# The same, re-recording every iOS snapshot that doesn't match its reference (see `mac-test-record`).
+ios-test-record: project ## Re-record the iOS snapshots that changed
 	xcrun simctl bootstatus "$(IOS_IPHONE)" -b
 	TEST_RUNNER_SNAPSHOT_TESTING_RECORD=failed $(IOS_BUILD) -configuration Debug -destination "platform=iOS Simulator,name=$(IOS_IPHONE)" test
 
 # Release build for a connected iPad or iPhone, signed with the personal team in Config/Secrets.xcconfig
 # (DEVELOPMENT_TEAM; add the Apple ID in Xcode > Settings > Accounts once). With a free Apple ID the install stops
 # opening after 7 days: run this again to renew it.
-ios-install: project
+ios-install: project ## Release build onto a connected iPad or iPhone
 	@test -n "$(IOS_DEVICE)" || { echo "No device found: connect it by cable, unlock it and trust this Mac."; exit 1; }
 	@# For this device, not any iOS device: a free Apple ID's profile lists only devices built for, and an install
 	@# from a generic build failed with "This provisioning profile cannot be installed on this device".
 	$(IOS_BUILD) -configuration Release -destination "platform=iOS,id=$(IOS_DEVICE)" -allowProvisioningUpdates build
 	xcrun devicectl device install app --device "$(IOS_DEVICE)" build/ios/Build/Products/Release-iphoneos/Beat.app
-

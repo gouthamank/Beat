@@ -6,14 +6,20 @@ import UniformTypeIdentifiers
 struct SettingsView: View {
     var body: some View {
         List {
-            NavigationLink { GeneralSettings().navigationTitle("General") } label: { Label("General", systemImage: "gearshape") }
-            NavigationLink { ElementSettings().navigationTitle("Elements") } label: { Label("Elements", systemImage: "rectangle.grid.1x2") }
-            NavigationLink { PlaybackSettings().navigationTitle("Playback") } label: { Label("Playback", systemImage: "waveform") }
-            NavigationLink { LyricsSettings().navigationTitle("Lyrics") } label: { Label("Lyrics", systemImage: "quote.bubble") }
-            NavigationLink { ArtistInfoSettingsPane().navigationTitle("Artist Info") } label: { Label("Artist Info", systemImage: "info.circle") }
-            // Only in builds with a Last.fm key (Config/Secrets.xcconfig); see README.
-            if LastFMCredentials.bundled != nil {
-                NavigationLink { LastFMSettingsPane().navigationTitle("Last.fm") } label: { Label("Last.fm", systemImage: "dot.radiowaves.up.forward") }
+            Section {
+                NavigationLink { GeneralSettings().navigationTitle("General") } label: { Label("General", systemImage: "gearshape") }
+                NavigationLink { ElementSettings().navigationTitle("Elements") } label: { Label("Elements", systemImage: "rectangle.grid.1x2") }
+                NavigationLink { PlaybackSettings().navigationTitle("Playback") } label: { Label("Playback", systemImage: "waveform") }
+                NavigationLink { LyricsSettings().navigationTitle("Lyrics") } label: { Label("Lyrics", systemImage: "quote.bubble") }
+                NavigationLink { ArtistInfoSettingsPane().navigationTitle("Artist Info") } label: { Label("Artist Info", systemImage: "info.circle") }
+                // Only in builds with a Last.fm key (Config/Secrets.xcconfig); see README.
+                if LastFMCredentials.bundled != nil {
+                    NavigationLink { LastFMSettingsPane().navigationTitle("Last.fm") } label: { Label("Last.fm", systemImage: "dot.radiowaves.up.forward") }
+                }
+            }
+            // Where the Mac has its About panel.
+            Section {
+                LabeledContent("Version", value: AppVersion.display)
             }
         }
         .navigationTitle("Settings")

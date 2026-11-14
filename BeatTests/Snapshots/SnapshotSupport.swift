@@ -222,7 +222,7 @@ extension XCTestCase {
     /// Snapshots `view` at each device's width (or `width`) and its own height (or the device's, for a `fullScreen`
     /// view), in light and dark, against reference images in `__Snapshots__` beside the test. A missing reference is
     /// recorded and the test fails once; run it again. To re-record the ones that changed, check them by eye, then
-    /// `make test-record` (or `ios-test-record`); `record: true` re-records this test's every time.
+    /// `make mac-test-record` (or `ios-test-record`); `record: true` re-records this test's every time.
     @MainActor
     func assertScreens<V: View>(_ view: V, stores: SnapshotStores, fullScreen: Bool = false, width: CGFloat? = nil,
                                 record: Bool = false,
@@ -243,7 +243,7 @@ extension XCTestCase {
                 )
                 let host = SettledHost(root, width: width, height: height, scheme: scheme, compact: device == .iPhone)
                 let name = "\(device.rawValue)-\(scheme == .dark ? "dark" : "light")"
-                // Nil leaves the mode to SNAPSHOT_TESTING_RECORD (`make test-record` sets it to `failed`), else missing.
+                // Nil leaves the mode to SNAPSHOT_TESTING_RECORD (`make mac-test-record` sets it to `failed`), else missing.
                 withSnapshotTesting(record: record ? .all : nil) {
                     #if os(macOS)
                     assertSnapshot(of: host.view, as: .image(precision: 0.99, perceptualPrecision: 0.98),

@@ -44,6 +44,24 @@ final class ElementSnapshotTests: XCTestCase {
         assertScreens(element("Albums", .albums, .coverFlow), stores: stores)
         #endif
     }
+    /// With an album from the middle in front (covers fan out on both sides) and the last (all on the left). Cover Flow
+    /// alone, without its header: an element always starts at its first album.
+    func testAlbumsCoverFlowFromTheMiddle() throws { try assertCoverFlow(startingAt: "First Light") }
+    func testAlbumsCoverFlowAtTheEnd() throws { try assertCoverFlow(startingAt: "Deep Blue") }
+
+    private func assertCoverFlow(startingAt title: String, testName: String = #function) throws {
+        #if os(macOS)
+        throw XCTSkip("The Mac's snapshot capture can't draw Cover Flow's 3D transforms.")
+        #else
+        let filter = SmartFilter(id: UUID(), name: "Albums", output: .albums,
+                                 steps: [.sort([SortKey(field: .field(.year), ascending: false),
+                                                SortKey(field: .field(.title), ascending: true)])])
+        let albums = SnapshotLibrary.result(filter).albums
+        let start = try XCTUnwrap(albums.first { $0.title == title }).id
+        assertScreens(CoverFlowStartingAt(albums: albums, start: start), stores: stores, testName: testName)
+        #endif
+    }
+
     func testAlbumsTimeline() { assertScreens(element("Albums", .albums, .timeline), stores: stores) }
     func testAlbumsWithoutHeader() { assertScreens(element("Albums", .albums, .shelf, header: false), stores: stores) }
 
@@ -55,4 +73,17 @@ final class ElementSnapshotTests: XCTestCase {
     func testArtistsList() { assertScreens(element("Artists", .artists, .list, rows: 3), stores: stores) }
     func testGenresGrid() { assertScreens(element("Genres", .genres, .grid), stores: stores) }
     func testGenresList() { assertScreens(element("Genres", .genres, .list, rows: 4), stores: stores) }
+}
+
+/// Cover Flow sized as `ElementView` sizes it (smaller on a phone), starting at `start`.
+private struct CoverFlowStartingAt: View {
+    let albums: [Album]
+    let start: PersistentID
+    @Environment(\.compactLayout) private var compact
+
+    var body: some View {
+        let side = CoverFlowGeometry.side(for: .medium)
+        CoverFlowElement(albums: albums, side: compact ? min(side, 200) : side,
+                         spread: CoverFlowGeometry.spread(for: .regular), startingAt: start)
+    }
 }

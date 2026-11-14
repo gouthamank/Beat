@@ -18,6 +18,7 @@ struct FilterAppearanceForm: View {
                 #else
                 .pickerStyle(.menu)
                 #endif
+                .accessibilityIdentifier("editor.layout")
                 Picker("Size", selection: $appearance.size) {
                     ForEach(ElementAppearance.Size.allCases, id: \.self) { Text($0.rawValue.capitalized).tag($0) }
                 }

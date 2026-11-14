@@ -62,6 +62,7 @@ struct ElementEditorLayout<Preview: View>: View {
             .pickerStyle(.segmented)
             .labelsHidden()
             .frame(width: 240)
+            .accessibilityIdentifier("editor.tab")
             .padding(.vertical, 10)
             Divider()
             switch tab {
@@ -90,6 +91,7 @@ struct ElementEditorLayout<Preview: View>: View {
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 .fixedSize()
+                .accessibilityIdentifier("editor.find")
             }
             Divider()
             Text("Steps run top to bottom").font(.caption).foregroundStyle(.secondary)

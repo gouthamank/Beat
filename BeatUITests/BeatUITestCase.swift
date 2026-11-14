@@ -4,7 +4,7 @@ import XCTest
 /// `Fixtures/Library`, with its files in a temporary home for this test. The app refuses to start any other way
 /// (`LaunchOptions.checkIsolation`), so a test can't reach the user's library, pages or settings.
 ///
-/// The home is /tmp/BeatUITests, made by `make test-ui` before any launch: it has to exist when Beat starts (a home
+/// The home is /tmp/BeatUITests, made by `make mac-test-ui` before any launch: it has to exist when Beat starts (a home
 /// made later left settings unable to see the system's, and nothing saved stuck), and this runner is sandboxed, so
 /// it can't make it there itself; its own temporary folder is inside its container, where Beat keeping files made
 /// macOS ask whether it may access another app's data. Tests share it; each starts fresh (`-BeatFreshStart`).
@@ -27,12 +27,16 @@ class BeatUITestCase: XCTestCase {
     /// Launches Beat, fresh: no settings and no files from earlier tests. `freshSettings: false` keeps what the last
     /// launch in this test saved (window size, selection, pages).
     /// Every launch saves and restores windows as one from the Dock does (XCTest otherwise adds
-    /// `-ApplePersistenceIgnoreState YES`).
-    func launch(freshSettings: Bool = true) {
+    /// `-ApplePersistenceIgnoreState YES`). `pinnedLook` sets dark mode and the blue accent for this launch, whatever
+    /// the Mac's own, for tests that compare screenshots.
+    func launch(freshSettings: Bool = true, pinnedLook: Bool = false) {
         app = XCUIApplication()
         app.launchEnvironment["CFFIXED_USER_HOME"] = home
         app.launchArguments = ["-BeatFixtureLibrary", Self.fixtureLibrary.path, "-ApplePersistenceIgnoreState", "NO"]
-            + (freshSettings ? ["-BeatFreshStart"] : [])
+            // With a value: AppKit reads `-name value` pairs, and a bare flag followed by another argument left that one's
+            // value over, which it took for a file to open, so no window was made.
+            + (freshSettings ? ["-BeatFreshStart", "YES"] : [])
+            + (pinnedLook ? ["-AppleInterfaceStyle", "Dark", "-AppleAccentColor", "4"] : [])
         app.launch()
         XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 10), "Beat opened a window")
     }
@@ -68,6 +72,15 @@ class BeatUITestCase: XCTestCase {
     }
 
     // MARK: Common steps
+
+    /// A new page (⌘N) named `name`. The name sheet selects the placeholder, so typing replaces it.
+    @discardableResult
+    func createPage(_ name: String) -> XCUIElement {
+        app.typeKey("n", modifierFlags: .command)
+        waitFor("nameSheet.name").typeText(name)
+        waitFor("nameSheet.save").click()
+        return waitFor("sidebar.page.\(name)")
+    }
 
     /// Library ▸ Albums, then an album's page. The grid is lazy, so only tiles on screen exist: use albums near the
     /// top (sorted by artist: Aurora Lane's First Light, Northern Lights and Low Sun come first).

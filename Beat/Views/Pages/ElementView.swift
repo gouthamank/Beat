@@ -159,6 +159,9 @@ struct ElementView: View {
             // Large covers are capped on a phone, so the centre one and its neighbours fit the screen.
             CoverFlowElement(albums: result.albums, side: compact ? min(CoverFlowGeometry.side(for: look.size), 200) : CoverFlowGeometry.side(for: look.size),
                              spread: CoverFlowGeometry.spread(for: look.spacing))
+                // For the Mac's UI test, which checks it from a screenshot (the unit tests' snapshots can't draw its 3D).
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("coverFlow")
         case (.albums, .timeline):
             let albums = result.albums
             YearTimelineElement(count: albums.count, year: { albums[$0].year }, newestFirst: look.timelineOrder == .newestFirst,
