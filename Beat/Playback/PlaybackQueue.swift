@@ -13,7 +13,7 @@ final class PlaybackQueue {
     var volume: Float {
         didSet {
             player.volume = volume
-            UserDefaults.standard.set(volume, forKey: "volume")
+            defaults.set(volume, forKey: "volume")
             if !togglingMute { mute.changedManually() }
         }
     }
@@ -28,6 +28,8 @@ final class PlaybackQueue {
     var repeatMode: RepeatMode { state.repeatMode }
 
     @ObservationIgnored private let player: any AudioPlaying
+    /// Where the volume is remembered; tests pass their own, so they never change Beat's.
+    @ObservationIgnored private let defaults: UserDefaults
     /// The output (AirPlay) picker, shared by every now-playing bar so the route survives navigation. Made when a
     /// bar first shows it, so a queue in tests never attaches one (a second picker drops the route).
     @ObservationIgnored private(set) lazy var output = OutputRoute(player: player.outputPlayer)
@@ -42,14 +44,15 @@ final class PlaybackQueue {
     /// Whether Last.fm has been told the current item is playing.
     @ObservationIgnored private var announcedCurrent = false
 
-    /// Tests pass a stand-in player and turn off `publishesNowPlaying`.
+    /// Tests pass a stand-in player and their own defaults, and turn off `publishesNowPlaying`.
     init(history: PlayHistoryStore, artwork: ArtworkCache, scrobbler: Scrobbler? = nil,
-         player: any AudioPlaying = AudioPlayer(), publishesNowPlaying: Bool = true) {
+         player: any AudioPlaying = AudioPlayer(), defaults: UserDefaults = .standard, publishesNowPlaying: Bool = true) {
         self.player = player
+        self.defaults = defaults
         self.history = history
         self.scrobbler = scrobbler
         #if os(macOS)
-        self.volume = UserDefaults.standard.object(forKey: "volume") as? Float ?? 0.8
+        self.volume = defaults.object(forKey: "volume") as? Float ?? 0.8
         #else
         // Full: on iPad and iPhone Beat's volume control is the system volume (SystemVolume).
         self.volume = 1

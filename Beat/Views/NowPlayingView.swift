@@ -88,7 +88,9 @@ struct NowPlayingView: View {
     @AppStorage("appearance.coverColours") private var coverColours = true
     /// Remembered in UserDefaults but held in `@State`: toggling an `@AppStorage` value from a click made the clicked
     /// button jump to its new place while the rest of the column slid (the write lands outside the animation).
-    @State private var showLyrics = UserDefaults.standard.bool(forKey: "nowPlaying.showLyrics")
+    @State private var showLyrics: Bool
+    /// Where `showLyrics` is remembered; snapshot tests pass their own.
+    private let defaults: UserDefaults
     /// Radial around the cover, toggled by clicking it. Behind the cover, so it moves nothing.
     @AppStorage("nowPlaying.radial") private var showRadial = false
     @AppStorage("visualizer.style") private var visualizerStyle = VisualizerStyle.horizon.rawValue
@@ -125,6 +127,13 @@ struct NowPlayingView: View {
     private var primary: AnyShapeStyle { palette.map { AnyShapeStyle($0.primary.color) } ?? AnyShapeStyle(.primary) }
     private var secondary: AnyShapeStyle { palette.map { AnyShapeStyle($0.secondary.color) } ?? AnyShapeStyle(.secondary) }
 
+    init(track: Track, contentOpacity: Double = 1, defaults: UserDefaults = .standard) {
+        self.track = track
+        self.contentOpacity = contentOpacity
+        self.defaults = defaults
+        _showLyrics = State(initialValue: defaults.bool(forKey: "nowPlaying.showLyrics"))
+    }
+
     var body: some View {
         ZStack {
             if visualizing {
@@ -147,7 +156,7 @@ struct NowPlayingView: View {
                     }
                 }
                 .animation(.spring(duration: 0.45, bounce: 0.1), value: showLyrics)
-                .onChange(of: showLyrics) { UserDefaults.standard.set(showLyrics, forKey: "nowPlaying.showLyrics") }
+                .onChange(of: showLyrics) { defaults.set(showLyrics, forKey: "nowPlaying.showLyrics") }
                 .padding(compact ? 20 : 48)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 // Dragging down anywhere that isn't a control pulls the view down with it, and closes it if far

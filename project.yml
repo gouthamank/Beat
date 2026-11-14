@@ -23,6 +23,11 @@ settingGroups:
 # project is generated, so Secrets.xcconfig appears once it exists (regenerate after creating it).
 fileGroups:
   - Config
+# Test-only: snapshot tests compare rendered views with reference images (TESTING.md). Nothing ships in the app.
+packages:
+  SnapshotTesting:
+    url: https://github.com/pointfreeco/swift-snapshot-testing
+    exactVersion: 1.19.7
 targets:
   Beat:
     type: application
@@ -128,6 +133,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: dev.gouthaman.BeatTests
     dependencies:
       - target: Beat
+      - package: SnapshotTesting
   # The same shared tests, run inside the iOS app on a Simulator (`make ios-test`).
   BeatiOSTests:
     type: bundle.unit-test
@@ -149,6 +155,7 @@ targets:
         BUNDLE_LOADER: $(TEST_HOST)
     dependencies:
       - target: BeatiOS
+      - package: SnapshotTesting
 schemes:
   Beat:
     build:
