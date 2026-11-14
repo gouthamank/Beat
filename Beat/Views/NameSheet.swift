@@ -45,6 +45,7 @@ struct NameSheet: View {
                 Spacer()
                 Button("Cancel", role: .cancel) { dismiss() }
                     .keyboardShortcut(.cancelAction)
+                    .accessibilityIdentifier("nameSheet.cancel")
                 Button(saveTitle, action: commit)
                     .keyboardShortcut(.defaultAction)
                     .accessibilityIdentifier("nameSheet.save")

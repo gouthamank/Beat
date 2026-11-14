@@ -40,6 +40,7 @@ struct ElementEditorLayout<Preview: View>: View {
                 .textFieldStyle(.plain)
                 .font(.title2.weight(.semibold))
                 .autocorrectionDisabled()
+                .accessibilityIdentifier("editor.name")
                 .focused($nameFocused)
             if let caption = context.nameCaption {
                 Text(caption)

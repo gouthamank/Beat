@@ -49,6 +49,7 @@ struct PageView: View {
             .toolbar {
                 ToolbarItemGroup(placement: .primaryAction) {
                     Button("Add Element", systemImage: "plus") { navigator.newElement(on: pageID, customFields: pages.customFields) }
+                        .accessibilityIdentifier("page.addElement")
                     Toggle(isOn: $editing.animation(.snappy)) {
                         Label("Edit Page", systemImage: "square.and.pencil")
                     }

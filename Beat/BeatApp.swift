@@ -6,17 +6,23 @@ struct BeatApp: App {
     @State private var artwork: ArtworkCache
     @State private var history: PlayHistoryStore
     @State private var queue: PlaybackQueue
-    @State private var pages = PageStore()
+    @State private var pages: PageStore
     @State private var navigator: AppNavigator
     @State private var hero: HeroTransition
-    @State private var lyrics = LyricsProvider()
-    @State private var artistInfo = ArtistInfoProvider()
-    @State private var artistImages = ArtistImages()
+    @State private var lyrics: LyricsProvider
+    @State private var artistInfo: ArtistInfoProvider
+    @State private var artistImages: ArtistImages
     @State private var scrobbler: Scrobbler
 
+    // Every store is made here, after the check: one made in its declaration loads its files before `init` runs, so a
+    // UI test's fresh start came too late (the last test's pages came back) and the check came after a read.
     init() {
         LaunchOptions.checkIsolation()
         configurePlatform()
+        _pages = State(initialValue: PageStore())
+        _lyrics = State(initialValue: LyricsProvider())
+        _artistInfo = State(initialValue: ArtistInfoProvider())
+        _artistImages = State(initialValue: ArtistImages())
         let library = LibraryStore()
         let artwork = ArtworkCache(loader: library.loader)
         // Saved thumbnails are named for the art Music has now; changed art is forgotten and loaded again.

@@ -15,6 +15,7 @@ struct RulesForm: View {
                 TextField("Name", text: $draft.name, prompt: Text("Name"))
                     .font(.headline)
                     .autocorrectionDisabled()
+                    .accessibilityIdentifier("editor.name")
             } footer: {
                 if let nameCaption { Text(nameCaption) }
             }

@@ -122,13 +122,13 @@ genre, Library ▸ Albums, Library ▸ Songs; not Home, whose presets count back
   |---|---|
   | `sidebar.page.<name>`, `sidebar.library.<albums/artists/songs/genres>` | Sidebar rows |
   | `sidebar.open` | The phone's button that opens the sidebar drawer |
-  | `page.<name>` | A page's scroll view, filling the page column |
+  | `page.<name>`, `page.addElement` | A page's scroll view, filling the page column; its Add Element button |
   | `element.<name>` | An element's title (tap: See All) |
   | `albumTile.<title>` | An album tile: one element, title and artist read together |
-  | `albumPage`, `artistPage` | Album and artist pages |
+  | `albumPage`, `albumPage.play`, `artistPage` | Album and artist pages' scroll views (not their window-wide backgrounds); the album's Play |
   | `nowPlayingBar`, `nowPlaying` | The bar and full Now Playing (containers: their controls stay reachable; Esc closes Now Playing) |
-  | `editor.save`, `editor.cancel` | The element editor's buttons |
-  | `nameSheet.name`, `nameSheet.save` | The name sheet for new and renamed pages |
+  | `editor.name`, `editor.save`, `editor.cancel` | The element editor's name and buttons |
+  | `nameSheet.name`, `nameSheet.save`, `nameSheet.cancel` | The name sheet for new and renamed pages |
 
   Phases 5 and 6 add more as tests need them.
 
