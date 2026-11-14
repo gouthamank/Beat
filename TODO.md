@@ -55,23 +55,17 @@ and `skipped date` are writable, and tracks match by persistent ID. Costs:
 Options: A keep them separate; B opt-in automatic sync (off by default, batched, only while Music runs);
 C a manual "Send Beat's plays to Music" button. Leaning B plus C's button for plays already recorded.
 
-## Library health page (noted Nov 2026)
-A read-only report of what's worth fixing in Music. Beat never writes to the library, so it only points the way:
-each item names the problem and opens the album (or shows the song) so it can be fixed in Music.
+## Ignoring items in Library > Health (noted Nov 2026)
+Some Health items are fine as they are (a deliberate duplicate, an album left without a year). A way to dismiss
+them, kept in Beat and never written to Music:
 
-Checks:
-- Albums without artwork (`LibrarySnapshot.hasArtwork`), and albums whose songs carry mixed covers.
-- Songs or albums with no year (they land under Timeline's "No year").
-- Likely duplicates: the same title, artist and length on more than one song, or the same album split in two
-  (same title and album artist, different album IDs).
-- Missing files: songs whose `location` no longer exists on disk.
-- Inconsistent tags within an album: mixed album artists, genres or years, gaps or repeats in track numbers.
-- Songs without a genre or album artist.
-
-Ideas:
-- A Library page in the sidebar (hideable in Settings like the others), one section per check with a count;
-  computed off the main actor, once per library load.
-- Pure checks over a `LibrarySnapshot`, so each is unit-tested with `Track.fixture`.
+- **Ignore:** a row's hover button or right-click > Ignore hides it from its section.
+- **Stored** next to `history.json` in Application Support, keyed by check plus album or song ID, so ignoring one
+  problem on a song doesn't hide another (no album artist vs a duplicate).
+- **Undo:** a section with ignored items ends with "3 ignored · Show", listing them dimmed with Don't Ignore;
+  Settings could add Reset Ignored Items.
+- **Stale entries:** an item fixed in Music stops matching, and its entry is dropped at the next check.
+- Pure filtering over `LibraryHealthReport`, unit-tested; a small persisted store like `PlayHistoryStore`.
 
 ## First-run tutorial (noted Nov 2026)
 A guided first look, like Android's spotlight coach marks, with most of the time spent on custom pages and

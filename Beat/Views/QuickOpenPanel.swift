@@ -113,7 +113,7 @@ struct QuickOpenOverlay: View {
         .onChange(of: navigator.showingQuickOpen) { _, showing in
             guard showing else { return }
             model.open(snapshot: library.snapshot, version: library.version, tree: pages.tree,
-                       libraryPages: LibraryPage.allCases.filter { !LibraryPage.hidden(in: hiddenLibraryPages).contains($0) })
+                       libraryPages: LibraryPage.available.filter { !LibraryPage.hidden(in: hiddenLibraryPages).contains($0) })
             // A frame later: the field isn't in the window yet in this update.
             Task { fieldFocused = true }
         }

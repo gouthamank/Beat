@@ -56,7 +56,7 @@ struct GeneralSettings: View {
             }
 
             Section("Library") {
-                ForEach(LibraryPage.allCases) { page in
+                ForEach(LibraryPage.available) { page in
                     Toggle(isOn: shown(page)) {
                         Label(page.title, systemImage: page.symbol)
                     }

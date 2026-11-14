@@ -23,4 +23,12 @@ final class LibraryPageTests: XCTestCase {
         XCTAssertNil(LibraryPage(.page(UUID())))
         XCTAssertNil(LibraryPage(nil))
     }
+
+    func testHealthIsOfferedOnlyOnTheMac() {
+        #if os(macOS)
+        XCTAssertEqual(LibraryPage.available, LibraryPage.allCases)
+        #else
+        XCTAssertFalse(LibraryPage.available.contains(.health))
+        #endif
+    }
 }

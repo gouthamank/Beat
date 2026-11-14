@@ -30,4 +30,10 @@ final class PageSnapshotTests: XCTestCase {
     func testGenrePage() { assertPage(GenreDetailView(genreID: "jazz"), in: .genres, opening: .genre("jazz")) }
     func testLibraryAlbums() { assertPage(AlbumsLibraryView(), in: .albums) }
     func testLibrarySongs() { assertPage(AlbumSongsView(title: "Songs", tracks: SnapshotLibrary.tracks), in: .songs) }
+    #if os(macOS)
+    /// Every file counted as present: the snapshot library's songs have no files.
+    func testLibraryHealth() {
+        assertPage(LibraryHealthView(report: LibraryHealth.check(SnapshotLibrary.snapshot) { _ in true }), in: .health)
+    }
+    #endif
 }

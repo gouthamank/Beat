@@ -2,7 +2,7 @@ import SwiftUI
 
 enum SidebarItem: Hashable {
     case page(UUID)
-    case albums, artists, songs, genres
+    case albums, artists, songs, genres, health
 
     /// "page:<uuid>" or the Library page's name, for saving the selection between launches.
     var storageString: String {
@@ -12,6 +12,7 @@ enum SidebarItem: Hashable {
         case .artists: "artists"
         case .songs: "songs"
         case .genres: "genres"
+        case .health: "health"
         }
     }
 
@@ -29,7 +30,7 @@ enum SidebarItem: Hashable {
 
 /// The built-in Library pages, in sidebar order. Any of them can be hidden in Settings.
 enum LibraryPage: String, CaseIterable, Identifiable {
-    case albums, artists, songs, genres
+    case albums, artists, songs, genres, health
 
     /// Stored as a comma-separated list of hidden pages, so pages added later show by default.
     static let hiddenKey = "library.hidden"
@@ -42,6 +43,7 @@ enum LibraryPage: String, CaseIterable, Identifiable {
         case .artists: "Artists"
         case .songs: "Songs"
         case .genres: "Genres"
+        case .health: "Health"
         }
     }
 
@@ -51,6 +53,7 @@ enum LibraryPage: String, CaseIterable, Identifiable {
         case .artists: "music.microphone"
         case .songs: "music.note"
         case .genres: "guitars"
+        case .health: "stethoscope"
         }
     }
 
@@ -60,7 +63,18 @@ enum LibraryPage: String, CaseIterable, Identifiable {
         case .artists: .artists
         case .songs: .songs
         case .genres: .genres
+        case .health: .health
         }
+    }
+
+    /// The pages this device offers. Health is Mac only: a synced library can't be fixed on iPad or iPhone, and its
+    /// file and year checks don't apply there.
+    static var available: [LibraryPage] {
+        #if os(macOS)
+        allCases
+        #else
+        allCases.filter { $0 != .health }
+        #endif
     }
 
     init?(_ item: SidebarItem?) {
@@ -214,6 +228,8 @@ struct RootView: View {
             GenreGridView(title: "Genres", genres: snapshot.genres, memory: .genres)
         case .songs:
             AlbumSongsView(title: "Songs", tracks: snapshot.tracks)
+        case .health:
+            LibraryHealthView()
         }
     }
 

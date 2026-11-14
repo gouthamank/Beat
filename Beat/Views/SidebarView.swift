@@ -39,7 +39,7 @@ struct SidebarView: View {
         List(selection: $selection) {
             SidebarTree(rows: SidebarRow.visible(pages.tree.nodes, expanded: navigator.expandedFolders), actions: actions)
 
-            let library = LibraryPage.allCases.filter { !LibraryPage.hidden(in: hiddenLibraryPages).contains($0) }
+            let library = LibraryPage.available.filter { !LibraryPage.hidden(in: hiddenLibraryPages).contains($0) }
             if !library.isEmpty {
                 Section("Library") {
                     ForEach(library) { page in

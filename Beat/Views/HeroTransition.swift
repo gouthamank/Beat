@@ -165,14 +165,16 @@ final class HeroTransition {
 
     func land() { flight = nil }
 
-    /// Opens an album or artist page, zooming its art out of `probe`'s view unless Reduce Motion is on.
+    /// Opens an album or artist page, zooming its art out of `probe`'s view unless Reduce Motion is on. An album can
+    /// open at a song, highlighted (Library ▸ Health's song rows).
     func open(_ subject: HeroSubject, from probe: FrameProbe, cornerRadius: CGFloat = 10,
-              navigator: AppNavigator, reduceMotion: Bool) {
+              navigator: AppNavigator, reduceMotion: Bool, highlighting track: PersistentID? = nil) {
         sources[subject] = Tile(probe: probe, cornerRadius: cornerRadius)
         lastOpened = subject
         if !reduceMotion, let rect = probe.windowRect { depart(subject, from: rect) }
         switch subject {
-        case .album(let id): navigator.openAlbum(id)
+        case .album(let id):
+            if let track { navigator.openAlbum(id, highlighting: track) } else { navigator.openAlbum(id) }
         case .artist(let id): navigator.openArtist(id)
         }
     }

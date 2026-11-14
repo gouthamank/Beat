@@ -292,7 +292,8 @@ final class AppNavigator {
             guard tree.node(id)?.page != nil else { return false }
             expandedFolders.formUnion(tree.ancestors(of: id))
         default:
-            guard let library = LibraryPage(saved), !hidden.contains(library) else { return false }
+            guard let library = LibraryPage(saved), LibraryPage.available.contains(library), !hidden.contains(library)
+            else { return false }
         }
         selection = saved
         return true
