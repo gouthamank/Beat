@@ -87,11 +87,18 @@ struct QuickOpenOverlay: View {
     @State private var pointer: CGPoint?
     @FocusState private var fieldFocused: Bool
 
+    private static let dimming = 0.3
+
     var body: some View {
         ZStack(alignment: .top) {
             if navigator.showingQuickOpen {
-                Color.black.opacity(0.3)
+                Color.black.opacity(Self.dimming)
+                    // The Mac's title bar has its own dim (`titleBarDim`): reaching under it too darkened the toolbar twice.
+                    #if os(macOS)
+                    .ignoresSafeArea(edges: [.horizontal, .bottom])
+                    #else
                     .ignoresSafeArea()
+                    #endif
                     .contentShape(Rectangle())
                     .onTapGesture { close() }
                     .transition(.opacity)
@@ -102,6 +109,7 @@ struct QuickOpenOverlay: View {
             }
         }
         .animation(.snappy(duration: 0.2), value: navigator.showingQuickOpen)
+        .titleBarDim(navigator.showingQuickOpen, opacity: Self.dimming) { close() }
         .onChange(of: navigator.showingQuickOpen) { _, showing in
             guard showing else { return }
             model.open(snapshot: library.snapshot, version: library.version, tree: pages.tree,

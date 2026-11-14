@@ -31,6 +31,71 @@ extension View {
 
     /// The sidebar is always a column on the Mac.
     func sidebarDrawer<Sidebar: View>(@ViewBuilder sidebar: @escaping () -> Sidebar) -> some View { self }
+
+    /// Dims the title bar and toolbar while `shown`, matching a SwiftUI dim over the page (Quick Open's). AppKit draws
+    /// them above the window's SwiftUI content, so no overlay reaches them; a click there calls `onTap`.
+    func titleBarDim(_ shown: Bool, opacity: Double, onTap: @escaping () -> Void) -> some View {
+        modifier(TitleBarDim(shown: shown, opacity: opacity, onTap: onTap))
+    }
+}
+
+private struct TitleBarDim: ViewModifier {
+    let shown: Bool
+    let opacity: Double
+    let onTap: () -> Void
+    @State private var dim = TitleBarDimView()
+
+    func body(content: Content) -> some View {
+        content.onChange(of: shown) { _, shown in
+            dim.onTap = onTap
+            if shown { dim.show(in: NSApp.keyWindow ?? NSApp.mainWindow, opacity: opacity) } else { dim.hide() }
+        }
+    }
+}
+
+/// Black over the title bar strip, added to the window's frame view above the toolbar (and the window buttons, as a
+/// sheet covers them). Left in place once added, invisible and letting clicks through while hidden.
+private final class TitleBarDimView: NSView {
+    var onTap: () -> Void = {}
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.black.cgColor
+        alphaValue = 0
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
+
+    func show(in window: NSWindow?, opacity: Double) {
+        guard let window, let frameView = window.contentView?.superview else { return }
+        // Window coordinates: everything above the content layout rect is the title bar and toolbar.
+        let content = window.contentLayoutRect
+        let bar = NSRect(x: 0, y: content.maxY, width: window.frame.width, height: window.frame.height - content.maxY)
+        guard bar.height > 0 else { return }
+        frame = frameView.convert(bar, from: nil)
+        autoresizingMask = frameView.isFlipped ? [.width, .maxYMargin] : [.width, .minYMargin]
+        if superview !== frameView {
+            removeFromSuperview()
+            frameView.addSubview(self, positioned: .above, relativeTo: nil)
+        }
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.2
+            animator().alphaValue = opacity
+        }
+    }
+
+    func hide() {
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.2
+            animator().alphaValue = 0
+        }
+    }
+
+    override func hitTest(_ point: NSPoint) -> NSView? { alphaValue > 0 ? super.hitTest(point) : nil }
+    override func mouseDown(with event: NSEvent) { onTap() }
+    // A click closes Quick Open rather than dragging the window.
+    override var mouseDownCanMoveWindow: Bool { false }
 }
 
 /// Lets go of keyboard focus when a full-window view (Now Playing, the cover viewer) comes or goes: a control left

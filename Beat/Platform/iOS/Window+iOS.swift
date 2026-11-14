@@ -24,6 +24,9 @@ extension View {
     func sidebarDrawer<Sidebar: View>(@ViewBuilder sidebar: @escaping () -> Sidebar) -> some View {
         modifier(SidebarDrawerOverlay(sidebar: sidebar))
     }
+
+    /// SwiftUI's own dim reaches the navigation bar on iPad and iPhone; only the Mac's title bar needs one of its own.
+    func titleBarDim(_ shown: Bool, opacity: Double, onTap: @escaping () -> Void) -> some View { self }
 }
 
 /// Nothing to do: touch has no keyboard focus left behind on the page.
