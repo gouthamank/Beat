@@ -20,7 +20,7 @@ navigation container instead of `NavigationStack`:
 Deferred (Nov 2026) because it replaces the navigation foundation every page sits on; the system stack
 with the reverse album zoom and a non-interactive swipe was the smaller change.
 
-## Gapless playback (tabled Nov 2026)
+## Gapless playback (wanted, Nov 2026: the gap between tracks shows in everyday use)
 `AudioPlayer` is an `AVQueuePlayer` with one preloaded item: quick, but a short silence still falls between
 tracks. Proposal: move to `AVAudioEngine` with `AVAudioPlayerNode`, scheduling the next file to start on the
 exact sample the current one ends.
@@ -38,7 +38,7 @@ exact sample the current one ends.
 
 Open decision: engine test (AirPlay may become a device menu) or the composition fallback.
 
-## Syncing plays to Music (tabled Nov 2026, needs a decision)
+## Syncing plays to Music (on hold, Nov 2026)
 Beat's plays and skips live in `history.json` and are added to Music's counts only inside Beat
 (`PlayHistoryStore.merged`). Music, other devices and Music's smart playlists never see them.
 
@@ -54,18 +54,6 @@ and `skipped date` are writable, and tracks match by persistent ID. Costs:
 
 Options: A keep them separate; B opt-in automatic sync (off by default, batched, only while Music runs);
 C a manual "Send Beat's plays to Music" button. Leaning B plus C's button for plays already recorded.
-
-## Sort buttons on page elements (noted Nov 2026)
-Change an element's order straight from its header, without opening the filter editor, like the album sort
-menu on artist pages (`AlbumSortMenu` in `ArtistDetailView.swift`).
-
-Questions to settle first:
-- Does a choice made here change the element's saved filter (its Sort step in `pages.json`), or only how it's
-  shown this session? Saving keeps one source of truth; a temporary override would need a reset.
-- Which sorts to offer: the element's own Sort step plus a few common ones for its kind (title, artist, year,
-  date added, plays, random), and ascending/descending.
-- Filters whose Limit comes after the Sort ("25 most played") give different songs when re-sorted; a header
-  sort should probably re-order the result without changing what the limit picked.
 
 ## Library health page (noted Nov 2026)
 A read-only report of what's worth fixing in Music. Beat never writes to the library, so it only points the way:
