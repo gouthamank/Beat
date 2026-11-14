@@ -21,13 +21,13 @@ SUBMAKE := $(MAKE) --no-print-directory
 .DEFAULT_GOAL := help
 
 .PHONY: help install sim test snapshot-record project clean mac-build mac-install mac-test mac-test-record mac-test-ui \
-	mac-test-ui-record mac-run-fixtures ios-sim-ipad ios-sim-iphone ios-install ios-test ios-test-record
+	mac-test-ui-record mac-test-run-fixtures ios-sim-ipad ios-sim-iphone ios-install ios-test ios-test-record ios-test-ui
 
 ##@ Menus (pick from a list, or give the choice: make install on=mac)
 
 # Every target with a `## description` on its line, under the `##@` headings: this list can't drift from the targets.
 help: ## This list
-	@awk 'BEGIN { FS = ":.*## " } /^##@/ { printf "\n%s\n", substr($$0, 5) } /^[a-z-]+:.*## / { printf "  make %-20s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
+	@awk 'BEGIN { FS = ":.*## " } /^##@/ { printf "\n%s\n", substr($$0, 5) } /^[a-z-]+:.*## / { printf "  make %-23s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 	@echo
 
 # Install Beat on the Mac or a connected iPad or iPhone.
@@ -41,22 +41,24 @@ sim: ## iPad or iPhone Simulator (on=ipad|iphone)
 		$(SUBMAKE) ios-sim-$$key
 
 # Run tests. "All" runs every suite, carrying on past a failing one.
-test: ## Mac, iOS Simulator, Mac UI tests, or all (on=mac|ios|ui|all)
-	@key=$$($(MENU) "Run" "$(on)" mac="Mac tests" ios="iOS Simulator tests" ui="Mac UI tests" all="All of them") && \
+test: ## Mac, iOS Simulator, Mac UI, iOS UI tests, or all (on=mac|ios|mac-ui|ios-ui|all)
+	@key=$$($(MENU) "Run" "$(on)" mac="Mac tests" ios="iOS Simulator tests" mac-ui="Mac UI tests" ios-ui="iOS UI tests" \
+			all="All of them") && \
 		case $$key in \
 			mac) $(SUBMAKE) mac-test ;; \
 			ios) $(SUBMAKE) ios-test ;; \
-			ui) $(SUBMAKE) mac-test-ui ;; \
-			all) $(SUBMAKE) -k mac-test ios-test mac-test-ui ;; \
+			mac-ui) $(SUBMAKE) mac-test-ui ;; \
+			ios-ui) $(SUBMAKE) ios-test-ui ;; \
+			all) $(SUBMAKE) -k mac-test ios-test mac-test-ui ios-test-ui ;; \
 		esac
 
 # Re-record the snapshots or screenshots that changed (after a deliberate design change: look at the failures first).
-snapshot-record: ## Re-record changed snapshots: Mac, iOS, or Mac UI screenshots (on=mac|ios|ui)
-	@key=$$($(MENU) "Re-record" "$(on)" mac="Mac snapshots" ios="iOS snapshots" ui="Mac UI screenshots") && \
+snapshot-record: ## Re-record changed snapshots: Mac, iOS, or Mac UI screenshots (on=mac|ios|mac-ui)
+	@key=$$($(MENU) "Re-record" "$(on)" mac="Mac snapshots" ios="iOS snapshots" mac-ui="Mac UI screenshots") && \
 		case $$key in \
 			mac) $(SUBMAKE) mac-test-record ;; \
 			ios) $(SUBMAKE) ios-test-record ;; \
-			ui) $(SUBMAKE) mac-test-ui-record ;; \
+			mac-ui) $(SUBMAKE) mac-test-ui-record ;; \
 		esac
 
 ##@ Both platforms
@@ -111,11 +113,11 @@ mac-test-ui-record: project ## UI tests, then save their changed screenshots
 	python3 -I Scripts/save-ui-screenshots.py
 
 # The UI-test build (its own bundle ID, so its own settings) on the fixture songs in Fixtures/Library, with its files
-# in a temporary home: what a UI test sees, starting fresh. `make mac-run-fixtures KEEP=1` reopens it as it was left
+# in a temporary home: what a UI test sees, starting fresh. `make mac-test-run-fixtures KEEP=1` reopens it as it was left
 # instead (same home and settings), to check what a relaunch keeps. Your own library, pages and settings aren't
 # read or touched. Quit it to return.
 FIXTURE_HOME := /tmp/beat-fixtures-home
-mac-run-fixtures: project ## The UI-test build on the fixture songs (KEEP=1: as left)
+mac-test-run-fixtures: project ## The UI-test build on the fixture songs (KEEP=1: as left)
 	$(XCODEBUILD) -configuration UITest build
 	$(if $(KEEP),,rm -rf "$(FIXTURE_HOME)" && mkdir -p "$(FIXTURE_HOME)")
 	CFFIXED_USER_HOME="$(FIXTURE_HOME)" "build/Build/Products/UITest/Beat.app/Contents/MacOS/Beat" \
@@ -166,6 +168,13 @@ ios-test: project ## Unit and snapshot tests in the iPhone Simulator
 ios-test-record: project ## Re-record the iOS snapshots that changed
 	xcrun simctl bootstatus "$(IOS_IPHONE)" -b
 	TEST_RUNNER_SNAPSHOT_TESTING_RECORD=failed $(IOS_BUILD) -configuration Debug -destination "platform=iOS Simulator,name=$(IOS_IPHONE)" test
+
+# UI tests: the UI-test build (on the Simulator its own app, with its own container) on the fixture songs, each test
+# starting fresh, driven by taps and swipes. The Simulator is booted first, as for ios-test.
+ios-test-ui: project ## UI tests in the iPhone Simulator
+	xcrun simctl bootstatus "$(IOS_IPHONE)" -b
+	xcodebuild -project Beat.xcodeproj -scheme BeatiOSUITests -derivedDataPath build/ios -quiet \
+		-destination "platform=iOS Simulator,name=$(IOS_IPHONE)" test
 
 # Release build for a connected iPad or iPhone, signed with the personal team in Config/Secrets.xcconfig
 # (DEVELOPMENT_TEAM; add the Apple ID in Xcode > Settings > Accounts once). With a free Apple ID the install stops

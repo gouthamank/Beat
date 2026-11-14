@@ -20,7 +20,9 @@ The user runs every suite, from Xcode or `make`; nothing runs in CI. For the rul
   width on the Mac and iPad and iPhone widths on iOS (326 tests in all on each; one skipped on the Mac).
 - **UI tests (Mac):** `BeatUITests`, run with `make mac-test-ui` (about 3 minutes; leave the Mac alone): the window,
   navigation, Now Playing, pages and elements, and Cover Flow from screenshots. See "UI tests: how they work".
-- **UI tests (iPhone and iPad):** phase 6.
+- **UI tests (iPhone):** `BeatiOSUITests`, run with `make ios-test-ui` (or `make test on=ios-ui`): the sidebar
+  drawer, swiping back, Now Playing (pulling down to close, swiping between songs), Songs keeping its place, and a
+  new page closing the drawer.
 
 ## Snapshot tests: how they work
 
@@ -138,8 +140,8 @@ genre, Library ▸ Albums, Library ▸ Songs; not Home, whose presets count back
   build, and the temporary home is in /tmp, already exists and holds every data folder. A test that silently wrote
   to the real folders could lose the user's pages, so a launch that can't prove isolation doesn't start, and a fresh
   start only ever deletes inside a home in /tmp. `LaunchOptionsTests` covers the rules.
-- **By hand:** `make mac-run-fixtures` builds the UI-test app and opens it on the fixture songs, fresh: what a UI test
-  sees. `make mac-run-fixtures KEEP=1` reopens it as it was left, to check what a relaunch keeps.
+- **By hand:** `make mac-test-run-fixtures` builds the UI-test app and opens it on the fixture songs, fresh: what a UI test
+  sees. `make mac-test-run-fixtures KEEP=1` reopens it as it was left, to check what a relaunch keeps.
 - **Accessibility identifiers** on what UI tests touch, dot-separated, with a name where there's one per item:
 
   | Identifier | What |
@@ -155,6 +157,7 @@ genre, Library ▸ Albums, Library ▸ Songs; not Home, whose presets count back
   | `nameSheet.name`, `nameSheet.save`, `nameSheet.cancel` | The name sheet for new and renamed pages |
   | `editor.tab`, `editor.find`, `editor.layout` | The Mac editor's Rules/Appearance, Find and Layout pickers (segments by name) |
   | `coverFlow`, `coverFlow.caption` | Cover Flow and the album named under its centre cover |
+  | `nowPlaying.title`, `sidebar.new`, `songs.album.<title>` | Now Playing's song title; the sidebar's New menu; an album header in the phone's Songs list |
 
   Phases 5 and 6 add more as tests need them.
 
@@ -164,6 +167,19 @@ opening an album and going back, sidebar pages keeping their place, Now Playing 
 renaming and deleting a page, a fresh start forgetting the last launch's pages, cancelling a new page or element,
 adding an element; Cover Flow at its start, middle and end. See "UI tests: how they work".
 
-### 6. iPhone and iPad UI tests
-`BeatiOSUITests` target, `make ios-test-ui`: the same paths with swipe back, plus the sidebar drawer, swiping
-between songs in Now Playing, and Songs keeping its place after an album.
+### 6. iPhone UI tests (done)
+`BeatiOSUITests`, 6 tests on the iPhone Simulator: the sidebar drawer opening a page and getting out of the way;
+opening an album and swiping back; Now Playing pulling down to close and swiping between songs; Songs keeping its
+place after an album; a new page closing the drawer.
+
+- **Isolation:** on the Simulator the UI-test build ("Beat Test") is its own app with its own container, so it needs
+  no temporary home; `LaunchOptions` requires the UI-test bundle ID there, and the fresh start clears that
+  container's data folders and settings.
+- **Harness** (`BeatiOSUITestCase`): `tap(identifier)` waits until a thing can be tapped (the drawer's rows exist
+  before it has slid in) and taps the element's centre if it never says so (the sidebar rows' identifier lands on
+  their icon); `swipeBack`, `openFromSidebar`, `openAlbum`, `playAlbum`, `eventually`.
+- **The fixture songs last two seconds:** a test that needs a song to stay pauses it (an album played on runs out,
+  and Now Playing closes past the last song). Swipe on screen coordinates, not on Now Playing, which is rebuilt as a
+  song's art settles in.
+- **The snapshot tests show on the Simulator's screen** while `make ios-test` runs: each renders a piece of Beat in a
+  visible window, the only capture that keeps 3D. They come and go at odd sizes and places; that's expected.

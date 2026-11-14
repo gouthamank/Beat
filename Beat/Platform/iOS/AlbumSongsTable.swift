@@ -108,6 +108,8 @@ struct AlbumSongsTable: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        // For the phone's UI test that checks Songs keeps its place after an album.
+        .accessibilityIdentifier("songs.album.\(album.title)")
     }
 
     private func row(_ track: Track, play: @escaping () -> Void) -> some View {

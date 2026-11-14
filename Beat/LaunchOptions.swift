@@ -27,13 +27,16 @@ enum LaunchOptions {
     }
 
     /// Why a UI-test launch wouldn't be isolated, or nil when it would: it must be the UI-test build (so its settings
-    /// aren't the user's), and the temporary home must be in /tmp, already there, and hold every folder Beat keeps data
-    /// in. Already there, because a home made after launch is too late: settings then couldn't see the system's
-    /// (light mode, the default accent) and nothing saved stuck.
-    static func isolationProblem(bundleID: String?, home: String?, homeExists: Bool, dataFolders: [URL?]) -> String? {
+    /// aren't the user's). On the Mac (`needsTemporaryHome`), where the user's files share one home, the temporary home
+    /// must also be in /tmp, already there, and hold every folder Beat keeps data in. Already there, because a home
+    /// made after launch is too late: settings then couldn't see the system's (light mode, the default accent) and
+    /// nothing saved stuck. On iOS the UI-test build's own container holds all its files.
+    static func isolationProblem(bundleID: String?, home: String?, homeExists: Bool, dataFolders: [URL?],
+                                 needsTemporaryHome: Bool = true) -> String? {
         guard let bundleID, bundleID.hasSuffix(uiTestBundleSuffix) else {
             return "\(bundleID ?? "no bundle ID") isn't the UI-test build (the UITest configuration)"
         }
+        guard needsTemporaryHome else { return nil }
         guard let home, !home.isEmpty else { return "\(homeVariable) isn't set" }
         let root = URL(fileURLWithPath: home, isDirectory: true).standardizedFileURL.path
         guard root.hasPrefix("/tmp/") || root.hasPrefix("/private/tmp/") else { return "\(root) isn't in /tmp" }
@@ -45,9 +48,9 @@ enum LaunchOptions {
         return nil
     }
 
-    /// Called first thing at launch. In a UI-test launch, stops Beat unless it's the UI-test build and its folders are
-    /// all in the temporary home: a test that silently wrote to the real ones could lose the user's pages. Then, for a
-    /// fresh start, clears what an earlier launch left.
+    /// Called first thing at launch. In a UI-test launch, stops Beat unless it's the UI-test build and, on the Mac, its
+    /// folders are all in the temporary home: a test that silently wrote to the real ones could lose the user's pages.
+    /// Then, for a fresh start, clears what an earlier launch left.
     static func checkIsolation() {
         guard isUITestLaunch else { return }
         let files = FileManager.default
@@ -60,12 +63,19 @@ enum LaunchOptions {
         let folders = [FileManager.SearchPathDirectory.applicationSupportDirectory, .cachesDirectory, .documentDirectory]
             .map { files.urls(for: $0, in: .userDomainMask).first }
         let bundleID = Bundle.main.bundleIdentifier
-        if let problem = isolationProblem(bundleID: bundleID, home: home, homeExists: homeExists, dataFolders: folders) {
+        #if os(macOS)
+        let needsTemporaryHome = true
+        #else
+        let needsTemporaryHome = false
+        #endif
+        if let problem = isolationProblem(bundleID: bundleID, home: home, homeExists: homeExists, dataFolders: folders,
+                                          needsTemporaryHome: needsTemporaryHome) {
             fatalError("UI-test launch not isolated, stopping before touching any data: \(problem)")
         }
-        guard ProcessInfo.processInfo.arguments.contains(freshStartArgument), let home, let bundleID else { return }
-        // Only inside the checked home in /tmp, and before any store has read anything.
-        try? files.removeItem(atPath: URL(fileURLWithPath: home, isDirectory: true).appendingPathComponent("Library").path)
+        guard ProcessInfo.processInfo.arguments.contains(freshStartArgument), let bundleID else { return }
+        // The folders just checked (the Mac's temporary home, or the UI-test build's own container on iOS), before any
+        // store has read anything.
+        for folder in folders.compactMap({ $0 }) { try? files.removeItem(at: folder) }
         // Key by key, leaving the domain itself in place for what this launch saves.
         for key in (UserDefaults.standard.persistentDomain(forName: bundleID) ?? [:]).keys {
             UserDefaults.standard.removeObject(forKey: key)

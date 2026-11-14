@@ -284,6 +284,7 @@ struct NowPlayingView: View {
                         .multilineTextAlignment(.center)
                         .lineLimit(2)
                         .foregroundStyle(primary)
+                        .accessibilityIdentifier("nowPlaying.title")
                     Text(track.displayArtist)
                         .font(.title3)
                         .foregroundStyle(secondary)

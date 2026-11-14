@@ -138,6 +138,7 @@ struct SidebarView: View {
         .buttonStyle(.plain)
         .menuIndicator(.hidden)
         .foregroundStyle(dropTargetingTopLevel ? Color.accentColor : .secondary)
+        .accessibilityIdentifier("sidebar.new")
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .dropDestination(for: String.self) { items, _ in

@@ -67,5 +67,12 @@ final class LaunchOptionsTests: XCTestCase {
         XCTAssertNotNil(problem(home: "/Users/me", folders: [URL(fileURLWithPath: "/Users/me/Library/Caches")]),
                         "a fresh start deletes inside the home, so it must be in /tmp")
         XCTAssertNil(problem(home: "/private/tmp/BeatUITests-1", folders: [URL(fileURLWithPath: "/private/tmp/BeatUITests-1/Library")]))
+
+        // iOS: the UI-test build's own container is enough; it still has to be that build.
+        let container = URL(fileURLWithPath: "/data/Containers/Data/Application/X/Library/Application Support")
+        XCTAssertNil(LaunchOptions.isolationProblem(bundleID: "dev.gouthaman.Beat.uitest", home: nil, homeExists: false,
+                                                    dataFolders: [container], needsTemporaryHome: false))
+        XCTAssertNotNil(LaunchOptions.isolationProblem(bundleID: "dev.gouthaman.Beat", home: nil, homeExists: false,
+                                                       dataFolders: [container], needsTemporaryHome: false))
     }
 }

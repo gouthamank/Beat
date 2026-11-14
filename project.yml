@@ -5,7 +5,7 @@ options:
     macOS: "15.0"
     iOS: "26.0"
   createIntermediateGroups: true
-# UITest is Debug under another bundle ID (dev.gouthaman.Beat.uitest), for UI tests and `make run-fixtures`: its
+# UITest is Debug under another bundle ID (dev.gouthaman.Beat.uitest), for UI tests and `make mac-test-run-fixtures`: its
 # settings, and on iOS its whole container, are its own, so a UI test never changes the user's Beat (TESTING.md).
 configs:
   Debug: debug
@@ -45,7 +45,9 @@ targets:
     info:
       path: Beat/Info.plist
       properties:
-        CFBundleDisplayName: Beat
+        # "Beat", or "Beat Test" for the UI-test build (BEAT_DISPLAY_NAME), so the two never look alike.
+        CFBundleDisplayName: $(BEAT_DISPLAY_NAME)
+        CFBundleName: $(BEAT_DISPLAY_NAME)
         # The version shown in About Beat; raise it by hand for a release. The build number comes from git (Makefile).
         CFBundleShortVersionString: "1.2.0"
         NSHumanReadableCopyright: © 2026 Gouthaman Kumar. MIT License.
@@ -70,11 +72,13 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: dev.gouthaman.Beat
         CURRENT_PROJECT_VERSION: "1"
         BEAT_COMMIT: dev
+        BEAT_DISPLAY_NAME: Beat
         GENERATE_INFOPLIST_FILE: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
       configs:
         UITest:
           PRODUCT_BUNDLE_IDENTIFIER: dev.gouthaman.Beat.uitest
+          BEAT_DISPLAY_NAME: Beat Test
     dependencies:
       - sdk: iTunesLibrary.framework
   BeatiOS:
@@ -88,7 +92,9 @@ targets:
     info:
       path: Beat/Platform/iOS/Info.plist
       properties:
-        CFBundleDisplayName: Beat
+        # "Beat", or "Beat Test" for the UI-test build (BEAT_DISPLAY_NAME), so the two never look alike.
+        CFBundleDisplayName: $(BEAT_DISPLAY_NAME)
+        CFBundleName: $(BEAT_DISPLAY_NAME)
         CFBundleShortVersionString: "1.2.0"
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         BeatCommit: $(BEAT_COMMIT)
@@ -128,11 +134,13 @@ targets:
         CODE_SIGN_STYLE: Automatic
         CURRENT_PROJECT_VERSION: "1"
         BEAT_COMMIT: dev
+        BEAT_DISPLAY_NAME: Beat
         GENERATE_INFOPLIST_FILE: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
       configs:
         UITest:
           PRODUCT_BUNDLE_IDENTIFIER: dev.gouthaman.Beat.uitest
+          BEAT_DISPLAY_NAME: Beat Test
   BeatTests:
     type: bundle.unit-test
     platform: macOS
@@ -183,6 +191,24 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: dev.gouthaman.BeatUITests
     dependencies:
       - target: Beat
+  # iPhone and iPad UI tests: the UI-test build (its own app and container on the Simulator) on the fixture songs
+  # (`make ios-test-ui`, TESTING.md).
+  BeatiOSUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources: [BeatiOSUITests]
+    configFiles:
+      Debug: Config/Beat.xcconfig
+      Release: Config/Beat.xcconfig
+      UITest: Config/Beat.xcconfig
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: dev.gouthaman.BeatiOSUITests
+        CODE_SIGN_STYLE: Automatic
+    dependencies:
+      - target: BeatiOS
 schemes:
   Beat:
     build:
@@ -200,6 +226,14 @@ schemes:
     test:
       config: UITest
       targets: [BeatUITests]
+  BeatiOSUITests:
+    build:
+      targets:
+        BeatiOS: all
+        BeatiOSUITests: [test]
+    test:
+      config: UITest
+      targets: [BeatiOSUITests]
   BeatiOS:
     build:
       targets:
