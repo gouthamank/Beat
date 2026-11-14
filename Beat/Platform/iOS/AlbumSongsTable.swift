@@ -19,6 +19,8 @@ struct AlbumSongsTable: View {
     let generation: Int
     let playOrder: [Track]
     let extras: [ExtraColumn]
+    /// The Mac's column order and widths; the list here has no columns to move or resize.
+    let columnSettings: SongColumnSettings
     let customValues: [UUID: [PersistentID: String]]
     @Binding var artWidth: Double
     let currentID: PersistentID?

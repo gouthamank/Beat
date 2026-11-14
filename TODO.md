@@ -99,31 +99,6 @@ To decide:
 - Whether the tour creates a real page or uses a throwaway one it removes at the end.
 - Keep it short: a few steps on launch, the rest as tips when the user first reaches each place.
 
-## Reorderable columns in Library > Songs (noted Nov 2026)
-Drag a column header sideways to move the column, like Finder and Music. Investigated, not started.
-
-Where things stand:
-- Library > Songs is the AppKit `AlbumSongsTable` (an `NSTableView`), which turns reordering off outright
-  (`allowsColumnReordering = false` in `makeNSView`) and rebuilds its columns in a fixed order in
-  `rebuildColumns`: leading pad, cover, #, Title, the optional columns, Time, trailing pad.
-- Smart-filter song lists (`SongsTableView`, SwiftUI `Table`) already reorder by drag through
-  `TableColumnCustomization`, but keep it in `@SceneStorage("SongsColumns")`, which survives only as long as
-  the window's restored state; moving it to `@AppStorage` (it's Codable) would make it stick for sure.
-
-Plan for Library > Songs (native header drag, no new UI):
-- Turn reordering on and veto moves in `tableView(_:shouldReorderColumn:toColumn:)`: the pads and the cover
-  column stay put (covers are drawn behind the rows at the cover column's position, and `SongRowView.hitTest`
-  passes clicks there through to them). #, Title, the optional columns and Time move freely among themselves.
-- Save the order on `tableViewColumnDidMove`. `songs.albumColumns` ("genre,plays") only records which optional
-  columns are shown: `AlbumSongsView.shown` filters the built-in list through a Set, so order comes from that
-  list. Add a saved order (say `songs.columnOrder`, covering #, Title, Time and the optional columns), have
-  `shown` and `rebuildColumns` follow it, and add the key to `SettingsArchive.preferenceKeys`.
-- `SongRowView.songArea` (the row highlight and click area) is computed from the # column's left edge to the
-  Time column's right edge (`rect(ofColumn: number)` ... `rect(ofColumn: time)`), which assumes # is first and
-  Time last. Compute it from the leftmost and rightmost movable columns instead.
-- `fitTitleColumn` already works from widths, not positions, so Title can sit anywhere.
-- Tests: the saved-order parsing and merging (new optional columns appended, removed ones dropped) is pure.
-
 ## Showcase website (noted Nov 2026)
 A single page that shows Beat off: what it is, what it looks like, and how to get it.
 

@@ -22,6 +22,8 @@ struct SettingsArchive: Codable {
         NewElementDefaults.key,
         "songs.showCovers",
         "songs.albumColumns",
+        SongColumnOrder.key,
+        SongColumnWidths.key,
         "songs.albumArtWidth",
         "albums.artistList",
         "visualizer.enabled",

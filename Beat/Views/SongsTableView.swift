@@ -294,6 +294,10 @@ struct AlbumSongsView: View {
     @AppStorage("songs.albumArtWidth") private var artWidth = 160.0
     /// IDs of the optional columns shown, comma-separated.
     @AppStorage("songs.albumColumns") private var shownColumnIDs = "genre,plays"
+    /// The movable columns' order, as dragged on the Mac (`SongColumnOrder`).
+    @AppStorage(SongColumnOrder.key) private var columnOrder = ""
+    /// The optional columns' widths, as dragged on the Mac (`SongColumnWidths`).
+    @AppStorage(SongColumnWidths.key) private var columnWidths = ""
     @State private var model = SongsModel()
 
     /// Library ▸ Songs is the only user of this view, so its search is remembered under `.songs`.
@@ -304,6 +308,11 @@ struct AlbumSongsView: View {
         let ids = Set(shownColumnIDs.split(separator: ",").map(String.init))
         return columns.filter { ids.contains($0.id) }
     }
+    /// #, Title, the shown optional columns and Time, in the order they were dragged to.
+    private var order: [String] {
+        SongColumnOrder.merged(saved: SongColumnOrder.parse(columnOrder),
+                               shown: SongColumnOrder.leading + shown.map(\.id) + SongColumnOrder.trailing)
+    }
 
     var body: some View {
         AlbumSongsTable(
@@ -312,6 +321,8 @@ struct AlbumSongsView: View {
             generation: model.generation,
             playOrder: model.playOrder,
             extras: shown,
+            columnSettings: SongColumnSettings(order: order, widths: SongColumnWidths.parse(columnWidths),
+                                               moved: { saveOrder($0) }, resized: { saveWidth($1, of: $0) }),
             customValues: model.customValues,
             artWidth: $artWidth,
             currentID: queue.current?.id,
@@ -364,6 +375,20 @@ struct AlbumSongsView: View {
         .help("Choose Columns")
     }
 
+    private func saveOrder(_ displayed: [String]) {
+        let known = Set(SongColumnOrder.leading + columns.map(\.id) + SongColumnOrder.trailing)
+        columnOrder = SongColumnOrder.saving(displayed, over: SongColumnOrder.parse(columnOrder), known: known)
+            .joined(separator: ",")
+    }
+
+    /// Widths of columns that no longer exist (a deleted custom field's) are dropped on the way.
+    private func saveWidth(_ width: CGFloat, of id: String) {
+        let known = Set(columns.map(\.id))
+        var widths = SongColumnWidths.parse(columnWidths).filter { known.contains($0.key) }
+        widths[id] = width
+        columnWidths = SongColumnWidths.store(widths)
+    }
+
     private func setShown(_ id: String, _ on: Bool) {
         var ids = shownColumnIDs.split(separator: ",").map(String.init).filter { $0 != id }
         if on { ids.append(id) }
@@ -410,3 +435,73 @@ struct ExtraColumn: Identifiable {
     }
 }
 
+
+/// The order of Library ▸ Songs' movable columns (#, Title, Time and the optional ones), dragged by their headers on
+/// the Mac and saved as comma-separated ids. Columns hidden from the Columns menu keep their place in the saved
+/// order, so one shown again comes back where it was. Pure, for tests.
+enum SongColumnOrder {
+    static let key = "songs.columnOrder"
+    /// Always shown, in their default order around the optional columns: #, Title, …, Time.
+    static let leading = ["number", "title"]
+    static let trailing = ["time"]
+
+    static func parse(_ stored: String) -> [String] { stored.split(separator: ",").map(String.init) }
+
+    /// The columns to show, in order. `shown` is the default order (#, Title, the optional columns, Time); a column the
+    /// saved order has never placed goes just before Time.
+    static func merged(saved: [String], shown: [String]) -> [String] {
+        guard !saved.isEmpty else { return shown }
+        var order = saved.filter(shown.contains)
+        for id in shown where !order.contains(id) {
+            order.insert(id, at: order.firstIndex(of: "time") ?? order.endIndex)
+        }
+        return order
+    }
+
+    /// The order to save after a move: `displayed` fills the places the shown columns had, so hidden ones stay put.
+    /// Ids no longer `known` (a deleted custom field's column) are dropped.
+    static func saving(_ displayed: [String], over saved: [String], known: Set<String>) -> [String] {
+        var order = saved.filter { known.contains($0) }
+        for id in displayed where !order.contains(id) { order.append(id) }
+        let places = order.indices.filter { displayed.contains(order[$0]) }
+        for (place, id) in zip(places, displayed) { order[place] = id }
+        return order
+    }
+}
+
+/// The widths of Library ▸ Songs' optional columns, dragged by their header edges on the Mac and saved as
+/// "id:width" pairs. Pure, for tests.
+enum SongColumnWidths {
+    static let key = "songs.columnWidths"
+
+    static func parse(_ stored: String) -> [String: CGFloat] {
+        var widths: [String: CGFloat] = [:]
+        for pair in stored.split(separator: ",") {
+            let parts = pair.split(separator: ":")
+            guard parts.count == 2, let width = Double(parts[1]), width > 0 else { continue }
+            widths[String(parts[0])] = CGFloat(width)
+        }
+        return widths
+    }
+
+    /// Sorted by id, so the same widths always save the same text.
+    static func store(_ widths: [String: CGFloat]) -> String {
+        widths.sorted { $0.key < $1.key }.map { "\($0.key):\(Int($0.value.rounded()))" }.joined(separator: ",")
+    }
+
+    /// How far a column whose default width is `base` can be dragged: narrow enough to tuck away, wide enough for long
+    /// composers and comments.
+    static func range(base: CGFloat) -> ClosedRange<CGFloat> {
+        max(40, (base * 0.6).rounded())...max(320, base * 3)
+    }
+}
+
+/// Library ▸ Songs' column order and widths, and how the Mac table reports header drags back to be saved.
+struct SongColumnSettings {
+    /// #, Title, the shown optional columns and Time, left to right (`SongColumnOrder`).
+    var order: [String]
+    /// Saved widths of optional columns; the rest use their defaults (`SongColumnWidths`).
+    var widths: [String: CGFloat]
+    var moved: ([String]) -> Void
+    var resized: (String, CGFloat) -> Void
+}

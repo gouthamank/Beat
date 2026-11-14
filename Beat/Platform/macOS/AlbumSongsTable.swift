@@ -20,6 +20,8 @@ struct AlbumSongsTable: NSViewRepresentable {
     let generation: Int
     let playOrder: [Track]
     let extras: [ExtraColumn]
+    /// The song columns' order and widths, and where header drags report a move or a resize.
+    let columnSettings: SongColumnSettings
     let customValues: [UUID: [PersistentID: String]]
     @Binding var artWidth: Double
     let currentID: PersistentID?
@@ -48,7 +50,8 @@ struct AlbumSongsTable: NSViewRepresentable {
         table.gridStyleMask = []
         table.allowsMultipleSelection = true
         table.allowsEmptySelection = true
-        table.allowsColumnReordering = false
+        // Only among the song columns: see `shouldReorderColumn`.
+        table.allowsColumnReordering = true
         table.allowsColumnSelection = false
         table.allowsTypeSelect = false
         table.floatsGroupRows = true
@@ -81,7 +84,6 @@ struct AlbumSongsTable: NSViewRepresentable {
         private var parent: AlbumSongsTable?
         private var layout = AlbumSongsLayout(sections: [], metrics: Coordinator.metrics)
         private var generation: Int?
-        private var extraIDs: [String]?
         private var currentID: PersistentID?
         private var isPlaying = false
         private var accent = NSColor.controlAccentColor
@@ -121,7 +123,13 @@ struct AlbumSongsTable: NSViewRepresentable {
             year: 2 + lineHeight(captionFont)
         )
 
-        private var artWidth: CGFloat { CGFloat(parent?.artWidth ?? 160) }
+        /// The cover width while the cover column's header is dragged, ahead of the saved setting: read back from it,
+        /// the covers kept their old size until the mouse came up.
+        private var draggedArtWidth: CGFloat?
+        /// The cover column's width, watched directly so the covers follow every step of a header drag.
+        private var coverWidthObservation: NSKeyValueObservation?
+
+        private var artWidth: CGFloat { draggedArtWidth ?? CGFloat(parent?.artWidth ?? 160) }
 
         func attach(_ table: SongsNSTableView, in scroll: NSScrollView) {
             self.table = table
@@ -190,12 +198,12 @@ struct AlbumSongsTable: NSViewRepresentable {
         func update(from parent: AlbumSongsTable) {
             let previousWidth = self.parent?.artWidth
             self.parent = parent
+            if let dragged = draggedArtWidth, abs(CGFloat(parent.artWidth) - dragged) < 0.5 { draggedArtWidth = nil }
             guard let table, let scroll else { return }
 
-            let ids = parent.extras.map(\.id)
-            if ids != extraIDs {
-                extraIDs = ids
-                rebuildColumns(parent.extras)
+            // Compared with the table's own columns, so a header drag (already in the table, then saved) isn't rebuilt.
+            if parent.columnSettings.order != movableColumnIDs {
+                rebuildColumns(parent.extras, settings: parent.columnSettings)
                 generation = nil // Cells depend on the columns.
             }
             if parent.generation != generation {
@@ -270,7 +278,31 @@ struct AlbumSongsTable: NSViewRepresentable {
 
         // MARK: Columns
 
-        private func rebuildColumns(_ extras: [ExtraColumn]) {
+        /// The padding columns and the cover stay put: covers are drawn behind the rows at the cover column, and the
+        /// row's highlight and clicks start after it (`SongRowView.songArea`).
+        private static let fixedColumns: Set<String> = ["leading", "cover", "trailing"]
+
+        /// The song columns as the table has them now, left to right.
+        private var movableColumnIDs: [String] {
+            table?.tableColumns.map(\.identifier.rawValue).filter { !Self.fixedColumns.contains($0) } ?? []
+        }
+
+        func tableView(_ tableView: NSTableView, shouldReorderColumn columnIndex: Int, toColumn newColumnIndex: Int) -> Bool {
+            let ids = tableView.tableColumns.map(\.identifier.rawValue)
+            func movable(_ i: Int) -> Bool { ids.indices.contains(i) && !Self.fixedColumns.contains(ids[i]) }
+            // -1 asks whether a drag may start at all.
+            return movable(columnIndex) && (newColumnIndex == -1 || movable(newColumnIndex))
+        }
+
+        func tableViewColumnDidMove(_ notification: Notification) {
+            guard let table else { return }
+            table.enumerateAvailableRowViews { rowView, _ in
+                (rowView as? SongRowView).map(self.configureGeometry)
+            }
+            parent?.columnSettings.moved(movableColumnIDs)
+        }
+
+        private func rebuildColumns(_ extras: [ExtraColumn], settings: SongColumnSettings) {
             guard let table else { return }
             adjustingColumns = true
             defer { adjustingColumns = false }
@@ -297,12 +329,22 @@ struct AlbumSongsTable: NSViewRepresentable {
             add("leading", "", width: Self.leadingPad)
             add("cover", "Album", width: artWidth + coverExtra,
                 range: CGFloat(AlbumSongsTable.artRange.lowerBound) + coverExtra...CGFloat(AlbumSongsTable.artRange.upperBound) + coverExtra)
-            add("number", "#", width: 30, alignment: .right)
-            add("title", "Title", width: 200, resizable: true)
-            for extra in extras {
-                add(extra.id, extra.title, width: extra.width + Self.inset * 2, alignment: extra.numeric ? .right : .left)
+            coverWidthObservation = table.tableColumns.first { $0.identifier.rawValue == "cover" }?.observe(\.width) { [weak self] _, _ in
+                MainActor.assumeIsolated { self?.coverColumnResized() }
             }
-            add("time", "Time", width: 54 + Self.inset * 2, alignment: .right)
+            for id in settings.order {
+                switch id {
+                case "number": add("number", "#", width: 30, alignment: .right)
+                case "title": add("title", "Title", width: 200, resizable: true)
+                case "time": add("time", "Time", width: 54 + Self.inset * 2, alignment: .right)
+                default:
+                    guard let extra = extras.first(where: { $0.id == id }) else { continue }
+                    let base = extra.width + Self.inset * 2
+                    let range = SongColumnWidths.range(base: base)
+                    add(extra.id, extra.title, width: (settings.widths[id] ?? base).clamped(to: range),
+                        alignment: extra.numeric ? .right : .left, range: range)
+                }
+            }
             add("trailing", "", width: Self.trailingPad)
             table.tableColumns.first { $0.identifier.rawValue == "title" }?.minWidth = 120
             fitTitleColumn()
@@ -332,12 +374,28 @@ struct AlbumSongsTable: NSViewRepresentable {
         }
 
         func tableViewColumnDidResize(_ notification: Notification) {
+            guard let column = notification.userInfo?["NSTableColumn"] as? NSTableColumn else { return }
+            let id = column.identifier.rawValue
+            if id == "cover" { return coverColumnResized() }
+            // An optional column's edge dragged (# and Time are fixed; Title is sized to fit, below).
+            guard !adjustingColumns, let table, !Self.fixedColumns.contains(id),
+                  id != "title", id != "number", id != "time" else { return }
+            parent?.columnSettings.resized(id, column.width.rounded())
+            fitTitleColumn()
+            table.enumerateAvailableRowViews { rowView, _ in
+                (rowView as? SongRowView).map(self.configureGeometry)
+            }
+        }
+
+        /// The user dragged the cover column's edge: covers and their rows follow at once, and the width is saved.
+        private func coverColumnResized() {
             guard !adjustingColumns,
-                  let column = notification.userInfo?["NSTableColumn"] as? NSTableColumn,
-                  column.identifier.rawValue == "cover" else { return }
-            let width = (column.width - Self.inset - Self.coverGap).rounded()
+                  let column = table?.tableColumns.first(where: { $0.identifier.rawValue == "cover" }) else { return }
+            let width = CGFloat(Double((column.width - Self.inset - Self.coverGap).rounded()).clamped(to: AlbumSongsTable.artRange))
+            guard abs(width - artWidth) > 0.5 else { return }
+            draggedArtWidth = width
             adjustingColumns = true
-            parent?.artWidth = Double(width).clamped(to: AlbumSongsTable.artRange)
+            parent?.artWidth = Double(width)
             adjustingColumns = false
             coverWidthChanged()
         }
@@ -390,12 +448,13 @@ struct AlbumSongsTable: NSViewRepresentable {
             return rowView
         }
 
+        /// The song area runs from the first song column to the last, whichever they are after a header drag.
         private func configureGeometry(_ rowView: SongRowView) {
             guard let table else { return }
-            let number = table.column(withIdentifier: NSUserInterfaceItemIdentifier("number"))
-            let time = table.column(withIdentifier: NSUserInterfaceItemIdentifier("time"))
-            guard number >= 0, time >= 0 else { return }
-            rowView.songArea = table.rect(ofColumn: number).minX - 2...table.rect(ofColumn: time).maxX + 2
+            let ids = table.tableColumns.map(\.identifier.rawValue)
+            guard let first = ids.firstIndex(where: { !Self.fixedColumns.contains($0) }),
+                  let last = ids.lastIndex(where: { !Self.fixedColumns.contains($0) }) else { return }
+            rowView.songArea = table.rect(ofColumn: first).minX - 2...table.rect(ofColumn: last).maxX + 2
             rowView.dividerArea = Self.leadingPad + Self.inset...table.bounds.width - Self.trailingPad - Self.inset
             rowView.needsDisplay = true
         }
@@ -495,8 +554,12 @@ struct AlbumSongsTable: NSViewRepresentable {
                     if host.rootView.album != album { host.rootView = block }
                     covers[album.id] = host
                     host.isHidden = false
-                    host.frame = CGRect(x: x, y: table.rect(ofRow: span.top).minY + layout.metrics.padding,
-                                        width: artWidth, height: layout.coverHeight(album: a, artWidth: artWidth))
+                    let frame = CGRect(x: x, y: table.rect(ofRow: span.top).minY + layout.metrics.padding,
+                                       width: artWidth, height: layout.coverHeight(album: a, artWidth: artWidth))
+                    let resized = host.frame.size != frame.size
+                    host.frame = frame
+                    // Now, not on the next pass: during a header drag that pass only came with the mouse up.
+                    if resized { host.layoutSubtreeIfNeeded() }
                     shown.insert(album.id)
                 }
             }

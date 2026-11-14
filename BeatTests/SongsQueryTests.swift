@@ -109,3 +109,62 @@ final class SongsQueryTests: XCTestCase {
         XCTAssertEqual(ScrollLetter.letter(for: ""), "#")
     }
 }
+
+final class SongColumnOrderTests: XCTestCase {
+    private let defaults = ["number", "title", "genre", "plays", "time"]
+
+    func testNothingSavedKeepsTheDefaultOrder() {
+        XCTAssertEqual(SongColumnOrder.merged(saved: [], shown: defaults), defaults)
+    }
+
+    func testSavedOrderIsFollowedForTheColumnsShown() {
+        let saved = ["title", "number", "time", "plays", "genre"]
+        XCTAssertEqual(SongColumnOrder.merged(saved: saved, shown: defaults), saved)
+        XCTAssertEqual(SongColumnOrder.merged(saved: saved, shown: ["number", "title", "plays", "time"]),
+                       ["title", "number", "time", "plays"], "a hidden column is left out")
+    }
+
+    func testAColumnNeverPlacedGoesJustBeforeTime() {
+        let saved = ["title", "number", "genre", "time", "plays"]
+        XCTAssertEqual(SongColumnOrder.merged(saved: saved, shown: ["number", "title", "genre", "plays", "bpm", "time"]),
+                       ["title", "number", "genre", "bpm", "time", "plays"])
+    }
+
+    func testSavingKeepsHiddenColumnsInTheirPlace() {
+        // Genre hidden; Plays dragged to the front.
+        let saved = ["number", "title", "genre", "plays", "time"]
+        let saving = SongColumnOrder.saving(["plays", "number", "title", "time"], over: saved, known: Set(defaults))
+        XCTAssertEqual(saving, ["plays", "number", "genre", "title", "time"])
+        XCTAssertEqual(SongColumnOrder.merged(saved: saving, shown: defaults), ["plays", "number", "genre", "title", "time"],
+                       "shown again, Genre is back between # and Title")
+    }
+
+    func testSavingFirstTimeAndDroppingGoneColumns() {
+        XCTAssertEqual(SongColumnOrder.saving(["title", "number", "time"], over: [], known: ["number", "title", "time"]),
+                       ["title", "number", "time"])
+        XCTAssertEqual(SongColumnOrder.saving(["number", "title", "time"], over: ["custom-x", "number", "title", "time"],
+                                              known: ["number", "title", "time"]),
+                       ["number", "title", "time"], "a deleted custom field's column is forgotten")
+    }
+
+    func testParse() {
+        XCTAssertEqual(SongColumnOrder.parse(""), [])
+        XCTAssertEqual(SongColumnOrder.parse("title,number"), ["title", "number"])
+    }
+}
+
+final class SongColumnWidthsTests: XCTestCase {
+    func testRoundTripsAndIgnoresJunk() {
+        let widths: [String: CGFloat] = ["composer": 180, "plays": 52.4]
+        let stored = SongColumnWidths.store(widths)
+        XCTAssertEqual(stored, "composer:180,plays:52", "sorted, whole points")
+        XCTAssertEqual(SongColumnWidths.parse(stored), ["composer": 180, "plays": 52])
+        XCTAssertEqual(SongColumnWidths.parse("composer:180,broken,genre:abc,bpm:-3,,"), ["composer": 180])
+        XCTAssertEqual(SongColumnWidths.parse(""), [:])
+    }
+
+    func testRangeLetsShortColumnsTuckAwayAndLongOnesGrow() {
+        XCTAssertEqual(SongColumnWidths.range(base: 52), 40...320, "Plays: never narrower than 40")
+        XCTAssertEqual(SongColumnWidths.range(base: 128), 77...384, "Composer: a little narrower, three times wider")
+    }
+}
