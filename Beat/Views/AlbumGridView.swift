@@ -104,7 +104,9 @@ struct AlbumTile: View {
         .onTapGesture(perform: open)
         .onChange(of: gridItem.activation) { _, serial in if serial != nil { open() } }
         .onChange(of: gridItem.highlighted) { _, on in if on, !navigationDisabled { navigator.coverTint.prefetch(.album(album.id)) } }
+        .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
+        .accessibilityIdentifier("albumTile.\(album.title)")
         .contextMenu {
             let tracks = library.snapshot.tracks(of: album)
             TrackContextMenu(tracks: tracks)

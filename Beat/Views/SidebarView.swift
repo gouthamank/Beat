@@ -43,7 +43,9 @@ struct SidebarView: View {
             if !library.isEmpty {
                 Section("Library") {
                     ForEach(library) { page in
-                        Label(page.title, systemImage: page.symbol).tag(page.item)
+                        Label(page.title, systemImage: page.symbol)
+                            .accessibilityIdentifier("sidebar.library.\(page.rawValue)")
+                            .tag(page.item)
                     }
                 }
             }
@@ -239,6 +241,7 @@ private struct SidebarTree: View {
                 }
                 .itemProvider { NSItemProvider(object: row.node.id.uuidString as NSString) }
                 .contextMenu { NodeMenu(node: row.node, actions: actions) }
+                .accessibilityIdentifier("sidebar.page.\(row.node.name)")
                 .tag(SidebarItem.page(row.node.id))
             }
         }

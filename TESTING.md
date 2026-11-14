@@ -18,7 +18,8 @@ The user runs every suite, from Xcode or `make`; nothing runs in CI. For the rul
   Everything CLAUDE.md lists as pure logic is covered, plus the stores (phase 2).
 - **Snapshot tests:** `BeatTests/Snapshots/`, in the same runs: elements, pages and chrome, light and dark, at Mac
   width on the Mac and iPad and iPhone widths on iOS (326 tests in all on each; one skipped on the Mac).
-- **UI tests:** none yet (phases 4 to 6).
+- **UI tests:** groundwork done (phase 4: fixture songs, an isolated UI-test build, accessibility identifiers); the
+  tests themselves are phases 5 and 6.
 
 ## Snapshot tests: how they work
 
@@ -26,9 +27,19 @@ The user runs every suite, from Xcode or `make`; nothing runs in CI. For the rul
   (`fullScreen: true` for a whole page; `width:` for something narrower, like the sidebar). The library is
   `SnapshotLibrary`: nine albums with generated covers, fixed dates, no network. Every store a view reads is in
   `SnapshotStores.provide`; keep it in step with `BeatApp.withStores` when a store is added.
-- **Recording:** a test without a reference records one and fails once; run it again. To re-record on purpose (a
-  deliberate design change, or an OS or Xcode update), delete the images or pass `record: true`, then check the
-  new images by eye before committing them.
+- **Recording:** a test without a reference records one and fails once; run it again.
+- **After a deliberate design change** (say, rounder covers), the snapshots it touches fail. Then:
+  1. `make test`: the failures name each test and device, with the reference (`@−`) and the new capture (`@+`).
+     Xcode's Report navigator (after ⌘U) shows both and their difference.
+  2. Look at every one. Only the intended change should show; anything else that moved is a regression to fix.
+  3. `make test-record`: re-records exactly the snapshots that didn't match (they report as failures while they
+     record). It runs with `SNAPSHOT_TESTING_RECORD=failed`, passed through as `TEST_RUNNER_…`.
+  4. `make test` again: it passes.
+  5. The same on iOS with `make ios-test-record`; the references are separate. Commit the new images with the
+     change, so the history shows what it looked like.
+
+  Deleting a reference also re-records it; `record: true` on one `assertScreens` call re-records that test on every
+  run (only while working on it).
 - **References** live in `BeatTests/Snapshots/__Snapshots__/<Test>/<test>.<device>-<light|dark>.png`: about 7 MB.
   The Mac's are 2× (the screen's scale), iOS's 1× (a quarter of the size; layout and colour changes still show).
 - **They depend on the OS:** Mac references come from macOS 15 (material fallbacks, not glass), iOS references from
@@ -78,19 +89,43 @@ swift-snapshot-testing 1.19.7 (test-only), `BeatTests/Snapshots/`: 12 element la
 genre, Library ▸ Albums, Library ▸ Songs; not Home, whose presets count back from today) and 4 pieces of chrome
 (now-playing bar, Now Playing, sidebar, element editor). See "Snapshot tests: how they work" above.
 
-### 4. UI test groundwork
-- **One fixture library on both platforms:** `FolderLibrarySource` is shared code since phase 2; both platforms'
-  `makeLibrarySource()` use it when launched with `-BeatFixtureLibrary <folder>`. The Mac never opens Music during a UI test.
-- **Fixture files:** a generator script (like `Design/AppIcon/render.swift`) writing about 20 short tagged audio
-  files (a few seconds of tone, embedded art, several albums, artists, genres and years). Its output is committed
-  (a few hundred KB).
-- **Isolated app state (required on the Mac):** UI tests run the real app on the user's machine, so without this
-  they would edit the real `pages.json`. `-BeatDataDirectory <folder>` moves every store's files there
-  (`PageStore`, `PlayHistoryStore`, `Scrobbler`, `ArtistInfoProvider`, `LibraryCache`, `ArtworkDiskCache`) through
-  one shared helper replacing each type's `defaultDirectory`/`defaultURL`, uses its own `UserDefaults` suite, and
-  forces online features off. A unit test checks every store honours it.
-- **Accessibility identifiers** on the controls tests touch: sidebar rows, element headers and tiles, the
-  now-playing bar, the editor's Save and Cancel, Now Playing, the drawer. There are none today.
+### 4. UI test groundwork (done)
+- **Fixture library:** `Fixtures/Library`, 31 short tagged .m4a songs in the snapshot library's nine albums, with
+  covers (about 250 KB, committed). Written by `swift Fixtures/make-library.swift`; `FixtureLibraryTests` reads it
+  as a UI-test launch does. Launched with `-BeatFixtureLibrary <folder>`, both platforms' `makeLibrarySource()`
+  read that folder (`FolderLibrarySource`, shared since phase 2, which now also reads MP4 track numbers) and never
+  open Music.
+- **Isolated app state**, in two parts:
+  - **Its own app:** UI tests run the UITest configuration, Debug under the bundle ID `dev.gouthaman.Beat.uitest`. Its
+    settings (every `@AppStorage`, the window's saved size and split) are its own domain, never the user's Beat's;
+    on iOS it's a separate app with its own container. `-BeatFreshSettings` clears them at launch; a test that
+    relaunches to check what was kept leaves it out.
+  - **A temporary home for files:** a UI test sets `CFFIXED_USER_HOME` to a temporary folder. Foundation's folders
+    (Application Support, Caches, Documents) follow it, so `pages.json`, history, caches and thumbnails land there
+    with no store changed. Settings don't follow it on macOS (they're written by `cfprefsd`, which ignores it):
+    hence the bundle ID. The Keychain is shared, but Beat only touches it with Last.fm or Discogs switched on, which
+    fresh settings never are.
+- **The guard:** `LaunchOptions.checkIsolation()`, first thing in `BeatApp.init`. When `-BeatFixtureLibrary` is
+  given (even without its folder), Beat stops (`fatalError`) unless the fixture folder exists, it's the UI-test build,
+  the temporary home is set and every data folder is inside it. A test that silently wrote to the real folders could
+  lose the user's pages, so a launch that can't prove isolation doesn't start. `LaunchOptionsTests` covers the rules.
+- **By hand:** `make run-fixtures` builds the UI-test app and opens it on the fixture songs in a fresh temporary
+  home: what a UI test sees.
+- **Accessibility identifiers** on what UI tests touch, dot-separated, with a name where there's one per item:
+
+  | Identifier | What |
+  |---|---|
+  | `sidebar.page.<name>`, `sidebar.library.<albums/artists/songs/genres>` | Sidebar rows |
+  | `sidebar.open` | The phone's button that opens the sidebar drawer |
+  | `page.<name>` | A page's scroll view, filling the page column |
+  | `element.<name>` | An element's title (tap: See All) |
+  | `albumTile.<title>` | An album tile: one element, title and artist read together |
+  | `albumPage`, `artistPage` | Album and artist pages |
+  | `nowPlayingBar`, `nowPlaying` | The bar and full Now Playing (containers: their controls stay reachable; Esc closes Now Playing) |
+  | `editor.save`, `editor.cancel` | The element editor's buttons |
+  | `nameSheet.name`, `nameSheet.save` | The name sheet for new and renamed pages |
+
+  Phases 5 and 6 add more as tests need them.
 
 ### 5. Mac UI tests
 `BeatUITests` target, `make test-ui`. The first run asks for Accessibility permission for the test runner (once).

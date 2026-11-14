@@ -179,6 +179,9 @@ struct WindowNowPlayingBar: View {
             if let column = compact ? origin.windowRect : measured {
                 let base = origin.windowRect?.origin ?? .zero
                 NowPlayingBar(bottomInset: bottomInset)
+                    // For UI tests, which find the bar and measure it against the page column.
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("nowPlayingBar")
                     // Over an album page's colours the bar's glass follows the cover's lightness, like the page does.
                     .environment(\.colorScheme, navigator.coverTint.current.map { $0.palette.isDark ? .dark : .light } ?? colorScheme)
                     .frame(width: column.width, height: column.height, alignment: .bottom)

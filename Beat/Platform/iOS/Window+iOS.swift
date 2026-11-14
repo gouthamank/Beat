@@ -62,6 +62,7 @@ private struct SidebarDrawerButton: ViewModifier {
             if compact {
                 ToolbarItem(placement: .topBarLeading) {
                     Button { navigator.sidebarDrawerOpen = true } label: { Label("Sidebar", systemImage: "sidebar.leading") }
+                        .accessibilityIdentifier("sidebar.open")
                 }
             }
         }

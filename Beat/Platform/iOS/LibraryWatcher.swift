@@ -31,11 +31,12 @@ final class LibraryWatcher {
     }
 }
 
-/// The device's synced library, or in the Simulator, a folder of audio files.
+/// The device's synced library, or in the Simulator, a folder of audio files; a UI test's is a folder of fixture songs.
 func makeLibrarySource() -> any LibrarySource {
+    if let folder = LaunchOptions.fixtureLibrary { return FolderLibrarySource(folder: folder, makesMusicFolder: false) }
     #if targetEnvironment(simulator)
-    FolderLibrarySource()
+    return FolderLibrarySource()
     #else
-    MediaLibrarySource()
+    return MediaLibrarySource()
     #endif
 }

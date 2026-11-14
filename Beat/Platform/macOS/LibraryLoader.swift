@@ -108,5 +108,8 @@ actor LibraryLoader: LibrarySource {
     }
 }
 
-/// On the Mac, the library is Music's, read through iTunesLibrary.
-func makeLibrarySource() -> any LibrarySource { LibraryLoader() }
+/// On the Mac, the library is Music's, read through iTunesLibrary; a UI test's is a folder of fixture songs.
+func makeLibrarySource() -> any LibrarySource {
+    if let folder = LaunchOptions.fixtureLibrary { return FolderLibrarySource(folder: folder, makesMusicFolder: false) }
+    return LibraryLoader()
+}

@@ -142,8 +142,10 @@ struct ElementEditorLayout<Preview: View>: View {
             }
             Button("Cancel", action: cancel)
                 .keyboardShortcut(.cancelAction)
+                .accessibilityIdentifier("editor.cancel")
             Button(context.saveTitle, action: save)
                 .keyboardShortcut(.defaultAction)
+                .accessibilityIdentifier("editor.save")
                 .beatGlassButtonStyle(prominent: true)
                 .disabled(!context.canSave)
         }

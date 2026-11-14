@@ -28,6 +28,7 @@ struct ElementEditorLayout<Preview: View>: View {
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Cancel") { closeAsking() }
+                            .accessibilityIdentifier("editor.cancel")
                             .confirmationDialog("Discard your changes?", isPresented: $confirmingDiscard, titleVisibility: .visible) {
                                 Button("Discard Changes", role: .destructive, action: cancel)
                                 Button("Keep Editing", role: .cancel) {}
@@ -36,6 +37,7 @@ struct ElementEditorLayout<Preview: View>: View {
                     ToolbarItem(placement: .confirmationAction) {
                         Button(context.saveTitle, action: save)
                             .disabled(!context.canSave)
+                            .accessibilityIdentifier("editor.save")
                     }
                     if compact {
                         // In place of the title, which the form's name row shows anyway.

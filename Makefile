@@ -13,7 +13,7 @@ GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo none)$(shel
 RELEASE_APP := build/Build/Products/Release/Beat.app
 INSTALLED_APP := /Applications/Beat.app
 
-.PHONY: project build test install clean ios-sim-ipad ios-sim-iphone ios-install ios-test
+.PHONY: project build test test-record run-fixtures install clean ios-sim-ipad ios-sim-iphone ios-install ios-test ios-test-record
 
 # Regenerate Beat.xcodeproj from project.yml.
 project:
@@ -26,6 +26,21 @@ build: project
 # Run the unit tests (Debug).
 test: project
 	$(XCODEBUILD) test
+
+# The same, re-recording every snapshot that doesn't match its reference (after a deliberate design change: look at
+# the failures from `make test` first). xcodebuild passes TEST_RUNNER_ variables on to the tests without the prefix.
+test-record: project
+	TEST_RUNNER_SNAPSHOT_TESTING_RECORD=failed $(XCODEBUILD) test
+
+# The UI-test build (its own bundle ID, so its own settings) on the fixture songs in Fixtures/Library, with its files
+# in a temporary home: what a UI test sees, starting fresh. Your own library, pages and settings aren't read or
+# touched. Quit it to return.
+FIXTURE_HOME := /tmp/beat-fixtures-home
+run-fixtures: project
+	$(XCODEBUILD) -configuration UITest build
+	rm -rf "$(FIXTURE_HOME)" && mkdir -p "$(FIXTURE_HOME)"
+	CFFIXED_USER_HOME="$(FIXTURE_HOME)" "build/Build/Products/UITest/Beat.app/Contents/MacOS/Beat" \
+		-BeatFixtureLibrary "$(CURDIR)/Fixtures/Library" -BeatFreshSettings
 
 # Release build, replace the installed copy, and relaunch it. Beat is quit politely first so it can
 # finish saving; the first run asks once to let Terminal control Beat.
@@ -80,6 +95,11 @@ ios-test: project
 	@# ("Busy: Application failed preflight checks").
 	xcrun simctl bootstatus "$(IOS_IPHONE)" -b
 	$(IOS_BUILD) -configuration Debug -destination "platform=iOS Simulator,name=$(IOS_IPHONE)" test
+
+# The same, re-recording every iOS snapshot that doesn't match its reference (see `test-record`).
+ios-test-record: project
+	xcrun simctl bootstatus "$(IOS_IPHONE)" -b
+	TEST_RUNNER_SNAPSHOT_TESTING_RECORD=failed $(IOS_BUILD) -configuration Debug -destination "platform=iOS Simulator,name=$(IOS_IPHONE)" test
 
 # Release build for a connected iPad or iPhone, signed with the personal team in Config/Secrets.xcconfig
 # (DEVELOPMENT_TEAM; add the Apple ID in Xcode > Settings > Accounts once). With a free Apple ID the install stops

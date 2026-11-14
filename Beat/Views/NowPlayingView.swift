@@ -18,6 +18,8 @@ struct NowPlayingOverlay: View {
                 let rect = expanded ? full : (barRect ?? fallbackBar(in: proxy.size))
                 // Laid out at full size and revealed by the growing frame, so its layout never squashes.
                 NowPlayingView(track: track, contentOpacity: expanded ? 1 : 0)
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("nowPlaying")
                     .frame(width: full.width, height: full.height)
                     .frame(width: rect.width, height: rect.height)
                     .clipShape(RoundedRectangle(cornerRadius: expanded ? 0 : 24, style: .continuous))

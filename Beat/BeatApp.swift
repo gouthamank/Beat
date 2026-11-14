@@ -15,6 +15,7 @@ struct BeatApp: App {
     @State private var scrobbler: Scrobbler
 
     init() {
+        LaunchOptions.checkIsolation()
         configurePlatform()
         let library = LibraryStore()
         let artwork = ArtworkCache(loader: library.loader)

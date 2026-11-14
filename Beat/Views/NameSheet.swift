@@ -40,12 +40,14 @@ struct NameSheet: View {
                 .autocorrectionDisabled()
                 .focused($focused)
                 .onSubmit(commit)
+                .accessibilityIdentifier("nameSheet.name")
             HStack {
                 Spacer()
                 Button("Cancel", role: .cancel) { dismiss() }
                     .keyboardShortcut(.cancelAction)
                 Button(saveTitle, action: commit)
                     .keyboardShortcut(.defaultAction)
+                    .accessibilityIdentifier("nameSheet.save")
                     .beatGlassButtonStyle(prominent: true)
                     .disabled(!canSave)
             }

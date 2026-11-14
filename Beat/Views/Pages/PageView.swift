@@ -27,6 +27,8 @@ struct PageView: View {
                 }
                 .tracksScrolling(scrolling)
                 .remembersScroll(.page(pageID))
+                // The page column's content, for UI tests that check the now-playing bar sits over it.
+                .accessibilityIdentifier("page.\(node.name)")
                 .onChange(of: scrollTarget.id) { _, id in
                     if let id { withAnimation(.snappy(duration: 0.2)) { proxy.scrollTo(id) } }
                 }

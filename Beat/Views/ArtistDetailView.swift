@@ -105,6 +105,7 @@ struct ArtistDetailView: View {
             ArtistArtwork(albumIDs: artist.albumIDsNewestFirst, artistID: artist.id, cornerRadius: 0)
         }
         .navigationTitle(artist.name)
+        .accessibilityIdentifier("artistPage")
         .onAppear {
             buildLocalContent(artist)
             hero.setTarget(artProbe, for: .artist(artist.id))

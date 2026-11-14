@@ -391,6 +391,7 @@ struct AlbumDetailView: View {
             ArtworkView(albumID: album.id, cornerRadius: 0)
         }
         .navigationTitle(album.title)
+        .accessibilityIdentifier("albumPage")
         .onAppear {
             hero.setTarget(artProbe, for: album.id)
             hero.setPage(pageProbe, for: album.id)

@@ -27,6 +27,9 @@ final class FolderLibrarySourceTests: XCTestCase {
         XCTAssertEqual(FolderLibrarySource.trackNumber(from: "3/12"), 3)
         XCTAssertEqual(FolderLibrarySource.trackNumber(from: "7"), 7)
         XCTAssertEqual(FolderLibrarySource.trackNumber(from: nil), 0)
+        XCTAssertEqual(FolderLibrarySource.trackNumber(fromITunes: Data([0, 0, 0, 2, 0, 4, 0, 0])), 2, "MP4: track 2 of 4")
+        XCTAssertEqual(FolderLibrarySource.trackNumber(fromITunes: Data([0, 0, 1, 2, 0, 0, 0, 0])), 258, "big-endian")
+        XCTAssertEqual(FolderLibrarySource.trackNumber(fromITunes: Data([0, 0])), 0, "too short")
     }
 
     func testOnlyAudioFilesAreRead() {

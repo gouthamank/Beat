@@ -68,6 +68,7 @@ struct ElementView: View {
                 title
                     .onTapGesture { navigator.push(.element(ElementRoute(pageID: pageID, elementID: element.id))) }
                     .accessibilityAddTraits(.isButton)
+                    .accessibilityIdentifier("element.\(element.filter.name)")
                     .help("See All")
                     .contextMenu { ElementMenu(element: element, pageID: pageID, delete: delete) }
             }

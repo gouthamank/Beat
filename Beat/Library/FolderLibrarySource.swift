@@ -7,6 +7,8 @@ import Foundation
 /// platforms can read a folder of fixture files.
 actor FolderLibrarySource: LibrarySource {
     private let folder: URL?
+    /// Off for a UI test's fixture folder, which is in the repo.
+    private let makesMusicFolder: Bool
     /// Embedded artwork per song (and per album, its first song's), read during the load.
     private var trackArtwork: [PersistentID: Data] = [:]
     private var albumArtwork: [PersistentID: Data] = [:]
@@ -14,15 +16,17 @@ actor FolderLibrarySource: LibrarySource {
 
     static let audioExtensions: Set<String> = ["mp3", "m4a", "aac", "wav", "aif", "aiff", "caf", "flac", "alac"]
 
-    init(folder: URL? = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first) {
+    init(folder: URL? = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first,
+         makesMusicFolder: Bool = true) {
         self.folder = folder
+        self.makesMusicFolder = makesMusicFolder
     }
 
     func load() async throws -> LibrarySnapshot {
         defer { gate.open() }
         // Files lists an app's folder only once it has something in it; an empty "Music" folder makes "Beat"
         // appear under On My iPad, with a place to drop songs. (The whole folder is read, subfolders included.)
-        if let folder {
+        if let folder, makesMusicFolder {
             try? FileManager.default.createDirectory(at: folder.appendingPathComponent("Music", isDirectory: true),
                                                      withIntermediateDirectories: true)
         }
@@ -72,6 +76,14 @@ actor FolderLibrarySource: LibrarySource {
         text.flatMap { Int($0.split(separator: "/").first ?? "") } ?? 0
     }
 
+    /// The track number from an iTunes (MP4) `trkn` tag: two bytes of padding, then the number and the total as
+    /// big-endian 16-bit values; 0 when it's too short.
+    static func trackNumber(fromITunes data: Data) -> Int {
+        let bytes = [UInt8](data)
+        guard bytes.count >= 4 else { return 0 }
+        return Int(bytes[2]) << 8 | Int(bytes[3])
+    }
+
     /// A stable ID from text (FNV-1a), so a song or album keeps its ID across launches, as Music's IDs do.
     static func stableID(_ text: String) -> PersistentID {
         var hash: UInt64 = 0xCBF2_9CE4_8422_2325
@@ -98,6 +110,10 @@ actor FolderLibrarySource: LibrarySource {
         let genre = await text([.id3MetadataContentType, .iTunesMetadataUserGenre, .quickTimeMetadataGenre])
         let yearText = await text([.id3MetadataYear, .id3MetadataRecordingTime, .iTunesMetadataReleaseDate, .commonIdentifierCreationDate])
         let trackText = await text([.id3MetadataTrackNumber])
+        var trackData: Data?
+        for item in AVMetadataItem.metadataItems(from: metadata, filteredByIdentifier: .iTunesMetadataTrackNumber) {
+            if let data = try? await item.load(.dataValue) { trackData = data; break }
+        }
         var artwork: Data?
         for item in AVMetadataItem.metadataItems(from: metadata, filteredByIdentifier: .commonIdentifierArtwork) {
             if let data = try? await item.load(.dataValue) { artwork = data; break }
@@ -114,7 +130,7 @@ actor FolderLibrarySource: LibrarySource {
             albumID: stableID(albumKey(albumArtist: albumArtist, artist: artist, album: album)),
             genre: genre,
             year: year(from: yearText),
-            trackNumber: trackNumber(from: trackText),
+            trackNumber: trackText.map { trackNumber(from: $0) } ?? trackData.map(trackNumber(fromITunes:)) ?? 0,
             duration: duration.isFinite ? duration : 0,
             dateAdded: values?.addedToDirectoryDate,
             location: file,
