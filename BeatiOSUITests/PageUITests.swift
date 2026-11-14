@@ -15,7 +15,9 @@ final class PageUITests: BeatiOSUITestCase {
         tap("nameSheet.save")
 
         waitFor("page.addElement")
-        XCTAssertTrue(eventually { !self.element("sidebar.page.Road Trip").isHittable }, "the drawer closed over the new page")
-        XCTAssertTrue(element("sidebar.page.Road Trip").exists, "and it's in the sidebar")
+        // Closed, the drawer's sidebar leaves the window (its navigation stack would answer for the status bar).
+        XCTAssertTrue(element("sidebar.page.Road Trip").waitForNonExistence(timeout: 5), "the drawer closed over the new page")
+        tap("sidebar.open")
+        waitFor("sidebar.page.Road Trip")
     }
 }

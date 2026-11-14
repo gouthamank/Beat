@@ -6,7 +6,8 @@ final class NavigationUITests: BeatiOSUITestCase {
         launch()
         openFromSidebar("sidebar.library.albums")
         waitFor("albumTile.First Light")
-        XCTAssertFalse(element("sidebar.library.albums").isHittable, "the drawer closed over the page it opened")
+        // Closed, the drawer's sidebar leaves the window (its navigation stack would answer for the status bar).
+        XCTAssertTrue(element("sidebar.library.albums").waitForNonExistence(timeout: 5), "the drawer closed over the page it opened")
     }
 
     func testOpeningAnAlbumAndSwipingBack() {

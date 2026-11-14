@@ -184,12 +184,12 @@ private struct SidebarRow: Identifiable {
     let parent: UUID?
     let index: Int
     let isExpanded: Bool
-    /// The "Add" line closing an open folder; `node` is that folder. A drop just above it lands at the folder's end.
-    var isAddRow = false
+    /// The "Empty" line inside an open folder with nothing in it; `node` is that folder. A drop on it lands inside.
+    var isEmptyRow = false
 
-    var id: String { isAddRow ? "add-\(node.id)" : node.id.uuidString }
+    var id: String { isEmptyRow ? "empty-\(node.id)" : node.id.uuidString }
 
-    /// Depth-first rows, skipping the contents of collapsed folders. Every open folder ends with an Add row.
+    /// Depth-first rows, skipping the contents of collapsed folders. An open, empty folder shows an Empty row.
     static func visible(_ nodes: [SidebarNode], expanded: Set<UUID>) -> [SidebarRow] {
         var rows: [SidebarRow] = []
         func walk(_ nodes: [SidebarNode], depth: Int, parent: UUID?) {
@@ -197,8 +197,10 @@ private struct SidebarRow: Identifiable {
                 let open = expanded.contains(node.id)
                 rows.append(SidebarRow(node: node, depth: depth, parent: parent, index: i, isExpanded: open))
                 guard open, let children = node.children else { continue }
+                if children.isEmpty {
+                    rows.append(SidebarRow(node: node, depth: depth + 1, parent: node.id, index: 0, isExpanded: false, isEmptyRow: true))
+                }
                 walk(children, depth: depth + 1, parent: node.id)
-                rows.append(SidebarRow(node: node, depth: depth + 1, parent: node.id, index: children.count, isExpanded: false, isAddRow: true))
             }
         }
         walk(nodes, depth: 0, parent: nil)
@@ -217,28 +219,18 @@ private struct SidebarTree: View {
 
     var body: some View {
         ForEach(rows) { row in
-            if row.isAddRow {
-                // Untagged, so it can't be selected; a click opens the folder-or-page menu.
+            if row.isEmptyRow {
+                // Untagged, so it can't be selected: only says the folder isn't broken.
                 HStack(spacing: 0) {
-                    Color.clear.frame(width: SidebarRow.indent(row.depth) + SidebarRow.chevronWidth, height: 1)
-                    Menu {
-                        NodeMenu(node: row.node, actions: actions, createOnly: true)
-                    } label: {
-                        Label("Add", systemImage: "plus")
-                    }
-                    .menuStyle(.button)
-                    .buttonStyle(.plain)
-                    .menuIndicator(.hidden)
-                    .fixedSize()
-                    .foregroundStyle(.secondary)
-                    .help("Add a page or folder to “\(row.node.name)”")
+                    SidebarIndent(depth: row.depth)
+                    Text("Empty").foregroundStyle(.tertiary)
                 }
             } else if row.node.isFolder {
                 FolderRow(row: row, actions: actions)
             } else {
                 HStack(spacing: 0) {
-                    Color.clear.frame(width: SidebarRow.indent(row.depth) + SidebarRow.chevronWidth, height: 1)
-                    Label(row.node.name, systemImage: row.node.symbol)
+                    SidebarIndent(depth: row.depth)
+                    Label(row.node.name, systemImage: row.node.symbol).lineLimit(1)
                 }
                 .itemProvider { NSItemProvider(object: row.node.id.uuidString as NSString) }
                 .contextMenu { NodeMenu(node: row.node, actions: actions) }
@@ -259,13 +251,32 @@ private struct SidebarTree: View {
 }
 
 extension SidebarRow {
-    /// The disclosure chevron's column. Wider on iPad and iPhone, whose list icons are larger and sat right against it.
-    #if os(macOS)
-    static let chevronWidth: CGFloat = 14
-    #else
-    static let chevronWidth: CGFloat = 24
-    #endif
-    static func indent(_ depth: Int) -> CGFloat { CGFloat(depth) * 14 }
+    /// One level of nesting, the same everywhere: a 28-point step on iPad left deep names no room at the sidebar's
+    /// default width. Top-level rows have none, so their icons line up with the Library section's.
+    static let levelIndent: CGFloat = 18
+    /// Levels that step right; deeper rows stay at the last step and show their level instead, so a deep tree
+    /// doesn't squeeze names out.
+    static let steppedLevels = 2
+    static func indent(_ depth: Int) -> CGFloat { CGFloat(min(depth, steppedLevels)) * levelIndent }
+}
+
+/// A row's indentation, with its level number in the gap once past the stepped levels.
+private struct SidebarIndent: View {
+    let depth: Int
+
+    var body: some View {
+        Color.clear.frame(width: SidebarRow.indent(depth), height: 1)
+            .overlay(alignment: .trailing) {
+                if depth > SidebarRow.steppedLevels {
+                    Text(depth, format: .number)
+                        .font(.caption2.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .fixedSize()
+                        .padding(.trailing, 6)
+                        .accessibilityLabel("Level \(depth)")
+                }
+            }
+    }
 }
 
 /// Folders aren't selectable, so they can safely take a drop target ("move inside") and a click (expand/collapse).
@@ -274,19 +285,48 @@ private struct FolderRow: View {
     let actions: SidebarActions
     @Environment(PageStore.self) private var pages
     @State private var dropTargeted = false
+    @State private var hovering = false
+
+    /// The + shows on hover on the Mac; with no hover, on every open folder on iPad.
+    private var showsAdd: Bool {
+        #if os(macOS)
+        hovering
+        #else
+        row.isExpanded
+        #endif
+    }
 
     var body: some View {
         HStack(spacing: 0) {
-            Color.clear.frame(width: SidebarRow.indent(row.depth), height: 1)
+            SidebarIndent(depth: row.depth)
+            Label(row.node.name, systemImage: row.node.symbol).lineLimit(1)
+            Spacer(minLength: 0)
+            // Always laid out, so names don't reflow as it comes and goes.
+            Menu {
+                NodeMenu(node: row.node, actions: actions, createOnly: true)
+            } label: {
+                Image(systemName: "plus").font(.caption.weight(.semibold))
+                    .frame(width: 22, height: 22)
+                    .contentShape(Rectangle())
+            }
+            .menuStyle(.button)
+            .buttonStyle(.plain)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .foregroundStyle(.secondary)
+            .opacity(showsAdd ? 1 : 0)
+            .allowsHitTesting(showsAdd)
+            .accessibilityLabel("Add to \(row.node.name)")
+            .help("Add a page or folder to “\(row.node.name)”")
+            .padding(.trailing, 4)
+            // At the trailing edge, as in the iPad's own sidebars: the icon stays in line with the rows around it.
             Image(systemName: "chevron.right")
                 .font(.caption2.weight(.bold))
                 .foregroundStyle(.secondary)
                 .rotationEffect(.degrees(row.isExpanded ? 90 : 0))
-                .frame(width: SidebarRow.chevronWidth)
-            Label(row.node.name, systemImage: row.node.symbol)
-            Spacer(minLength: 0)
         }
         .contentShape(Rectangle())
+        .onHover { hovering = $0 }
         .onTapGesture { withAnimation(.snappy) { actions.toggle(row.node.id) } }
         .overlay {
             if dropTargeted {
@@ -309,7 +349,7 @@ private struct FolderRow: View {
 private struct NodeMenu: View {
     let node: SidebarNode
     let actions: SidebarActions
-    /// Only the "create inside" items, for a folder's Add row.
+    /// Only the "create inside" items, for a folder row's + menu.
     var createOnly = false
     @Environment(PageStore.self) private var pages
     @Environment(AppNavigator.self) private var navigator

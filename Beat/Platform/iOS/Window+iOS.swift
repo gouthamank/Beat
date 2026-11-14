@@ -40,13 +40,8 @@ private struct TouchWindow: ViewModifier {
             .background { KeyboardDismissal() }
             // The Mac's Settings window, as a sheet; it inherits the window's stores from here.
             .sheet(isPresented: $navigator.showingSettings) {
-                NavigationStack {
-                    SettingsView()
-                        .toolbar {
-                            ToolbarItem(placement: .confirmationAction) { Button("Done") { navigator.showingSettings = false } }
-                        }
-                }
-                .presentationSizing(.page)
+                SettingsView { navigator.showingSettings = false }
+                    .presentationSizing(.page)
             }
             // Outermost, so RootView, its overlays and sheets (the editor, Settings) all get it.
             .environment(\.compactLayout, horizontalSizeClass == .compact)

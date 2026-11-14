@@ -49,7 +49,7 @@ targets:
         CFBundleDisplayName: $(BEAT_DISPLAY_NAME)
         CFBundleName: $(BEAT_DISPLAY_NAME)
         # The version shown in About Beat; raise it by hand for a release. The build number comes from git (Makefile).
-        CFBundleShortVersionString: "1.2.0"
+        CFBundleShortVersionString: "1.2.1"
         NSHumanReadableCopyright: © 2026 Gouthaman Kumar. MIT License.
         # `make` fills both from git (commit count, short hash); builds from Xcode keep the defaults below.
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
@@ -95,7 +95,7 @@ targets:
         # "Beat", or "Beat Test" for the UI-test build (BEAT_DISPLAY_NAME), so the two never look alike.
         CFBundleDisplayName: $(BEAT_DISPLAY_NAME)
         CFBundleName: $(BEAT_DISPLAY_NAME)
-        CFBundleShortVersionString: "1.2.0"
+        CFBundleShortVersionString: "1.2.1"
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         BeatCommit: $(BEAT_COMMIT)
         LastFMAPIKey: $(LASTFM_API_KEY)

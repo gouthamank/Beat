@@ -104,7 +104,8 @@ struct ArtistDetailView: View {
         // The page only, not the toolbar: the grid's search field kept this page's scheme after going back.
         .environment(\.colorScheme, pageScheme)
         .coverPageChrome()
-        .coverPageToolbar(title: artist.name, collapse: collapse, palette: palette, scheme: pageScheme) {
+        .coverPageToolbar(title: artist.name, collapse: collapse, palette: palette,
+                          scheme: coverToolbarScheme(palette: palette, page: pageScheme, system: colorScheme)) {
             ArtistArtwork(albumIDs: artist.albumIDsNewestFirst, artistID: artist.id, cornerRadius: 0)
         }
         .navigationTitle(artist.name)

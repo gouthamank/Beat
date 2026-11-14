@@ -1,7 +1,7 @@
 import SwiftUI
 
 // The panes of Beat's settings, shared. Each platform puts them in its own container (`SettingsView`): the Mac's
-// tabbed Settings window, a list of sections on iPad and iPhone (Platform/*/SettingsView+*.swift), and brings its own
+// tabbed Settings window, two columns on iPad and a list on iPhone (Platform/*/SettingsView+*.swift), and brings its own
 // Export/Import buttons (`SettingsFileButtons`).
 
 /// Every pane is a grouped form of the same width, sized to its content.

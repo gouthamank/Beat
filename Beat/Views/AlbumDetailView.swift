@@ -82,7 +82,14 @@ extension View {
                                      @ViewBuilder art: @escaping () -> Art) -> some View {
         toolbar {
             ToolbarItem(placement: .navigation) {
-                CoverPageBackButton().environment(\.colorScheme, scheme)
+                // An explicit tint as well as the scheme: iOS kept the bar button's tint from its first build through a
+                // change of scheme (a pale cover's chevron stayed white until the app was backgrounded), and colours can
+                // still arrive after the first build. A changed tint does reach it.
+                CoverPageBackButton()
+                    .environment(\.colorScheme, scheme)
+                    #if os(iOS)
+                    .tint(scheme == .dark ? Color.white : Color.black)
+                    #endif
             }
             #if os(macOS)
             ToolbarItem(placement: .navigation) {
@@ -105,6 +112,18 @@ extension View {
         #endif
         .refreshesStatusBar(for: scheme)
     }
+}
+
+/// The light or dark for a cover page's toolbar (back, the title, and on iOS the status bar). On iPad and iPhone the
+/// cover's from the first frame, since its colour is under the page from the start: waiting for the backdrop, as the
+/// page does, built the bar dark first and gave a pale cover's back chevron a white first moment. On the Mac, the page's.
+@MainActor
+func coverToolbarScheme(palette: ArtworkPalette?, page: ColorScheme, system: ColorScheme) -> ColorScheme {
+    #if os(iOS)
+    palette.map { $0.isDark ? .dark : .light } ?? system
+    #else
+    page
+    #endif
 }
 
 private struct CoverViewerClick: ViewModifier {
@@ -390,7 +409,8 @@ struct AlbumDetailView: View {
         // The page only, not the toolbar: the grid's search field kept this page's scheme after going back.
         .environment(\.colorScheme, pageScheme)
         .coverPageChrome()
-        .coverPageToolbar(title: album.title, collapse: collapse, palette: palette, scheme: pageScheme) {
+        .coverPageToolbar(title: album.title, collapse: collapse, palette: palette,
+                          scheme: coverToolbarScheme(palette: palette, page: pageScheme, system: colorScheme)) {
             ArtworkView(albumID: album.id, cornerRadius: 0)
         }
         .navigationTitle(album.title)
@@ -409,44 +429,68 @@ struct AlbumDetailView: View {
     }
 
     private func header(_ album: Album, tracks: [Track]) -> some View {
-        // A row beside the cover, or on a phone stacked under it. One layout either way, so the probed cover keeps
-        // its identity (see the FrameProbe gotcha).
-        coverPageHeaderLayout(compact) {
-            ArtworkView(albumID: album.id, size: .large, cornerRadius: 12)
-                .frame(width: compact ? 240 : 230, height: compact ? 240 : 230)
+        // The cover beside its text everywhere: on a phone too, smaller and top-aligned (stacked and centred, the
+        // header took most of the first screen before the first song). One `HStack` either way, so the probed cover
+        // keeps its identity (see the FrameProbe gotcha).
+        HStack(alignment: compact ? .top : .bottom, spacing: compact ? 16 : 24) {
+            ArtworkView(albumID: album.id, size: .large, cornerRadius: compact ? 10 : 12)
+                .frame(width: compact ? 140 : 230, height: compact ? 140 : 230)
                 .frameProbe(artProbe)
                 // Drawn from the outline: SwiftUI's `.shadow` was redrawn on every scrolled frame.
-                .background(ShapeShadow(shape: RoundedRectangle(cornerRadius: 12, style: .continuous),
-                                        opacity: 0.3, radius: 20, y: 10))
+                .background(ShapeShadow(shape: RoundedRectangle(cornerRadius: compact ? 10 : 12, style: .continuous),
+                                        opacity: 0.3, radius: compact ? 12 : 20, y: compact ? 6 : 10))
                 // Hidden while the zoom's flying copy is on its way here.
                 .opacity(hero.isFlying(to: album.id) ? 0 : 1)
                 .coverViewerOnClick(album, from: artProbe, onAlbumPage: true)
 
-            VStack(alignment: compact ? .center : .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: compact ? 4 : 6) {
                 Text(album.title)
-                    .font(compact ? .title.bold() : .largeTitle.bold())
+                    .font(compact ? .title3.bold() : .largeTitle.bold())
                     .foregroundStyle(palette?.primary.color ?? Color.primary)
                     .lineLimit(compact ? 3 : 2)
                 Text(album.artist)
-                    .font(compact ? .title3 : .title2)
+                    .font(compact ? .subheadline : .title2)
                     .foregroundStyle(palette.map { AnyShapeStyle($0.secondary.color) } ?? AnyShapeStyle(.secondary))
+                    .lineLimit(compact ? 2 : nil)
                 Text(metadataLine(album, trackCount: tracks.count))
-                    .font(.callout)
+                    .font(compact ? .caption : .callout)
                     .foregroundStyle(palette.map { AnyShapeStyle($0.secondary.color) } ?? AnyShapeStyle(.tertiary))
 
-                BeatGlassContainer(spacing: 10) {
-                    HStack(spacing: 10) {
-                        Button { queue.play(tracks) } label: { Label("Play", systemImage: "play.fill").frame(minWidth: 70) }
-                            .accessibilityIdentifier("albumPage.play")
-                            .beatGlassButtonStyle(prominent: true)
-                        Button { queue.play(tracks, shuffled: true) } label: { Label("Shuffle", systemImage: "shuffle").frame(minWidth: 70) }
-                            .beatGlassButtonStyle()
-                    }
-                    .controlSize(.large)
-                }
-                .padding(.top, 10)
+                playButtons(tracks)
+                    .padding(.top, compact ? 8 : 10)
             }
-            .multilineTextAlignment(compact ? .center : .leading)
+            .multilineTextAlignment(.leading)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Play and Shuffle. On a phone they share the text column beside the cover, so they drop their words when a
+    /// narrow phone leaves too little room for them.
+    @ViewBuilder
+    private func playButtons(_ tracks: [Track]) -> some View {
+        if compact {
+            ViewThatFits(in: .horizontal) {
+                playButtonRow(tracks, minWidth: 70)
+                    .labelStyle(.titleAndIcon)
+                playButtonRow(tracks, minWidth: 0)
+                    .labelStyle(.iconOnly)
+            }
+            .controlSize(.regular)
+        } else {
+            playButtonRow(tracks, minWidth: 70)
+                .controlSize(.large)
+        }
+    }
+
+    private func playButtonRow(_ tracks: [Track], minWidth: CGFloat) -> some View {
+        BeatGlassContainer(spacing: 10) {
+            HStack(spacing: 10) {
+                Button { queue.play(tracks) } label: { Label("Play", systemImage: "play.fill").frame(minWidth: minWidth) }
+                    .accessibilityIdentifier("albumPage.play")
+                    .beatGlassButtonStyle(prominent: true)
+                Button { queue.play(tracks, shuffled: true) } label: { Label("Shuffle", systemImage: "shuffle").frame(minWidth: minWidth) }
+                    .beatGlassButtonStyle()
+            }
         }
     }
 

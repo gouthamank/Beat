@@ -89,10 +89,6 @@ struct RootView: View {
 
     private var selection: SidebarItem? { navigator.selection }
 
-
-
-
-
     /// The page column beside the sidebar, or on a phone alone (its sidebar is the drawer).
     @ViewBuilder
     private var columns: some View {
@@ -134,7 +130,6 @@ struct RootView: View {
                 }
         }
         .id(selection)
-        .zoomTransitions()
         // Where the window's now-playing bar goes (see WindowNowPlayingBar).
         .background { DetailColumnReader(navigator: navigator) }
         // The window's minimum width lives here, not on the window's root view: a root `minWidth` cut
@@ -146,6 +141,9 @@ struct RootView: View {
     /// long for the compiler to type-check in reasonable time.
     private var splitView: some View {
         columns
+        // Around the split view, not the page stack: on iPad a pushed page takes its environment from outside the
+        // split view, so a namespace set on the stack reached the tiles but not the pages, which slid in unzoomed.
+        .zoomTransitions()
         // One bar for the window, above pushed pages. Before `.disabled`, so it's disabled with the rest of the
         // window behind full-window views, and before the overlays that must draw over it.
         .overlay { WindowNowPlayingBar() }

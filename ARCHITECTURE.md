@@ -227,7 +227,7 @@ and each app compiles one of them:
 | `Platform+*.swift` | Images and colours (`PlatformImage`, `PlatformColor`), opening links, the window background, small view helpers |
 | `Window+*.swift` | The window around `RootView`: light/dark handling and event monitors on the Mac; phone layouts, the sidebar drawer, Settings as a sheet and zoom transitions on iOS |
 | `BeatApp+*.swift` | Start-up setup, menus, the Mac's Settings window and About panel |
-| `SettingsView+*.swift` | The Settings container (Mac tabs, iOS list) and settings-file import/export |
+| `SettingsView+*.swift` | The Settings container (Mac tabs, iPad two columns, iPhone list) and settings-file import/export |
 | `ElementEditor+*.swift` | The element editor's layout |
 | `FrameProbe.swift` | The tiny view that reports a tile's position for transitions |
 | `BarLayers.swift` | The now-playing bar's progress drawing |

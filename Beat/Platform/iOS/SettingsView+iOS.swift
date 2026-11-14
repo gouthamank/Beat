@@ -1,28 +1,103 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Settings on iPad and iPhone, presented as a sheet from the sidebar: the usual Settings list, each section opening
-/// its form (six tabs overflowed a phone's tab bar into "More").
+/// Settings on iPad and iPhone, presented as a sheet from the sidebar. On iPad, two columns like the system's Settings:
+/// the sections beside the chosen one's form (a list alone left most of the page-sized sheet empty). On a phone, the
+/// usual Settings list, each section opening its form (six tabs overflowed a phone's tab bar into "More").
 struct SettingsView: View {
+    let done: () -> Void
+    @Environment(\.compactLayout) private var compact
+    @State private var section: SettingsSection? = .general
+
     var body: some View {
-        List {
-            Section {
-                NavigationLink { GeneralSettings().navigationTitle("General") } label: { Label("General", systemImage: "gearshape") }
-                NavigationLink { ElementSettings().navigationTitle("Elements") } label: { Label("Elements", systemImage: "rectangle.grid.1x2") }
-                NavigationLink { PlaybackSettings().navigationTitle("Playback") } label: { Label("Playback", systemImage: "waveform") }
-                NavigationLink { LyricsSettings().navigationTitle("Lyrics") } label: { Label("Lyrics", systemImage: "quote.bubble") }
-                NavigationLink { ArtistInfoSettingsPane().navigationTitle("Artist Info") } label: { Label("Artist Info", systemImage: "info.circle") }
-                // Only in builds with a Last.fm key (Config/Secrets.xcconfig); see README.
-                if LastFMCredentials.bundled != nil {
-                    NavigationLink { LastFMSettingsPane().navigationTitle("Last.fm") } label: { Label("Last.fm", systemImage: "dot.radiowaves.up.forward") }
+        if compact {
+            NavigationStack {
+                List {
+                    Section {
+                        ForEach(SettingsSection.available) { section in
+                            NavigationLink { section.pane } label: { section.label }
+                        }
+                    }
+                    version
                 }
+                .navigationTitle("Settings")
+                .toolbar { doneButton }
             }
-            // Where the Mac has its About panel.
-            Section {
-                LabeledContent("Version", value: AppVersion.display)
+        } else {
+            NavigationSplitView(columnVisibility: .constant(.all)) {
+                List(selection: $section) {
+                    Section {
+                        ForEach(SettingsSection.available) { section in
+                            section.label.tag(section)
+                        }
+                    }
+                    version
+                }
+                .navigationTitle("Settings")
+                // Both columns always show: there's nothing to hide the sections for.
+                .toolbar(removing: .sidebarToggle)
+            } detail: {
+                (section ?? .general).pane
+                    .toolbar { doneButton }
             }
+            .navigationSplitViewStyle(.balanced)
         }
-        .navigationTitle("Settings")
+    }
+
+    // Where the Mac has its About panel.
+    private var version: some View {
+        Section {
+            LabeledContent("Version", value: AppVersion.display)
+        }
+    }
+
+    private var doneButton: some ToolbarContent {
+        ToolbarItem(placement: .confirmationAction) { Button("Done", action: done) }
+    }
+}
+
+private enum SettingsSection: String, CaseIterable, Identifiable {
+    case general, elements, playback, lyrics, artistInfo, lastFM
+
+    var id: Self { self }
+
+    /// Last.fm only in builds with a Last.fm key (Config/Secrets.xcconfig); see README.
+    static var available: [SettingsSection] {
+        allCases.filter { $0 != .lastFM || LastFMCredentials.bundled != nil }
+    }
+
+    var title: String {
+        switch self {
+        case .general: "General"
+        case .elements: "Elements"
+        case .playback: "Playback"
+        case .lyrics: "Lyrics"
+        case .artistInfo: "Artist Info"
+        case .lastFM: "Last.fm"
+        }
+    }
+
+    var label: some View {
+        switch self {
+        case .general: Label(title, systemImage: "gearshape")
+        case .elements: Label(title, systemImage: "rectangle.grid.1x2")
+        case .playback: Label(title, systemImage: "waveform")
+        case .lyrics: Label(title, systemImage: "quote.bubble")
+        case .artistInfo: Label(title, systemImage: "info.circle")
+        case .lastFM: Label(title, systemImage: "dot.radiowaves.up.forward")
+        }
+    }
+
+    @ViewBuilder
+    var pane: some View {
+        switch self {
+        case .general: GeneralSettings().navigationTitle(title)
+        case .elements: ElementSettings().navigationTitle(title)
+        case .playback: PlaybackSettings().navigationTitle(title)
+        case .lyrics: LyricsSettings().navigationTitle(title)
+        case .artistInfo: ArtistInfoSettingsPane().navigationTitle(title)
+        case .lastFM: LastFMSettingsPane().navigationTitle(title)
+        }
     }
 }
 
