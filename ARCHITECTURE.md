@@ -44,7 +44,7 @@ Where the code lives:
 
 | Folder | What's in it |
 |---|---|
-| `Beat/Library` | The data model, reading the library, artwork, the launch caches, play history |
+| `Beat/Library` | The data model, reading the library, artwork, the launch caches, play history, Quick Open's index, Library ▸ Health's checks |
 | `Beat/SmartFilters` | What a smart filter is, the engine that runs it, the presets |
 | `Beat/Pages` | The sidebar tree of folders and pages, page elements, saving them |
 | `Beat/Playback` | The queue, the audio player, the audio tap for the visualizer, system Now Playing |
@@ -58,7 +58,9 @@ Where the code lives:
 
 Everything starts with a **`LibrarySnapshot`**: an immutable value holding every playable song (`Track`) and the
 albums, artists and genres built from them (`LibrarySnapshot.build(tracks:)`, a pure, tested function). Because
-it's a plain value, it can be handed to background work freely.
+it's a plain value, it can be handed to background work freely. It also carries each album's and each song's
+search text, folded (case and accents removed) once when it's built, so a search only compares text: the Library
+pages' searches and Quick Open all use it.
 
 A **`LibrarySource`** produces it. There are three, one per situation:
 
@@ -66,9 +68,13 @@ A **`LibrarySource`** produces it. There are three, one per situation:
 |---|---|---|
 | `LibraryLoader` | Mac | The Music app's library through `iTunesLibrary.framework` |
 | `MediaLibrarySource` | iPhone, iPad | Songs synced from a Mac, through MediaPlayer (`MPMediaQuery`) |
-| `FolderLibrarySource` | Simulator | Audio files saved to the app's Music folder, since the Simulator has no library |
+| `FolderLibrarySource` | Simulator, UI tests | Audio files in the app's Documents folder (the Simulator has no library), or the UI tests' fixture songs |
 
 Songs without a playable file (Apple Music streaming, cloud-only, DRM) are skipped. Beat only plays local files.
+
+`FolderLibrarySource` reads tags from the files itself. It skips hidden files and folders (songs deleted in the
+Files app wait in a hidden `.Trash` there), and falls back to ID3v2.2's three-letter frames (`TP2`, `TYE`, `TRK`,
+`TCO`), which older iTunes wrote and AVFoundation gives no standard identifier.
 
 **`LibraryStore`** owns the current snapshot. Reading 20,000 songs takes a few seconds, so launch is two-stage:
 
@@ -148,7 +154,7 @@ flowchart TD
     root["RootView"]
     root --> split["Sidebar + page stack<br/>(Mac, iPad: side by side · iPhone: page with a drawer)"]
     root --> bar["Now-playing bar<br/>(one per window)"]
-    root --> layers["Full-window layers:<br/>cover flight · Now Playing · cover viewer"]
+    root --> layers["Full-window layers:<br/>cover flight · Now Playing · cover viewer · Quick Open"]
     split --> pagev["Page: its elements"]
     pagev --> detail["Album, artist, genre and See All pages<br/>(pushed onto the stack)"]
 ```
@@ -169,9 +175,39 @@ A few things are worth knowing about why it's shaped this way:
   tiny probe that reports its position in the window (`FrameProbe`), and the flight is drawn in a layer over
   everything. iPad and iPhone use iOS's own zoom transition instead, which can follow a swipe down.
 - **Library ▸ Songs** groups every song by album under its album artist. On the Mac that's an AppKit table, since a
-  SwiftUI list of ~3,000 album blocks was too slow; on iPad and iPhone, for now, a SwiftUI list.
+  SwiftUI list of ~3,000 album blocks was too slow; on iPad and iPhone, for now, a SwiftUI list. `SongsModel`
+  filters, groups and lays out the rows (`AlbumSongsLayout`) in the background, so the main thread only swaps them in.
+  On the Mac the song columns can be dragged into another order and the optional ones resized (`SongColumnOrder`,
+  `SongColumnWidths`, both saved); the padding and cover columns stay put, because covers are drawn behind the rows
+  at the cover column.
+- **Search** is per page: a field in the toolbar on the Mac, and under the title on iPad and iPhone, where it tucks
+  away as the page scrolls. There a page subtitle present from the first frame squashed it, so `pageSubtitle` shows
+  its text a frame late.
 - **Grids, shelves and lists work from the keyboard** on the Mac (`KeyboardGrid`): each collection is one Tab stop,
   and the arrow keys move a highlight across it.
+
+### Quick Open
+
+⌘K on the Mac, or the search button at the top of the sidebar on iPad and iPhone, opens a panel over the window that
+finds pages, albums, artists, genres and songs as you type. **`QuickOpenIndex`** (pure, tested) holds every item's
+folded text, built once per library or sidebar change off the main thread, and ranks matches: exact names, then names
+starting with the query, then word starts, then any match; groups are ordered by their best match.
+
+What a pick does is decided by **`QuickOpenAction.resolve`** (pure, tested): a page is selected in the sidebar;
+albums, artists and genres open on the Library page that lists them (`AppNavigator.goTo`), so the sidebar shows where
+you are; a song opens its album with the song highlighted, shows it in Library ▸ Songs, or plays, as chosen in
+Settings ▸ General. On the Mac ⌥Return does the other of opening and playing. The panel dims the whole window: on
+the Mac the title bar and toolbar are drawn by AppKit above SwiftUI's content, so they get a dim view of their own
+(`titleBarDim`).
+
+### Library ▸ Health (Mac)
+
+A read-only report of what's worth fixing in Music: albums without artwork, songs without a year, likely
+duplicates, albums split in two, missing files, mixed tags within an album, and songs without a genre or album
+artist. **`LibraryHealth`** runs the checks (pure, tested; the file check is passed in), once per library version
+in the background. Each row opens its album, a song's with the song highlighted, to fix it in Music. It's Mac only
+(`LibraryPage.available`): a synced library can't be fixed on iPad or iPhone, and its file and year checks don't
+apply there.
 
 ### Now Playing
 
@@ -181,9 +217,9 @@ cover on its own colours, the transport, optional **lyrics** and a full-screen *
 - **Lyrics** come from, in order: a `.lrc` file beside the song, lyrics embedded in the file, then (only if you turn
   it on) LRCLIB online. Synced lyrics follow the song and seek when tapped. A DJ mix whose "lyrics" are a timed
   tracklist becomes **chapters** instead: the progress line splits at each track (`MixChapters`).
-- **The visualizer** reads the audio through a tap on the player (`AudioTap`), analyses it on the main thread
-  (`SpectrumAnalyzer`, an FFT into 64 bands) and draws it as a waveform or one of several scenes. Radial, a ring of
-  bars around the cover, is toggled by clicking the cover.
+- **The visualizer** reads the audio through a tap on the player (`AudioTap`, one tap shared by every song; see
+  [Playback](#playback)), analyses it on the main thread (`SpectrumAnalyzer`, an FFT into 64 bands) and draws it as a
+  waveform or one of several scenes. Radial, a ring of bars around the cover, is toggled by clicking the cover.
 
 ## Playback
 
@@ -192,16 +228,32 @@ flowchart LR
     views["Views"] -- "play, next, shuffle…" --> queue["PlaybackQueue"]
     queue --> state["QueueState<br/>order, shuffle, repeat<br/>(pure, tested)"]
     queue --> player["AudioPlayer<br/>current song + next one preloaded"]
-    player --> tap["AudioTap → visualizer"]
+    player --> tap["AudioTap → visualizer<br/>(one tap for every song)"]
     queue --> np["NowPlayingController<br/>lock screen, media keys"]
     queue --> hist["PlayHistoryStore"]
     queue --> scrob["Scrobbler (Last.fm, opt-in)"]
 ```
 
 `PlaybackQueue` is what the views talk to. The ordering rules (shuffle that keeps the current song first, repeat
-one and all, skipping missing files) live in `QueueState`, a pure struct with its own tests. `AudioPlayer` keeps the
-current song plus the next one loaded, so songs follow each other with almost no gap. On the Mac the volume slider
-is Beat's own; on iPad and iPhone it is the system volume.
+one and all, skipping missing files) live in `QueueState`, a pure struct with its own tests. On the Mac the volume
+slider is Beat's own; on iPad and iPhone it is the system volume.
+
+**Gapless.** `AudioPlayer` is an `AVQueuePlayer` holding the current song and the next one, which it joins without a
+gap: encoder padding (iTunes' `iTunSMPB` in MP3s, and AAC's) is trimmed as files are read. The visualizer's tap goes
+on every song through an audio mix, and it must be **one tap shared by all of them** (`AudioTap.make` once, then
+`attach` to each item): a fresh tap per song stopped `AVQueuePlayer` joining them, leaving a short silence at every
+boundary. An audio mix alone, or no tap, doesn't.
+
+**Crossfade (not built).** Overlapping two songs, each fading, is beyond `AVQueuePlayer` and would need
+`AVAudioEngine` with a player node per song. A throwaway test (an album played through `AVAudioEngine` with the files
+scheduled back to back) found:
+
+- The engine joins files exactly: MP3s with encoder padding information are trimmed when read.
+- **AirPlay changes.** macOS lists AirPlay speakers as outputs only once one is the Mac's output (Control Center ▸
+  Sound). An engine can't offer them in Beat's own picker the way `AVRoutePickerView` does for an `AVPlayer`, so
+  AirPlay would mean the Mac's system output.
+- Everything `AVQueuePlayer` gives for free would be rebuilt: elapsed time and seeking, end of song, volume, and
+  the visualizer's feed (an engine tap, simpler than `AudioTap`).
 
 ## Platforms
 
@@ -224,8 +276,8 @@ and each app compiles one of them:
 
 | File (in both folders) | What it provides |
 |---|---|
-| `Platform+*.swift` | Images and colours (`PlatformImage`, `PlatformColor`), opening links, the window background, small view helpers |
-| `Window+*.swift` | The window around `RootView`: light/dark handling and event monitors on the Mac; phone layouts, the sidebar drawer, Settings as a sheet and zoom transitions on iOS |
+| `Platform+*.swift` | Images and colours (`PlatformImage`, `PlatformColor`), opening links, the window background, where a page's search field goes and its subtitle (`SearchFieldPlacement.page`, `pageSubtitle`), small view helpers |
+| `Window+*.swift` | The window around `RootView`: light/dark handling, event monitors and Quick Open's title-bar dim (`titleBarDim`) on the Mac; phone layouts, the sidebar drawer, Settings as a sheet and zoom transitions on iOS |
 | `BeatApp+*.swift` | Start-up setup, menus, the Mac's Settings window and About panel |
 | `SettingsView+*.swift` | The Settings container (Mac tabs, iPad two columns, iPhone list) and settings-file import/export |
 | `ElementEditor+*.swift` | The element editor's layout |
@@ -234,9 +286,9 @@ and each app compiles one of them:
 | `AlbumSongsTable.swift` | Library ▸ Songs |
 | `LibraryWatcher.swift`, `OutputRoute.swift`, `RoutePicker.swift`, `VolumeControl.swift` | Library changes, AirPlay, volume |
 
-Some pieces exist on one platform only: the library loaders (above), the Mac's keyboard and trackpad monitors
-(Space to play, ⌘[ and swipe back), and the iOS sidebar drawer, form-based rule editor, back-swipe restorer and
-keyboard dismissal. Differences of a line or two stay in the shared file as `#if os(macOS)`.
+Some pieces exist on one platform only: the library loaders (above), Library ▸ Health and the reorderable Songs
+columns on the Mac, the Mac's keyboard and trackpad monitors (Space to play, ⌘[ and swipe back), and the iOS
+sidebar drawer, form-based rule editor, back-swipe restorer and keyboard dismissal. Differences of a line or two stay in the shared file as `#if os(macOS)`.
 
 **Phones and narrow iPad windows** get their own layouts through one switch, `\.compactLayout` (set from iOS's
 horizontal size class, always off on the Mac):
@@ -260,7 +312,7 @@ Because the switch is off on the Mac, the Mac's layouts never change.
 | The library as last read, for a fast launch | `Caches/Beat/library.json` | `LibraryCache` |
 | Cover thumbnails | `Caches/Beat/Thumbnails/` | `ArtworkDiskCache` |
 | Last.fm session, Discogs token | Keychain | `Scrobbler`, Settings |
-| Preferences, the selected page, open folders, volume | `UserDefaults` | Settings, `AppNavigator`, `PlaybackQueue` |
+| Preferences (including Quick Open's choices and the Songs columns' order and widths), the selected page, open folders, volume | `UserDefaults` | Settings, `AppNavigator`, `PlaybackQueue`, Library ▸ Songs |
 
 Settings ▸ General ▸ Export saves pages, elements, custom fields and the preferences in one file
 (`SettingsArchive`), which is how they move between a Mac and an iPhone. Tokens and play history stay on each device.

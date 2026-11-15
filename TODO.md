@@ -1,38 +1,5 @@
 # TODO
 
-## Custom navigation stack (deferred)
-Swipe back currently uses the system `NavigationStack`: the swipe triggers Back and a chevron follows the
-fingers, but the page itself doesn't move with them. Safari-style interactive swipes need Beat's own
-navigation container instead of `NavigationStack`:
-
-- Render the typed `[Route]` path (already in `AppNavigator`) in Beat's own container, with slide
-  push/pop transitions.
-- **Interactive swipe:** drive the top page's offset from `NSEvent.trackSwipeEvent`'s gesture amount,
-  revealing the page underneath, and commit or cancel at the end.
-- **The page underneath:** keep it as a snapshot taken when it was covered (as Safari does), or keep it
-  alive but hidden. Hidden pages must not contribute toolbar items, `.searchable` fields or navigation
-  titles, which is the main difficulty in SwiftUI.
-- **Back and Forward buttons:** the toolbar back button and title handling `NavigationStack` gives for
-  free would need replacing.
-- **State on remount:** pages remounted after a pop would need their scroll and search restored per
-  path entry. Today only sidebar roots remember them.
-
-Deferred (Nov 2026) because it replaces the navigation foundation every page sits on; the system stack
-with the reverse album zoom and a non-interactive swipe was the smaller change.
-
-## Crossfade (noted Nov 2026)
-Gapless is solved without a new player: the gap between tracks came from the visualizer giving every track its own
-audio tap, and one tap shared by all tracks fixed it (see the CLAUDE.md gotcha). A throwaway test played
-FABRICLIVE.50 through `AVAudioEngine` (gapless too) and through `AVQueuePlayer` with each tap variant.
-
-Crossfade would still need an engine (two tracks overlapping, each faded). What the test found about that:
-
-- **AirPlay:** macOS lists AirPlay speakers as outputs only once one is the Mac's output (Control Center > Sound).
-  An engine can't offer them in Beat's own menu the way `AVRoutePickerView` does for `AVPlayer`; AirPlay would mean
-  the Mac's system output.
-- MP3s carrying encoder padding information (iTunes' `iTunSMPB`) are trimmed when read, so an engine joins them
-  exactly.
-
 ## Syncing plays to Music (on hold, Nov 2026)
 Beat's plays and skips live in `history.json` and are added to Music's counts only inside Beat
 (`PlayHistoryStore.merged`). Music, other devices and Music's smart playlists never see them.
@@ -101,6 +68,3 @@ Ideas:
   (signing is self-signed for now), and a link to the GitHub repo (MIT).
 - Hosting: GitHub Pages from the repo (a `docs/` folder or a `gh-pages` branch) keeps it free and next to
   the code.
-
-## Tests (noted Nov 2026)
-Snapshot and UI tests, unit tests on iOS, and the seams they need: planned in phases in `TESTING.md`.
