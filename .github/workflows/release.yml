@@ -19,7 +19,7 @@ jobs:
   mac:
     runs-on: macos-26
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           # The build number is the commit count, and the notes list commits since the previous tag.
           fetch-depth: 0
@@ -93,6 +93,8 @@ jobs:
             echo "## What's new"
             if [ -n "$previous" ]; then
               git log --no-merges --pretty='- %s' "$previous..$GITHUB_REF_NAME"
+              echo
+              echo "**Full Changelog**: https://github.com/$GITHUB_REPOSITORY/compare/$previous...$GITHUB_REF_NAME"
             else
               echo "- The first release."
             fi
@@ -100,9 +102,8 @@ jobs:
             echo "## Installing"
             echo "Requires macOS 15 or later. Open Beat.dmg and drag Beat to Applications."
             echo
-            echo "Beat isn't notarised by Apple, so the first time you open it macOS says it can't check it for malicious"
-            echo "software. Choose **Done**, then open **System Settings > Privacy & Security**, scroll down and click"
-            echo "**Open Anyway** next to Beat."
+            # One line per paragraph: GitHub shows every line break in release notes.
+            echo "Beat isn't notarised by Apple, so the first time you open it macOS says it can't check it for malicious software. Choose **Done**, then open **System Settings > Privacy & Security**, scroll down and click **Open Anyway** next to Beat."
             echo
             echo "iPad and iPhone: build from source (see the README)."
           } > "$RUNNER_TEMP/notes.md"
