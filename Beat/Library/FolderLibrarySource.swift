@@ -30,8 +30,11 @@ actor FolderLibrarySource: LibrarySource {
             try? FileManager.default.createDirectory(at: folder.appendingPathComponent("Music", isDirectory: true),
                                                      withIntermediateDirectories: true)
         }
+        // Hidden files and folders skipped: songs deleted in the Files app wait in a hidden ".Trash" here (its Recently
+        // Deleted), and every deleted copy showed up as a duplicate.
         guard let folder,
-              let walker = FileManager.default.enumerator(at: folder, includingPropertiesForKeys: [.fileSizeKey, .addedToDirectoryDateKey])
+              let walker = FileManager.default.enumerator(at: folder, includingPropertiesForKeys: [.fileSizeKey, .addedToDirectoryDateKey],
+                                                          options: [.skipsHiddenFiles])
         else { return .build(tracks: []) }
         let files = walker.compactMap { $0 as? URL }.filter(Self.isAudio)
         var tracks: [Track] = []
@@ -95,21 +98,29 @@ actor FolderLibrarySource: LibrarySource {
         let asset = AVURLAsset(url: file)
         let metadata = (try? await asset.load(.metadata)) ?? []
         /// The first non-empty value among `ids`, in order: ID3, iTunes and QuickTime files name the same tag differently.
-        func text(_ ids: [AVMetadataIdentifier]) async -> String? {
+        /// Then `id3v22`, the tag's ID3v2.2 frame (three letters: TP2, TYE, TRK…), as iTunes 9 and earlier wrote them.
+        /// AVFoundation gives those frames no identifier, so they're found by key: without it, such files lost their
+        /// album artist and each song made an album of its own under its artist.
+        func text(_ ids: [AVMetadataIdentifier], id3v22: String? = nil) async -> String? {
             for id in ids {
                 for item in AVMetadataItem.metadataItems(from: metadata, filteredByIdentifier: id) {
                     if let value = try? await item.load(.stringValue), !value.isEmpty { return value }
                 }
             }
+            guard let id3v22 else { return nil }
+            for item in AVMetadataItem.metadataItems(from: metadata, withKey: id3v22 as NSString, keySpace: .id3) {
+                if let value = try? await item.load(.stringValue), !value.isEmpty { return value }
+            }
             return nil
         }
         let title = await text([.commonIdentifierTitle, .id3MetadataTitleDescription, .iTunesMetadataSongName])
         let artist = await text([.commonIdentifierArtist, .id3MetadataLeadPerformer, .iTunesMetadataArtist])
-        let albumArtist = await text([.id3MetadataBand, .iTunesMetadataAlbumArtist])
+        let albumArtist = await text([.id3MetadataBand, .iTunesMetadataAlbumArtist], id3v22: "TP2")
         let album = await text([.commonIdentifierAlbumName, .id3MetadataAlbumTitle, .iTunesMetadataAlbum])
-        let genre = await text([.id3MetadataContentType, .iTunesMetadataUserGenre, .quickTimeMetadataGenre])
-        let yearText = await text([.id3MetadataYear, .id3MetadataRecordingTime, .iTunesMetadataReleaseDate, .commonIdentifierCreationDate])
-        let trackText = await text([.id3MetadataTrackNumber])
+        let genre = await text([.id3MetadataContentType, .iTunesMetadataUserGenre, .quickTimeMetadataGenre], id3v22: "TCO")
+        let yearText = await text([.id3MetadataYear, .id3MetadataRecordingTime, .iTunesMetadataReleaseDate, .commonIdentifierCreationDate],
+                                  id3v22: "TYE")
+        let trackText = await text([.id3MetadataTrackNumber], id3v22: "TRK")
         var trackData: Data?
         for item in AVMetadataItem.metadataItems(from: metadata, filteredByIdentifier: .iTunesMetadataTrackNumber) {
             if let data = try? await item.load(.dataValue) { trackData = data; break }

@@ -61,6 +61,18 @@ final class FolderLibrarySourceTests: XCTestCase {
         XCTAssertEqual(Set(again.tracks.map(\.id)), Set(library.tracks.map(\.id)), "same songs, same IDs")
     }
 
+    func testSongsDeletedInFilesAreLeftOut() async throws {
+        let folder = try temporaryFolder()
+        let trash = folder.appendingPathComponent(".Trash/Album", isDirectory: true)
+        try FileManager.default.createDirectory(at: trash, withIntermediateDirectories: true)
+        try Self.writeSilence(to: folder.appendingPathComponent("Kept.wav"), seconds: 1)
+        try Self.writeSilence(to: trash.appendingPathComponent("Deleted.wav"), seconds: 1)
+        try Self.writeSilence(to: folder.appendingPathComponent(".Hidden.wav"), seconds: 1)
+
+        let library = try await FolderLibrarySource(folder: folder).load()
+        XCTAssertEqual(library.tracks.map(\.title), ["Kept"], "Files' Recently Deleted and hidden files aren't songs")
+    }
+
     func testArtForUnknownSongsIsNilOnceRead() async throws {
         let source = FolderLibrarySource(folder: try temporaryFolder())
         _ = try await source.load()
