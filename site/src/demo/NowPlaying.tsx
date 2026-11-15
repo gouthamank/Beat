@@ -136,7 +136,7 @@ function Lyrics({ primary, secondary }: { primary: string; secondary: string }) 
     return <div className="grid h-full place-items-center text-[17px]" style={{ color: secondary }}>No lyrics for this song</div>;
   }
   return (
-    <div ref={box} className="h-full overflow-y-auto py-[35%] [mask-image:linear-gradient(transparent,black_12%,black_85%,transparent)]">
+    <div ref={box} data-lyrics className="h-full touch-pan-y overflow-y-auto overscroll-contain py-[35%] [mask-image:linear-gradient(transparent,black_12%,black_85%,transparent)]">
       {lines.map((line, i) => (
         <button key={i} data-line={i} onClick={() => player.seek(line.time)}
                 className={`block w-full cursor-pointer py-2 text-left font-bold leading-snug transition-opacity duration-300 ${compact ? 'text-[20px]' : 'text-[22px]'}`}
@@ -240,11 +240,18 @@ export function NowPlayingView({ from, accent, startVisualizing = false, onClose
   return (
     <motion.div ref={root} initial={start} animate={{ top: 0, left: 0, width: '100%', height: '100%', borderRadius: 0, opacity: 1 }}
                 exit={from && box ? start : { opacity: 0 }} transition={{ type: 'spring', stiffness: 260, damping: 30 }}
-                className="absolute z-50 overflow-hidden [container-type:size]" role="dialog" aria-label="Now Playing"
+                // On a touchscreen a drag here closes Now Playing rather than scrolling the website under it (touch-none);
+                // the lyrics scroll themselves. The pointer is captured so a drag keeps going past the edges.
+                className="absolute z-50 touch-none overflow-hidden [container-type:size]" role="dialog" aria-label="Now Playing"
                 style={{ backgroundColor: p.background, colorScheme: dark ? 'dark' : 'light', translate: `0 ${pull}px` }}
-                onPointerDown={(e) => { if ((e.target as HTMLElement).closest('button,input,[role=slider]')) return; drag.current = e.clientY; }}
+                onPointerDown={(e) => {
+                  if ((e.target as HTMLElement).closest('button,input,select,[role=slider],[data-lyrics]')) return;
+                  drag.current = e.clientY;
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                }}
                 onPointerMove={(e) => { if (drag.current !== null && e.buttons) setPull(Math.max(0, e.clientY - drag.current)); if (visualizing) reveal(); }}
-                onPointerUp={() => { if (pull > 120) onClose(); else setPull(0); drag.current = null; }}>
+                onPointerUp={() => { if (pull > 120) onClose(); else setPull(0); drag.current = null; }}
+                onPointerCancel={() => { setPull(0); drag.current = null; }}>
       {/* The backdrop: the cover's colour with a vivid blur of the cover over it. */}
       <div className="pointer-events-none absolute inset-0" aria-hidden="true">
         <img src={track.album.coverLarge} alt="" className="size-full scale-125 object-cover opacity-80 blur-[70px] saturate-[1.6]" />

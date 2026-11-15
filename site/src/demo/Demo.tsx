@@ -430,6 +430,10 @@ export default function Demo({ albums, pool }: { albums: DemoAlbum[]; pool: Borr
               </div>
               {contentFor(phoneUnder)}
             </div>
+            {/* iOS's scroll edge under the status bar: the page fades and blurs out beneath it, so the time and
+                signal stay readable over whatever scrolls up. Album pages, above it, keep their cover's colours. */}
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-[15] h-[60px] backdrop-blur-[6px] [mask-image:linear-gradient(black_80%,transparent)]"
+                 style={{ background: 'linear-gradient(var(--bg-raised) 80%, color-mix(in srgb, var(--bg-raised) 0%, transparent))' }} aria-hidden="true" />
             <AnimatePresence>
               {phoneAlbum && (
                 <AlbumZoom key={phoneAlbum.id} from={zoomFrom[phoneAlbum.id]}

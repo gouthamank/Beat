@@ -1,4 +1,8 @@
 @import "tailwindcss";
+/* Inter, served from the site itself (SIL Open Font License), for everything but Apple devices, which use their own
+   system font. SF Pro can't be embedded: Apple licenses it only for mock-ups of apps for its platforms. Browsers fetch
+   Inter only where it's used. Its optical size axis gives large headings the display cut, as SF Pro Display does. */
+@import "@fontsource-variable/inter/opsz.css";
 
 /* Beat's own colours: the icon's ink and cream. Light follows the cream, dark the ink; the page follows the system. */
 :root {
@@ -38,8 +42,8 @@
   --color-glass: var(--glass);
   --color-accent: var(--accent);
   --color-accent-ink: var(--accent-ink);
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", system-ui, sans-serif;
-  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Inter Variable", system-ui, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "Inter Variable", system-ui, sans-serif;
 }
 
 html {
