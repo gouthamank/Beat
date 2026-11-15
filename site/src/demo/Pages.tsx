@@ -371,7 +371,7 @@ export function LibraryAlbums() {
 }
 
 /** Library ▸ Songs: songs under their albums, the cover on the left, in artist → year → title order, under pinned
- *  artist headers. Each row: track number, title, genre, plays and time. */
+ *  artist headers. Each row: track number, title, genre and time. */
 export function LibrarySongs({ accent }: { accent: string }) {
   const { library, player, compact } = useDemo();
   return (
@@ -405,7 +405,6 @@ export function LibrarySongs({ accent }: { accent: string }) {
                           </span>
                           <span className="min-w-0 flex-1 truncate">{t.song.title}</span>
                           {!compact && <span className="w-24 truncate text-soft">{album.genre}</span>}
-                          {!compact && <span className="w-10 text-right tabular-nums text-soft">{t.song.plays}</span>}
                           <span className="w-10 text-right tabular-nums text-soft">{formatTime(t.song.duration)}</span>
                         </div>
                       );

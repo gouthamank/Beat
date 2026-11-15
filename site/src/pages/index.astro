@@ -2,6 +2,7 @@
 import { getImage, Image } from 'astro:assets';
 import icon from '../assets/icon.png';
 import CoverWall from '../components/CoverWall.astro';
+import DeviceMorph from '../components/DeviceMorph.astro';
 import LayoutShots from '../components/LayoutShots.astro';
 import Shot from '../components/Shot.astro';
 import Demo from '../demo/Demo';
@@ -238,12 +239,7 @@ const more = [
           On the Mac, Beat reads the Music app's library. On iPhone, it plays the songs synced to it. Your pages, smart
           filters and Now Playing work the same on both. Also on iPad.
         </p>
-        <Shot name="home-mac" alt="Home on the Mac" class="mt-12" />
-        <div class="mx-auto mt-10 grid max-w-3xl grid-cols-3 gap-4 sm:gap-8">
-          <Shot name="home-iphone" alt="Home on iPhone" aspect="9 / 19.5" class="rounded-[1.4rem]! sm:rounded-[1.9rem]!" />
-          <Shot name="album-iphone" alt="An album page on iPhone, tinted by its cover" aspect="9 / 19.5" class="rounded-[1.4rem]! sm:rounded-[1.9rem]!" />
-          <Shot name="now-playing-iphone" alt="Now Playing on iPhone with synced lyrics" aspect="9 / 19.5" class="rounded-[1.4rem]! sm:rounded-[1.9rem]!" />
-        </div>
+        <DeviceMorph />
       </div>
     </section>
 

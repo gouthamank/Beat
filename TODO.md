@@ -93,7 +93,9 @@ Decided:
   `Design/Showcase/Lyrics`, timed by whisper.cpp (`lyrics.py`) and corrected by ear or from published lyrics.
 
 Done: the release action and DMG (v1.3.0 published); the showcase library with covers, music and lyrics; the site's
-sections; the demo; the screenshots. Left: testing the demo's untried paths, then deploying to Netlify.
+sections; the demo; the screenshots; deployed to Netlify, live at beat.gouthaman.dev. Left: testing the demo's untried
+paths (creating and saving elements, Cover Flow, Timeline, See All, iPhone Now Playing and drawer, the custom field chip
+on iPhone).
 
 Open:
 - Light and dark: the site follows the system; which one the screenshots lead with.

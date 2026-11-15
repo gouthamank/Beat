@@ -1,11 +1,10 @@
 ---
-// The five looks an element can take, as buttons: choosing one swaps in the screenshot of a page in that layout
+// Four of the looks an element can take, as buttons: choosing one swaps in the screenshot of a page in that layout
 // (layout-<key>-mac, light and dark). Every shot is in the page, stacked in one place, and the chosen one fades in over
 // the last, so switching is immediate and every shot has loaded by the time it's picked; a few lines of script.
 import Shot from './Shot.astro';
 
 const layouts = [
-  { key: 'shelf', title: 'Shelf' },
   { key: 'grid', title: 'Grid' },
   { key: 'list', title: 'List' },
   { key: 'coverflow', title: 'Cover Flow' },
