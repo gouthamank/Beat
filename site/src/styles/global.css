@@ -56,7 +56,8 @@ html {
 
 /* Beat's glass, as on macOS 26: a translucent, blurred fill with a fine light edge. */
 .glass {
-  background: color-mix(in srgb, var(--bg-raised) 38%, transparent);
+  /* Opaque enough that the text on it stays readable over pages lighter or darker than itself. */
+  background: color-mix(in srgb, var(--bg-raised) 60%, transparent);
   backdrop-filter: blur(28px) saturate(1.9) brightness(1.04);
   border: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
   box-shadow: 0 8px 24px rgb(0 0 0 / 0.16), inset 0 1px 0 rgb(255 255 255 / 0.35), inset 0 -1px 0 rgb(255 255 255 / 0.08);

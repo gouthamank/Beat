@@ -285,9 +285,10 @@ export function AlbumPage({ album, back }: { album: DemoAlbum; back: () => void 
         <img src={album.coverLarge} alt="" className="size-full scale-125 object-cover blur-[60px] saturate-150" />
       </div>
       <div className="pointer-events-none absolute inset-0" style={{ backgroundColor: p.background, opacity: 0.55 }} aria-hidden="true" />
-      {/* Padding rather than margin, so the page's colour runs down under the now-playing bar. */}
-      <div className="relative" style={{ paddingBottom: 'calc(40px + var(--bar-space, 0px))' }}>
-        <div className="flex h-[52px] items-center px-4" style={{ marginTop: compact ? 50 : 0 }}>
+      {/* Padding rather than margin, so the page's colour runs down under the now-playing bar and, on a phone, up
+          behind the status bar (a margin passed through and left that strip uncovered). */}
+      <div className="relative" style={{ paddingTop: compact ? 50 : 0, paddingBottom: 'calc(40px + var(--bar-space, 0px))' }}>
+        <div className="flex h-[52px] items-center px-4">
           <button onClick={back} className="grid size-7 cursor-pointer place-items-center rounded-md hover:bg-black/10" aria-label="Back" style={{ color: p.primary }}>
             <Icon name="chevron.left" className="size-4" strokeWidth={2} />
           </button>
