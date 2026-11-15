@@ -20,7 +20,7 @@ SUBMAKE := $(MAKE) --no-print-directory
 # A bare `make` lists the targets (help, below).
 .DEFAULT_GOAL := help
 
-.PHONY: help install sim test snapshot-record project clean mac-build mac-install mac-test mac-test-record mac-test-ui \
+.PHONY: help install sim test snapshot-record project clean mac-build mac-install mac-release mac-test mac-test-record mac-test-ui \
 	mac-test-ui-record mac-test-run-fixtures ios-sim-ipad ios-sim-iphone ios-install ios-test ios-test-record ios-test-ui
 
 ##@ Menus (pick from a list, or give the choice: make install on=mac)
@@ -87,6 +87,26 @@ mac-install: mac-build ## Release build into /Applications, relaunched
 	rm -rf "$(INSTALLED_APP)"
 	ditto "$(RELEASE_APP)" "$(INSTALLED_APP)"
 	open "$(INSTALLED_APP)"
+
+# Universal (Apple silicon and Intel) Release build, signed with "Beat Local Signing", in a drag-to-Applications DMG:
+# what a GitHub Release attaches (.github/workflows/release.yml). Built unsigned and signed with codesign afterwards, so
+# CI only needs the identity in a keychain (SIGN_KEYCHAIN=… names one outside the search list). Named Beat.dmg in every
+# release, so the website's link to the latest release's download never changes. Needs create-dmg (brew install
+# create-dmg), which lays out the DMG's window through Finder: the first run asks once to let Terminal control Finder.
+RELEASE_DIR := build/release
+RELEASE_BUILT_APP := $(RELEASE_DIR)/Build/Products/Release/Beat.app
+mac-release: project ## Universal Release build, signed, in build/release/Beat.dmg
+	xcodebuild -project Beat.xcodeproj -scheme Beat -derivedDataPath $(RELEASE_DIR) -quiet \
+		-destination "generic/platform=macOS" -configuration Release \
+		CURRENT_PROJECT_VERSION=$(GIT_COUNT) BEAT_COMMIT=$(GIT_COMMIT) CODE_SIGNING_ALLOWED=NO build
+	codesign --force --sign "Beat Local Signing" --entitlements Beat/Beat.entitlements \
+		$(if $(SIGN_KEYCHAIN),--keychain "$(SIGN_KEYCHAIN)") "$(RELEASE_BUILT_APP)"
+	codesign --verify --deep --strict "$(RELEASE_BUILT_APP)"
+	rm -rf "$(RELEASE_DIR)/dmg" "$(RELEASE_DIR)/Beat.dmg"
+	mkdir -p "$(RELEASE_DIR)/dmg"
+	ditto "$(RELEASE_BUILT_APP)" "$(RELEASE_DIR)/dmg/Beat.app"
+	create-dmg --volname Beat --window-size 540 380 --icon-size 128 --icon Beat.app 140 170 \
+		--hide-extension Beat.app --app-drop-link 400 170 "$(RELEASE_DIR)/Beat.dmg" "$(RELEASE_DIR)/dmg"
 
 # Run the unit tests (Debug).
 mac-test: project ## Unit and snapshot tests

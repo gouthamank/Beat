@@ -28,6 +28,15 @@ A native macOS music player for the library you already keep in the Music app. B
 - A Music library with local, DRM-free files
 - To build: Xcode 26 (Swift 6.2) and [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`)
 
+## Installing
+
+On the Mac, download `Beat.dmg` from the [latest release](https://github.com/gouthamank/Beat/releases/latest), open it
+and drag Beat to Applications. Beat isn't notarised by Apple, so the first time you open it macOS says it can't check
+it: choose **Done**, then **System Settings ▸ Privacy & Security ▸ Open Anyway**.
+
+On iPad and iPhone, build from source (below). With a free Apple ID, an installed build stops opening after 7 days;
+install it again to renew it.
+
 ## Building
 
 The Xcode project is generated from `project.yml` and isn't checked in.
@@ -69,6 +78,25 @@ Each menu also takes its choice up front, e.g. `make install on=mac`, and the ta
 To work in Xcode instead, run `xcodegen generate` and open `Beat.xcodeproj`.
 
 On first launch, allow access to **Media & Apple Music**.
+
+### Releasing
+
+Pushing a version tag drafts a GitHub Release with a signed `Beat.dmg` (`.github/workflows/release.yml`). The DMG is
+built by `make mac-release` (needs `brew install create-dmg`), which also runs locally to try one first.
+
+Once, add these repository secrets (**Settings ▸ Secrets and variables ▸ Actions**):
+
+1. In Keychain Access, under **My Certificates**, right-click **Beat Local Signing ▸ Export**, save it as a `.p12`
+   with a password, then `base64 -i Beat.p12 | gh secret set MAC_CERTIFICATE_P12`,
+   `gh secret set MAC_CERTIFICATE_PASSWORD` (it asks for the password) and delete the `.p12`.
+2. Optional, for scrobbling in released builds: `gh secret set LASTFM_API_KEY` and `gh secret set LASTFM_SHARED_SECRET`.
+   These end up readable inside the downloaded app, as in any desktop Last.fm client.
+
+For each release:
+
+1. Raise `CFBundleShortVersionString` in `project.yml` (both targets) and commit.
+2. `git tag v1.4.0 && git push origin v1.4.0`. The workflow stops if the tag doesn't match the version.
+3. When it finishes, check the draft on GitHub's Releases page and publish it.
 
 ## Project layout
 

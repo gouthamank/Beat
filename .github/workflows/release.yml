@@ -1,0 +1,115 @@
+# Pushing a version tag (git tag v1.3.0 && git push origin v1.3.0) builds the Mac app, signs it with the self-signed
+# "Beat Local Signing" certificate (not notarised), and drafts a GitHub Release with Beat.dmg attached. Publish the
+# draft by hand once its notes read right. iPad and iPhone builds are from source only.
+#
+# Secrets (Settings > Secrets and variables > Actions; see README > Releasing):
+#   MAC_CERTIFICATE_P12        "Beat Local Signing" exported from Keychain Access as .p12, base64-encoded
+#   MAC_CERTIFICATE_PASSWORD   the password the .p12 was exported with
+#   LASTFM_API_KEY, LASTFM_SHARED_SECRET   optional: without them the release builds with scrobbling off
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  mac:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The build number is the commit count, and the notes list commits since the previous tag.
+          fetch-depth: 0
+
+      - name: Check the tag matches the app's version
+        run: |
+          versions=$(grep CFBundleShortVersionString project.yml | sed -E 's/.*"(.*)".*/\1/' | sort -u)
+          if [ "v$versions" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME doesn't match CFBundleShortVersionString in project.yml: $versions"
+            exit 1
+          fi
+          echo "VERSION=$versions" >> "$GITHUB_ENV"
+
+      # The newest released Xcode 26, not a beta or release candidate.
+      - name: Choose Xcode
+        run: |
+          xcode=$(ls -d /Applications/Xcode_26*.app | grep -E '/Xcode_26(\.[0-9]+)*\.app$' | sort -V | tail -1)
+          echo "Using $xcode"
+          echo "DEVELOPER_DIR=$xcode/Contents/Developer" >> "$GITHUB_ENV"
+
+      - name: Install XcodeGen and create-dmg
+        run: brew install xcodegen create-dmg
+
+      - name: Write Config/Secrets.xcconfig
+        env:
+          LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
+          LASTFM_SHARED_SECRET: ${{ secrets.LASTFM_SHARED_SECRET }}
+        run: |
+          # Secrets pasted on GitHub's website can pick up a trailing newline; $(...) strips it.
+          printf 'LASTFM_API_KEY = %s\nLASTFM_SHARED_SECRET = %s\n' \
+            "$(printf '%s' "$LASTFM_API_KEY")" "$(printf '%s' "$LASTFM_SHARED_SECRET")" > Config/Secrets.xcconfig
+
+      # A temporary keychain holding only the signing identity, unlocked for codesign without a prompt. The certificate
+      # is self-signed, so it's trusted for code signing on this runner as on the Mac it came from (README > Signing).
+      - name: Import the signing certificate
+        env:
+          P12: ${{ secrets.MAC_CERTIFICATE_P12 }}
+          P12_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
+        run: |
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          password=$(uuidgen)
+          # Secrets pasted on GitHub's website can pick up a trailing newline: whitespace is dropped from the base64, and
+          # $(...) strips it from the password.
+          printf '%s' "$P12" | tr -d '[:space:]' | base64 --decode > "$RUNNER_TEMP/signing.p12"
+          p12_password="$(printf '%s' "$P12_PASSWORD")"
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings -lut 3600 "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+          security import "$RUNNER_TEMP/signing.p12" -k "$keychain" -P "$p12_password" -T /usr/bin/codesign
+          rm "$RUNNER_TEMP/signing.p12"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$password" "$keychain" > /dev/null
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+          security find-certificate -c "Beat Local Signing" -p "$keychain" > "$RUNNER_TEMP/signing.pem"
+          sudo security add-trusted-cert -d -r trustRoot -p codeSign -k /Library/Keychains/System.keychain \
+            "$RUNNER_TEMP/signing.pem"
+          security find-identity -v -p codesigning "$keychain" | grep -q '"Beat Local Signing"' || {
+            echo "No valid \"Beat Local Signing\" identity in the imported .p12"
+            exit 1
+          }
+          echo "SIGN_KEYCHAIN=$keychain" >> "$GITHUB_ENV"
+
+      - name: Build Beat.dmg
+        run: make mac-release DEVELOPER_DIR="$DEVELOPER_DIR" SIGN_KEYCHAIN="$SIGN_KEYCHAIN"
+
+      - name: Draft the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          previous=$(git describe --tags --abbrev=0 "$GITHUB_REF_NAME^" 2>/dev/null || true)
+          {
+            echo "## What's new"
+            if [ -n "$previous" ]; then
+              git log --no-merges --pretty='- %s' "$previous..$GITHUB_REF_NAME"
+            else
+              echo "- The first release."
+            fi
+            echo
+            echo "## Installing"
+            echo "Requires macOS 15 or later. Open Beat.dmg and drag Beat to Applications."
+            echo
+            echo "Beat isn't notarised by Apple, so the first time you open it macOS says it can't check it for malicious"
+            echo "software. Choose **Done**, then open **System Settings > Privacy & Security**, scroll down and click"
+            echo "**Open Anyway** next to Beat."
+            echo
+            echo "iPad and iPhone: build from source (see the README)."
+          } > "$RUNNER_TEMP/notes.md"
+          gh release create "$GITHUB_REF_NAME" build/release/Beat.dmg --draft \
+            --title "Beat $VERSION" --notes-file "$RUNNER_TEMP/notes.md"
+
+      - name: Remove the temporary keychain
+        if: always()
+        run: |
+          if [ -n "$SIGN_KEYCHAIN" ]; then security delete-keychain "$SIGN_KEYCHAIN"; fi
