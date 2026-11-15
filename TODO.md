@@ -55,16 +55,42 @@ To decide:
 - Whether the tour creates a real page or uses a throwaway one it removes at the end.
 - Keep it short: a few steps on launch, the rest as tips when the user first reaches each place.
 
-## Showcase website (noted Nov 2026)
-A single page that shows Beat off: what it is, what it looks like, and how to get it.
+## Showcase website (planned Nov 2026)
+A single page at `beat.gouthaman.dev`, hosted on Netlify, that shows Beat off and lets visitors try it.
 
-Ideas:
-- Lead with the headline feature: the sidebar of pages built from smart filters, shown with a real page
-  (shelves, Cover Flow, Timeline) next to the filter that makes it.
-- Sections for Now Playing (cover colours, lyrics, Radial), the visualizer scenes (short looping clips),
-  album and artist pages with the cover zoom, and the read-only promise: Beat never changes the Music library.
-- Screenshots and short screen recordings from the real app, in light and dark, on macOS 15 and 26.
-- Download and requirements: macOS 15+, local DRM-free files; how to install a build that isn't notarised
-  (signing is self-signed for now), and a link to the GitHub repo (MIT).
-- Hosting: GitHub Pages from the repo (a `docs/` folder or a `gh-pages` branch) keeps it free and next to
-  the code.
+Decided:
+- **Stack:** Astro (static, no JavaScript but the demo's) with the demo as one React component, Tailwind,
+  Framer Motion. In `site/` in this repo; Netlify's base directory is `site`.
+- **Interactive demo near the top**, in the spirit of tryklack.com: a small working Beat window. Sidebar pages
+  switch; an element's editor sits beside its page and changing a rule, sort or limit reflows the albums live;
+  an appearance switcher (shelf, grid, list, Cover Flow, Timeline); clicking an album tints the now-playing bar
+  with its cover colour; a Mac / iPhone toggle shows the phone layout with the drawer. Its filter engine is a small
+  TypeScript copy of the app's rules.
+- **Audio plays, never autoplays:** a handful of CC0 tracks (credited in the footer) behind the demo's play
+  button, with a small visualizer. Nothing sounds until the visitor presses play.
+- **No real album art anywhere** (copyright). One generated, made-up library (about 40 albums: names, artists,
+  genres, years, covers drawn by a script) feeds both the demo's data and a showcase library the real app opens
+  through `-BeatFixtureLibrary`, isolated like the UI-test build, for the screenshots and clips. The CC0 tracks go
+  into it so the visualizer and Now Playing have real music.
+- **Platforms:** Mac and iPhone get equal billing; iPad gets an "Also on iPad" line and one screenshot until it's
+  been dogfooded more.
+- **Sections:** hero (icon, pitch, Download for Mac, Build for iPhone); the demo; pages built from smart filters;
+  Now Playing (cover colours, lyrics, Radial, visualizer clips); album and artist pages with the cover zoom;
+  read-only and private; Mac, iPhone and iPad; Get Beat.
+- **Mac download:** a GitHub Action on a `v*` tag builds Release, signs with the "Beat Local Signing" certificate
+  (a .p12 and its password in GitHub secrets, imported into a temporary keychain; `Secrets.xcconfig` written from
+  secrets too), makes a drag-to-Applications DMG with `create-dmg`, and attaches it to a GitHub Release. Not
+  notarised: the site shows the System Settings > Privacy & Security > Open Anyway step (macOS 15 dropped
+  right-click > Open). The runner image must have Xcode 26.
+- **iPhone and iPad:** build from source only (no paid Apple Developer Program, so no TestFlight); the site links
+  the README's steps and says a free Apple ID's install stops opening after 7 days. AltStore and SideStore were
+  considered and dropped: too much setup for users.
+- **Screenshots and clips:** captured by hand from the showcase library, from a shot list (window size, light or
+  dark, what to have open), then resized and encoded by a script.
+
+Order: the release action and DMG; the generated library (covers and data); the site's skeleton and sections; the
+demo; the shot list, then the captures.
+
+Open:
+- Which CC0 tracks, and whether one has vocals for the lyrics shots (lyrics for a made-up song would need writing).
+- Light and dark: the site follows the system; which one the screenshots lead with.
