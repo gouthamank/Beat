@@ -21,7 +21,7 @@ SUBMAKE := $(MAKE) --no-print-directory
 .DEFAULT_GOAL := help
 
 .PHONY: help install sim test snapshot-record project clean mac-build mac-install mac-release mac-test mac-test-record mac-test-ui \
-	mac-test-ui-record mac-test-run-fixtures ios-sim-ipad ios-sim-iphone ios-install ios-test ios-test-record ios-test-ui
+	mac-test-ui-record mac-test-run-fixtures mac-run-showcase ios-sim-ipad ios-sim-iphone ios-sim-showcase ios-install ios-test ios-test-record ios-test-ui
 
 ##@ Menus (pick from a list, or give the choice: make install on=mac)
 
@@ -143,6 +143,21 @@ mac-test-run-fixtures: project ## The UI-test build on the fixture songs (KEEP=1
 	CFFIXED_USER_HOME="$(FIXTURE_HOME)" "build/Build/Products/UITest/Beat.app/Contents/MacOS/Beat" \
 		-BeatFixtureLibrary "$(CURDIR)/Fixtures/Library" $(if $(KEEP),,-BeatFreshStart YES)
 
+# The UI-test build on the showcase library, for the website's screenshots: made-up albums with generated covers
+# (Design/Showcase) and a play history dated from today, in a temporary home of its own. The songs are written to
+# build/showcase once; each fresh run writes the history into the home and clears the UI-test build's settings, rather
+# than -BeatFreshStart, which would delete the history. `make mac-run-showcase KEEP=1` reopens it as it was left.
+SHOWCASE_LIBRARY := build/showcase/Library
+SHOWCASE_HOME := /tmp/beat-showcase-home
+mac-run-showcase: project ## The UI-test build on the made-up showcase library (KEEP=1: as left)
+	$(XCODEBUILD) -configuration UITest build
+	test -d "$(SHOWCASE_LIBRARY)" || swift Design/Showcase/render.swift --library "$(SHOWCASE_LIBRARY)"
+	$(if $(KEEP),,rm -rf "$(SHOWCASE_HOME)" && mkdir -p "$(SHOWCASE_HOME)")
+	$(if $(KEEP),,swift Design/Showcase/render.swift --history "$(SHOWCASE_HOME)/Library/Application Support/Beat/history.json")
+	$(if $(KEEP),,defaults delete dev.gouthaman.Beat.uitest 2>/dev/null || true)
+	CFFIXED_USER_HOME="$(SHOWCASE_HOME)" "build/Build/Products/UITest/Beat.app/Contents/MacOS/Beat" \
+		-BeatFixtureLibrary "$(CURDIR)/$(SHOWCASE_LIBRARY)"
+
 ##@ iPad and iPhone
 
 IOS_BUILD := xcodebuild -project Beat.xcodeproj -scheme BeatiOS -derivedDataPath build/ios -quiet \
@@ -176,6 +191,19 @@ ios-sim-ipad: project ## Debug build in the iPad Simulator
 # Debug build, installed and launched in the iPhone Simulator.
 ios-sim-iphone: project ## Debug build in the iPhone Simulator
 	$(call ios_sim,$(IOS_IPHONE))
+
+# The UI-test build in the iPhone Simulator on the showcase library, for the website's screenshots, as mac-run-showcase
+# is on the Mac: a Simulator app reads the folder on the Mac directly, and the play history (dated from today) goes into
+# its container. Installed afresh each time, so it starts as on a first launch; KEEP=1 reopens it as it was left.
+ios-sim-showcase: project ## The UI-test build in the iPhone Simulator on the showcase library (KEEP=1: as left)
+	test -d "$(SHOWCASE_LIBRARY)" || swift Design/Showcase/render.swift --library "$(SHOWCASE_LIBRARY)"
+	$(IOS_BUILD) -configuration UITest -destination "platform=iOS Simulator,name=$(IOS_IPHONE)" build
+	xcrun simctl bootstatus "$(IOS_IPHONE)" -b
+	open -a Simulator
+	$(if $(KEEP),,xcrun simctl uninstall "$(IOS_IPHONE)" dev.gouthaman.Beat.uitest || true)
+	xcrun simctl install "$(IOS_IPHONE)" build/ios/Build/Products/UITest-iphonesimulator/Beat.app
+	$(if $(KEEP),,swift Design/Showcase/render.swift --history "$$(xcrun simctl get_app_container "$(IOS_IPHONE)" dev.gouthaman.Beat.uitest data)/Library/Application Support/Beat/history.json")
+	xcrun simctl launch "$(IOS_IPHONE)" dev.gouthaman.Beat.uitest -BeatFixtureLibrary "$(CURDIR)/$(SHOWCASE_LIBRARY)"
 
 # Run the unit tests (Debug) inside the iOS app on the iPhone Simulator: the shared tests plus BeatTests/iOS.
 ios-test: project ## Unit and snapshot tests in the iPhone Simulator

@@ -1,0 +1,18 @@
+<!-- Beat app icon, macOS grid: 1024 canvas, 824 body. Reference artwork; the PNGs come from render.swift. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="ink" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2A2A2E"/>
+      <stop offset="1" stop-color="#121214"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000" flood-opacity=".3"/>
+    </filter>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#ink)" filter="url(#shadow)"/>
+  <g fill="none" stroke="#F1ECE0" stroke-width="43.92" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="411.96" cy="684.7" r="104.92"/>
+    <!-- Stem sits on the head's right tangent (cx + r) and starts at its equator. -->
+    <path d="M516.88 684.7 V 251.6 C 555.92 361.4, 714.52 385.8, 690.12 544.4"/>
+  </g>
+</svg>

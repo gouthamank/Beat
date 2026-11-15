@@ -1,0 +1,346 @@
+---
+import { getImage, Image } from 'astro:assets';
+import icon from '../assets/icon.png';
+import CoverWall from '../components/CoverWall.astro';
+import LayoutShots from '../components/LayoutShots.astro';
+import Shot from '../components/Shot.astro';
+import Demo from '../demo/Demo';
+import type { DemoAlbum } from '../demo/model';
+import Layout from '../layouts/Layout.astro';
+import { albums, credits } from '../data/showcase';
+
+// The demo's library: covers resized for it, the few songs with real music given their files' URLs, and the ones with
+// vocals their synced lyrics, read from the same .lrc files Beat reads.
+const audioFiles = import.meta.glob<string>('../../../Design/Showcase/Audio/*', { eager: true, query: '?url', import: 'default' });
+const lyricFiles = import.meta.glob<string>('../../../Design/Showcase/Lyrics/*.lrc', { eager: true, query: '?raw', import: 'default' });
+const lyrics = (path?: string) => {
+  const text = path ? lyricFiles[`../../../Design/Showcase/${path}`] : undefined;
+  return text?.split('\n').flatMap((line) => {
+    const m = line.match(/^\[(\d+):(\d+(?:\.\d+)?)\]\s*(.*)$/);
+    return m && m[3] ? [{ time: Number(m[1]) * 60 + Number(m[2]), text: m[3] }] : [];
+  });
+};
+const library: DemoAlbum[] = await Promise.all(albums.map(async (album) => ({
+  id: album.id, title: album.title, artist: album.artist, genre: album.genre, year: album.year,
+  addedDaysAgo: album.addedDaysAgo, comments: album.comments, palette: album.palette,
+  cover: (await getImage({ src: album.image, width: 320, height: 320, format: 'webp' })).src,
+  coverLarge: (await getImage({ src: album.image, width: 800, height: 800, format: 'webp' })).src,
+  songs: album.songs.map((song) => ({
+    title: song.title, track: song.track, duration: song.duration, plays: song.plays, skips: song.skips,
+    lastPlayedDaysAgo: song.lastPlayedDaysAgo, lastSkippedDaysAgo: song.lastSkippedDaysAgo,
+    audio: song.audio ? audioFiles[`../../../Design/Showcase/${song.audio}`] : undefined,
+    lyrics: lyrics(song.lyrics),
+  })),
+})));
+// The songs with music, which songs without any borrow from, lyrics and all.
+const pool = library.flatMap((a) => a.songs.flatMap((s) => (s.audio ? [{ audio: s.audio, lyrics: s.lyrics }] : [])));
+
+const repo = 'https://github.com/gouthamank/Beat';
+// GitHub serves the newest release's Beat.dmg here; the release workflow always names it Beat.dmg.
+const download = `${repo}/releases/latest/download/Beat.dmg`;
+const buildSteps = `${repo}#building`;
+
+
+const more = [
+  { title: 'Gapless playback', text: 'Live albums and DJ mixes run straight on, with no gap between tracks.' },
+  { title: 'AirPlay', text: 'Send music to your speakers, with Now Playing in Control Centre and media keys.' },
+  { title: 'Last.fm', text: 'Scrobbles every song you play past halfway, including plays made offline.' },
+  { title: 'Artist info', text: 'Turn it on and artist pages get a bio, members, aliases and links from Discogs, and each artist their photo. Matched the wrong one? Pick the right artist.' },
+  { title: 'Library Health', text: 'On the Mac, finds missing years, album artists and duplicates, and opens each one to fix in Music.' },
+  { title: 'Liquid Glass', text: 'At home on macOS and iOS 26, with frosted materials on macOS 15.' },
+];
+---
+
+<Layout title="Beat: a music player for the music you already have"
+        description="Beat plays the music you already have on your Mac, iPhone and iPad, sorted into pages you build from smart filters. Free and open source.">
+
+  <header class="sticky top-0 z-30 border-b border-line bg-glass backdrop-blur-xl">
+    <nav class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
+      <a href="/" class="flex items-center gap-2 font-semibold">
+        <Image src={icon} alt="" width={28} height={28} class="size-7" />
+        Beat
+      </a>
+      <div class="flex items-center gap-5 text-sm text-soft">
+        <a href="#pages" class="hidden hover:text-ink sm:inline">Features</a>
+        <a href="#private" class="hidden hover:text-ink sm:inline">Privacy</a>
+        <a href={repo} class="hover:text-ink">GitHub</a>
+        <a href="#get" class="rounded-full bg-ink px-3.5 py-1.5 font-medium text-bg hover:opacity-90">Get Beat</a>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <!-- Hero -->
+    <section class="relative isolate overflow-hidden">
+      <CoverWall />
+      <div class="relative mx-auto flex max-w-3xl flex-col items-center px-4 pb-24 pt-24 text-center sm:px-6 sm:pt-32">
+        <Image src={icon} alt="Beat's icon" width={112} height={112} class="size-24 drop-shadow-xl sm:size-28" loading="eager" />
+        <h1 class="mt-8 font-display text-5xl font-bold tracking-tight sm:text-7xl">Your music,<br />your pages.</h1>
+        <p class="mt-6 max-w-xl text-lg text-soft sm:text-xl">
+          Beat plays the music you already have on your Mac, iPhone and iPad, sorted into pages you build from smart
+          filters. It never changes your library.
+        </p>
+        <div class="mt-10 flex flex-col items-center gap-3 sm:flex-row">
+          <a href={download} class="rounded-full bg-accent px-6 py-3 font-semibold text-accent-ink shadow-lg hover:opacity-90">
+            Download for Mac
+          </a>
+          <a href={buildSteps} class="rounded-full border border-line bg-glass px-6 py-3 font-semibold backdrop-blur hover:bg-raised">
+            Build for iPhone and iPad
+          </a>
+        </div>
+        <a href="#demo" class="group mt-5 inline-flex items-center gap-2 text-sm font-semibold text-soft hover:text-ink">
+          <span class="relative flex size-2"><span class="absolute inline-flex size-full animate-ping rounded-full bg-accent opacity-60"></span><span class="relative inline-flex size-2 rounded-full bg-accent"></span></span>
+          Or try it live, right here
+          <span aria-hidden="true" class="transition-transform group-hover:translate-y-0.5">↓</span>
+        </a>
+        <p class="mt-4 text-sm text-faint">Free and open source · macOS 15 or later · iOS 26</p>
+      </div>
+    </section>
+
+    <!-- The interactive demo: a small working Beat, loaded as it scrolls into view. -->
+    <section id="demo" class="mx-auto max-w-6xl scroll-mt-20 px-4 sm:px-6">
+      <div class="mb-6 text-center">
+        <p class="inline-flex items-center gap-2 rounded-full border border-line bg-raised px-3 py-1 text-xs font-semibold text-accent">
+          <span class="relative flex size-2"><span class="absolute inline-flex size-full animate-ping rounded-full bg-accent opacity-60"></span><span class="relative inline-flex size-2 rounded-full bg-accent"></span></span>
+          Live
+        </p>
+        <h2 class="mt-3 font-display text-3xl font-bold tracking-tight sm:text-4xl">This isn’t a screenshot. Click around.</h2>
+        <p class="mx-auto mt-2 max-w-xl text-soft">Start with one of these, or explore on your own.</p>
+      </div>
+      <div class="min-h-[720px]">
+        <Demo client:only="react" albums={library} pool={pool} />
+      </div>
+      <p class="mt-6 text-center text-sm text-faint">Click an album to open it and a song to play it; the bar opens Now Playing. Edit Page and + change a page’s elements; New adds pages and folders.</p>
+    </section>
+
+    <!-- Pages built from smart filters: the headline feature -->
+    <section id="pages" class="mx-auto max-w-6xl px-4 py-24 sm:px-6 sm:py-32">
+      <div class="max-w-2xl">
+        <p class="font-semibold text-accent">Pages and smart filters</p>
+        <h2 class="mt-2 font-display text-4xl font-bold tracking-tight sm:text-5xl">Build the library you want to browse.</h2>
+        <p class="mt-5 text-lg text-soft">
+          The sidebar is yours: folders and pages, in any order. A page holds elements, and each element is a smart
+          filter. Find albums, songs or artists, keep the ones that match your rules, sort them and set a limit. Home
+          is just a page too, so change it however you like.
+        </p>
+      </div>
+      <div class="mt-10">
+        <LayoutShots />
+      </div>
+      <!-- Custom fields: sorting by a value pulled out of a tag -->
+      <div class="mt-24 grid items-center gap-12 lg:grid-cols-[2fr_3fr]">
+        <div>
+          <h3 class="font-display text-3xl font-bold tracking-tight">Sort by what's in your tags.</h3>
+          <p class="mt-4 text-lg text-soft">
+            A custom field pulls a value out of a text tag: the album, title, artist, comments and more. Take the text
+            in the last brackets, or whatever a pattern matches. Keep a label's catalog number in the comments, and its
+            releases sort in catalog order, reissues and all.
+          </p>
+          <button type="button" data-demo-run="custom-field"
+                  class="mt-6 inline-flex cursor-pointer items-center gap-2 rounded-full border border-line bg-bg px-4 py-2 text-sm font-medium transition-colors hover:border-accent hover:text-accent">
+            Try it in the demo <span aria-hidden="true">↑</span>
+          </button>
+        </div>
+        <Shot name="custom-field-mac" alt="A custom field that reads the catalog number from the comments, with a live check of what it finds" />
+      </div>
+    </section>
+
+    <!-- Now Playing -->
+    <section class="border-y border-line bg-raised">
+      <div class="mx-auto grid max-w-6xl items-center gap-12 px-4 py-24 sm:px-6 sm:py-32 lg:grid-cols-2">
+        <div>
+          <p class="font-semibold text-accent">Now Playing</p>
+          <h2 class="mt-2 font-display text-4xl font-bold tracking-tight sm:text-5xl">Every album gets its own colours.</h2>
+          <p class="mt-5 text-lg text-soft">
+            Now Playing takes its colours from the cover, and so do the album's page and the bar along the bottom of
+            the window, so everything you see belongs to the record that's on.
+          </p>
+        </div>
+        <Shot name="now-playing-mac" alt="Now Playing with synced lyrics, coloured by the album's cover" />
+      </div>
+    </section>
+
+    <!-- Visualizers -->
+    <section id="visualizers" class="mx-auto max-w-6xl px-4 py-24 text-center sm:px-6 sm:py-32">
+      <p class="font-semibold text-accent">Visualizers</p>
+      <h2 class="mx-auto mt-2 max-w-2xl font-display text-4xl font-bold tracking-tight sm:text-5xl">Remember leaving the visualizer on?</h2>
+      <p class="mx-auto mt-5 max-w-2xl text-lg text-soft">
+        Winamp had MilkDrop, and iTunes filled the screen with light. Beat brings it back: eight styles, from a skyline
+        under a setting sun to a starfield and a wall of hi-fi LEDs, drawn live from the music and coloured by the album
+        playing. ← and → switch between them.
+      </p>
+      <button type="button" data-demo-run="visualizer"
+              class="mt-6 inline-flex cursor-pointer items-center gap-2 rounded-full border border-line bg-raised px-4 py-2 text-sm font-medium transition-colors hover:border-accent hover:text-accent">
+        Open the visualizer <span aria-hidden="true">↑</span>
+      </button>
+      <Shot name="visualizer-mac" alt="The Horizon visualizer in Beat on the Mac: spectrum bars as a skyline under a setting sun" class="mt-12" />
+    </section>
+
+    <!-- Lyrics -->
+    <section id="lyrics" class="mx-auto max-w-6xl px-4 py-24 sm:px-6 sm:py-32">
+      <div class="grid items-center gap-12 lg:grid-cols-[2fr_3fr]">
+        <div>
+          <p class="font-semibold text-accent">Lyrics</p>
+          <h2 class="mt-2 font-display text-4xl font-bold tracking-tight sm:text-5xl">Lyrics that keep time.</h2>
+          <p class="mt-5 text-lg text-soft">
+            Synced lyrics follow the song line by line, and clicking a line jumps there. Beat looks in your files first:
+            an .lrc file beside the song, then the lyrics saved in it.
+          </p>
+          <button type="button" data-demo-run="lyrics"
+                  class="mt-6 inline-flex cursor-pointer items-center gap-2 rounded-full border border-line bg-bg px-4 py-2 text-sm font-medium transition-colors hover:border-accent hover:text-accent">
+            Play a song with lyrics <span aria-hidden="true">↑</span>
+          </button>
+        </div>
+        <Shot name="lyrics-mac" alt="Synced lyrics in Now Playing, the current line highlighted" />
+      </div>
+      <div class="mt-12 grid gap-6 md:grid-cols-3">
+        <div class="rounded-2xl border border-line bg-raised p-6">
+          <h3 class="font-semibold">From your files first</h3>
+          <p class="mt-2 text-soft">An .lrc file beside the song, or lyrics added in Music's Get Info. Beat only looks online for songs whose files have no synced lyrics.</p>
+        </div>
+        <div class="rounded-2xl border border-line bg-raised p-6">
+          <h3 class="font-semibold">Online, if you want</h3>
+          <p class="mt-2 text-soft">Turn it on and Beat asks LRCLIB for synced lyrics, sending only the song's artist, title, album and length. Answers are saved, so a song isn't looked up every time it plays.</p>
+        </div>
+        <div class="rounded-2xl border border-line bg-raised p-6">
+          <h3 class="font-semibold">Never written back</h3>
+          <p class="mt-2 text-soft">Lyrics found online stay in Beat. Your files and your Music library aren't touched.</p>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- Quick Open -->
+    <section id="quick-open" class="border-y border-line bg-raised">
+      <div class="mx-auto grid max-w-6xl items-center gap-12 px-4 py-24 sm:px-6 sm:py-32 lg:grid-cols-[2fr_3fr]">
+        <div>
+          <p class="font-semibold text-accent">Quick Open</p>
+          <h2 class="mt-2 font-display text-4xl font-bold tracking-tight sm:text-5xl">Anything, in a few keystrokes.</h2>
+          <p class="mt-5 text-lg text-soft">
+            Press ⌘K and start typing. Pages, albums, artists, genres and songs come up as you type, best match first,
+            and every word you add narrows them down. Return opens the top one.
+          </p>
+          <p class="mt-4 text-soft">
+            Settings choose whether Return opens or plays songs and albums, and ⌥Return does the other. On iPad and
+            iPhone, it's the search button in the sidebar.
+          </p>
+        </div>
+        <Shot name="quick-open-mac" alt="Quick Open over Home, finding albums and songs for “night”" />
+      </div>
+    </section>
+
+    <!-- Every device -->
+    <section>
+      <div class="mx-auto max-w-6xl px-4 py-24 text-center sm:px-6 sm:py-32">
+        <p class="font-semibold text-accent">Mac and iPhone</p>
+        <h2 class="mx-auto mt-2 max-w-2xl font-display text-4xl font-bold tracking-tight sm:text-5xl">The same pages, in your pocket.</h2>
+        <p class="mx-auto mt-5 max-w-2xl text-lg text-soft">
+          On the Mac, Beat reads the Music app's library. On iPhone, it plays the songs synced to it. Your pages, smart
+          filters and Now Playing work the same on both. Also on iPad.
+        </p>
+        <Shot name="home-mac" alt="Home on the Mac" class="mt-12" />
+        <div class="mx-auto mt-10 grid max-w-3xl grid-cols-3 gap-4 sm:gap-8">
+          <Shot name="home-iphone" alt="Home on iPhone" aspect="9 / 19.5" class="rounded-[1.4rem]! sm:rounded-[1.9rem]!" />
+          <Shot name="album-iphone" alt="An album page on iPhone, tinted by its cover" aspect="9 / 19.5" class="rounded-[1.4rem]! sm:rounded-[1.9rem]!" />
+          <Shot name="now-playing-iphone" alt="Now Playing on iPhone with synced lyrics" aspect="9 / 19.5" class="rounded-[1.4rem]! sm:rounded-[1.9rem]!" />
+        </div>
+      </div>
+    </section>
+
+    <!-- Read-only and private -->
+    <section id="private" class="mx-auto max-w-6xl px-4 py-24 sm:px-6 sm:py-32">
+      <div class="max-w-2xl">
+        <p class="font-semibold text-accent">Read-only and private</p>
+        <h2 class="mt-2 font-display text-4xl font-bold tracking-tight sm:text-5xl">Your library stays exactly as it is.</h2>
+      </div>
+      <div class="mt-12 grid gap-6 md:grid-cols-3">
+        <div class="rounded-2xl border border-line bg-raised p-6">
+          <h3 class="font-semibold">Never writes to Music</h3>
+          <p class="mt-2 text-soft">Beat only reads your library. Its own play and skip counts live in a file of its own.</p>
+        </div>
+        <div class="rounded-2xl border border-line bg-raised p-6">
+          <h3 class="font-semibold">Offline unless you say so</h3>
+          <p class="mt-2 text-soft">Lyrics, artist info and Last.fm are off until you turn them on. Off, Beat makes no network requests.</p>
+        </div>
+        <div class="rounded-2xl border border-line bg-raised p-6">
+          <h3 class="font-semibold">Your files, played locally</h3>
+          <p class="mt-2 text-soft">Beat plays local, DRM-free files. Apple Music streaming and cloud-only tracks are left out.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- And more -->
+    <section class="border-t border-line">
+      <div class="mx-auto max-w-6xl px-4 py-24 sm:px-6 sm:py-32">
+        <h2 class="font-display text-3xl font-bold tracking-tight sm:text-4xl">And more.</h2>
+        <div class="mt-10 grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
+          {more.map((item) => (
+            <div>
+              <h3 class="font-semibold">{item.title}</h3>
+              <p class="mt-2 text-sm text-soft">{item.text}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- Get Beat -->
+    <section id="get" class="border-t border-line bg-raised">
+      <div class="mx-auto max-w-6xl px-4 py-24 sm:px-6 sm:py-32">
+        <h2 class="text-center font-display text-4xl font-bold tracking-tight sm:text-5xl">Get Beat.</h2>
+        <p class="mt-4 text-center text-lg text-soft">Free and open source, under the MIT licence.</p>
+        <div class="mt-12 grid gap-6 md:grid-cols-2">
+          <div class="flex flex-col rounded-3xl border border-line bg-bg p-8">
+            <h3 class="text-xl font-semibold">Mac</h3>
+            <p class="mt-1 text-sm text-faint">macOS 15 or later · Apple silicon and Intel</p>
+            <ol class="mt-6 list-decimal space-y-2 pl-5 text-soft">
+              <li>Download Beat.dmg, open it and drag Beat to Applications.</li>
+              <li>Open Beat. macOS says it can't check it for malicious software, because Beat isn't notarised by Apple. Choose <strong class="text-ink">Done</strong>.</li>
+              <li>Open <strong class="text-ink">System Settings › Privacy &amp; Security</strong>, scroll down and click <strong class="text-ink">Open Anyway</strong> next to Beat.</li>
+            </ol>
+            <a href={download} class="mt-8 self-start rounded-full bg-accent px-6 py-3 font-semibold text-accent-ink hover:opacity-90">Download for Mac</a>
+          </div>
+          <div class="flex flex-col rounded-3xl border border-line bg-bg p-8">
+            <h3 class="text-xl font-semibold">iPhone and iPad</h3>
+            <p class="mt-1 text-sm text-faint">iOS 26 · built from source with Xcode</p>
+            <p class="mt-6 text-soft">
+              Beat isn't on the App Store. Build it with Xcode on a Mac and install it on your device with a free Apple
+              ID.
+            </p>
+            <a href={buildSteps} class="mt-8 self-start rounded-full border border-line px-6 py-3 font-semibold hover:bg-raised">Build steps on GitHub</a>
+          </div>
+        </div>
+        <p class="mt-8 text-center text-sm text-faint">Beat plays local, DRM-free files: the Music app's library on the Mac, songs synced to your iPhone or iPad.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t border-line">
+    <div class="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-10 text-sm text-faint sm:px-6">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <p>© 2026 Gouthaman Kumar · <a href={`${repo}/blob/main/LICENSE`} class="hover:text-ink">MIT licence</a></p>
+        <a href={repo} class="hover:text-ink">Source on GitHub</a>
+      </div>
+      <p>The albums, artists and covers shown here are made up; no real album art is used.</p>
+      {credits.length > 0 && (
+        <p>
+          Music in the demo:{' '}
+          {credits.map((credit, i) => (
+            <>
+              {i > 0 && ' · '}
+              <a href={credit.url} class="hover:text-ink">“{credit.title}” by {credit.artist}</a> ({credit.license})
+            </>
+          ))}
+        </p>
+      )}
+    </div>
+  </footer>
+<script>
+  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-demo-run]')) {
+    button.addEventListener('click', () => {
+      document.getElementById('demo')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      window.dispatchEvent(new CustomEvent('beat-demo', { detail: button.dataset.demoRun }));
+    });
+  }
+</script>
+</Layout>

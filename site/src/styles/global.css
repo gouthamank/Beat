@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+/* Beat's own colours: the icon's ink and cream. Light follows the cream, dark the ink; the page follows the system. */
+:root {
+  --bg: #f6f3ec;
+  --bg-raised: #ffffff;
+  --ink: #18181b;
+  --ink-soft: #55555d;
+  --ink-faint: #8a8a92;
+  --line: rgb(24 24 27 / 0.1);
+  --glass: rgb(255 255 255 / 0.6);
+  --accent: #e2574c;
+  --accent-ink: #ffffff;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121214;
+    --bg-raised: #1c1c20;
+    --ink: #f1ece0;
+    --ink-soft: #b4b0a6;
+    --ink-faint: #7c7973;
+    --line: rgb(241 236 224 / 0.1);
+    --glass: rgb(28 28 32 / 0.6);
+    --accent: #ff7a6b;
+    --accent-ink: #121214;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-raised: var(--bg-raised);
+  --color-ink: var(--ink);
+  --color-soft: var(--ink-soft);
+  --color-faint: var(--ink-faint);
+  --color-line: var(--line);
+  --color-glass: var(--glass);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
+}
+
+html {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  scroll-behavior: smooth;
+}
+
+/* Beat's glass, as on macOS 26: a translucent, blurred fill with a fine light edge. */
+.glass {
+  background: color-mix(in srgb, var(--bg-raised) 38%, transparent);
+  backdrop-filter: blur(28px) saturate(1.9) brightness(1.04);
+  border: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.16), inset 0 1px 0 rgb(255 255 255 / 0.35), inset 0 -1px 0 rgb(255 255 255 / 0.08);
+}
+
+/* The playing song's three bars. */
+@keyframes beat-bounce {
+  from { height: 25%; }
+  to { height: 100%; }
+}
+
+/* The demo's window scrolls like the app, by trackpad, wheel or swipe, without scroll bars breaking the illusion. */
+.demo * {
+  scrollbar-width: none;
+}
+.demo *::-webkit-scrollbar {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

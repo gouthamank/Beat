@@ -83,14 +83,17 @@ Decided:
   notarised: the site shows the System Settings > Privacy & Security > Open Anyway step (macOS 15 dropped
   right-click > Open). The runner image must have Xcode 26.
 - **iPhone and iPad:** build from source only (no paid Apple Developer Program, so no TestFlight); the site links
-  the README's steps and says a free Apple ID's install stops opening after 7 days. AltStore and SideStore were
+  the README's steps. A free Apple ID's install stops opening after 7 days; that's a technical detail for the
+  README, not the showcase, so the site leaves it out. AltStore and SideStore were
   considered and dropped: too much setup for users.
-- **Screenshots and clips:** captured by hand from the showcase library, from a shot list (window size, light or
-  dark, what to have open), then resized and encoded by a script.
+- **Screenshots and clips:** taken by Claude from Beat Test on the showcase library (`make mac-run-showcase`), the
+  user building and launching; resized and encoded by a script.
+- **Music:** 12 CC0 tracks (7 instrumental, 5 with vocals) in `Design/Showcase/Audio`, each standing in for one made-up
+  song and credited in the site's footer; content need only be not explicit. The vocal songs have synced lyrics in
+  `Design/Showcase/Lyrics`, timed by whisper.cpp (`lyrics.py`) and corrected by ear or from published lyrics.
 
-Order: the release action and DMG; the generated library (covers and data); the site's skeleton and sections; the
-demo; the shot list, then the captures.
+Done: the release action and DMG (v1.3.0 published); the showcase library with covers, music and lyrics; the site's
+sections; the demo; the screenshots. Left: testing the demo's untried paths, then deploying to Netlify.
 
 Open:
-- Which CC0 tracks, and whether one has vocals for the lyrics shots (lyrics for a made-up song would need writing).
 - Light and dark: the site follows the system; which one the screenshots lead with.

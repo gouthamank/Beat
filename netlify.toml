@@ -1,0 +1,8 @@
+# The showcase website (beat.gouthaman.dev): an Astro site in site/, built to site/dist.
+[build]
+base = "site"
+command = "npm run build"
+publish = "dist"
+
+[build.environment]
+NODE_VERSION = "24"

@@ -118,6 +118,8 @@ actor FolderLibrarySource: LibrarySource {
         let albumArtist = await text([.id3MetadataBand, .iTunesMetadataAlbumArtist], id3v22: "TP2")
         let album = await text([.commonIdentifierAlbumName, .id3MetadataAlbumTitle, .iTunesMetadataAlbum])
         let genre = await text([.id3MetadataContentType, .iTunesMetadataUserGenre, .quickTimeMetadataGenre], id3v22: "TCO")
+        // Read for custom sort fields, which can pull a value (a catalog number, say) out of the comments.
+        let comments = await text([.iTunesMetadataUserComment, .id3MetadataComments, .quickTimeMetadataComment], id3v22: "COM")
         let yearText = await text([.id3MetadataYear, .id3MetadataRecordingTime, .iTunesMetadataReleaseDate, .commonIdentifierCreationDate],
                                   id3v22: "TYE")
         let trackText = await text([.id3MetadataTrackNumber], id3v22: "TRK")
@@ -140,6 +142,7 @@ actor FolderLibrarySource: LibrarySource {
             album: album,
             albumID: stableID(albumKey(albumArtist: albumArtist, artist: artist, album: album)),
             genre: genre,
+            comments: comments,
             year: year(from: yearText),
             trackNumber: trackText.map { trackNumber(from: $0) } ?? trackData.map(trackNumber(fromITunes:)) ?? 0,
             duration: duration.isFinite ? duration : 0,

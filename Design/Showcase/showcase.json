@@ -1,0 +1,3246 @@
+{
+  "albums" : [
+    {
+      "addedDaysAgo" : 370,
+      "artist" : "Halcyon Drift",
+      "colors" : [
+        "#0B1026",
+        "#3A1C71",
+        "#FF6A88",
+        "#FFD3A5"
+      ],
+      "comments" : "Nightline Records [NLR-030]",
+      "cover" : "Covers/halcyon-drift-night-transit.jpg",
+      "genre" : "Electronic",
+      "id" : "halcyon-drift-night-transit",
+      "palette" : {
+        "background" : "#371C6A",
+        "primary" : "#FEB49C",
+        "secondary" : "#CA6B82"
+      },
+      "songs" : [
+        {
+          "duration" : 380,
+          "lastPlayedDaysAgo" : 15.4,
+          "path" : "/Halcyon Drift/Night Transit/01 Departure Board.m4a",
+          "plays" : 42,
+          "skips" : 0,
+          "title" : "Departure Board",
+          "track" : 1
+        },
+        {
+          "audio" : "Audio/urgent.m4a",
+          "credit" : {
+            "artist" : "Metre",
+            "license" : "CC0 1.0",
+            "title" : "Urgent",
+            "url" : "https://freemusicarchive.org/music/Metre/conduit/urgent/"
+          },
+          "duration" : 339,
+          "lastPlayedDaysAgo" : 27,
+          "path" : "/Halcyon Drift/Night Transit/02 Night Transit.m4a",
+          "plays" : 24,
+          "skips" : 0,
+          "title" : "Night Transit",
+          "track" : 2
+        },
+        {
+          "duration" : 244,
+          "lastPlayedDaysAgo" : 6.3,
+          "path" : "/Halcyon Drift/Night Transit/03 Sodium Lights.m4a",
+          "plays" : 13,
+          "skips" : 0,
+          "title" : "Sodium Lights",
+          "track" : 3
+        },
+        {
+          "duration" : 327,
+          "lastPlayedDaysAgo" : 26.4,
+          "path" : "/Halcyon Drift/Night Transit/04 Platform 9.m4a",
+          "plays" : 14,
+          "skips" : 0,
+          "title" : "Platform 9",
+          "track" : 4
+        },
+        {
+          "duration" : 337,
+          "lastPlayedDaysAgo" : 36.2,
+          "path" : "/Halcyon Drift/Night Transit/05 Overpass.m4a",
+          "plays" : 17,
+          "skips" : 0,
+          "title" : "Overpass",
+          "track" : 5
+        },
+        {
+          "duration" : 363,
+          "lastPlayedDaysAgo" : 8.6,
+          "path" : "/Halcyon Drift/Night Transit/06 Last Train Home.m4a",
+          "plays" : 17,
+          "skips" : 0,
+          "title" : "Last Train Home",
+          "track" : 6
+        },
+        {
+          "duration" : 248,
+          "lastPlayedDaysAgo" : 4.5,
+          "path" : "/Halcyon Drift/Night Transit/07 Terminus.m4a",
+          "plays" : 16,
+          "skips" : 0,
+          "title" : "Terminus",
+          "track" : 7
+        }
+      ],
+      "tint" : "#663C62",
+      "title" : "Night Transit",
+      "year" : 2021
+    },
+    {
+      "addedDaysAgo" : 803,
+      "artist" : "Halcyon Drift",
+      "colors" : [
+        "#0E0E2C",
+        "#00C2A8",
+        "#6C3CE1",
+        "#F5F06E"
+      ],
+      "comments" : "Nightline Records [NLR-036]",
+      "cover" : "Covers/halcyon-drift-signal-bloom.jpg",
+      "genre" : "Electronic",
+      "id" : "halcyon-drift-signal-bloom",
+      "palette" : {
+        "background" : "#0E0E2C",
+        "primary" : "#F6F187",
+        "secondary" : "#7447E6"
+      },
+      "songs" : [
+        {
+          "duration" : 328,
+          "lastPlayedDaysAgo" : 44.9,
+          "path" : "/Halcyon Drift/Signal Bloom/01 Carrier Wave.m4a",
+          "plays" : 28,
+          "skips" : 0,
+          "title" : "Carrier Wave",
+          "track" : 1
+        },
+        {
+          "audio" : "Audio/once-a-year.m4a",
+          "credit" : {
+            "artist" : "Qrittix & Bonnie Legion",
+            "license" : "CC0 1.0",
+            "title" : "Once a Year",
+            "url" : "https://archive.org/details/ANewGeneration"
+          },
+          "duration" : 292,
+          "lastPlayedDaysAgo" : 78.5,
+          "lyrics" : "Lyrics/once-a-year.lrc",
+          "path" : "/Halcyon Drift/Signal Bloom/02 Signal Bloom.m4a",
+          "plays" : 18,
+          "skips" : 0,
+          "title" : "Signal Bloom",
+          "track" : 2
+        },
+        {
+          "duration" : 288,
+          "lastPlayedDaysAgo" : 65.1,
+          "path" : "/Halcyon Drift/Signal Bloom/03 Phase Shift.m4a",
+          "plays" : 16,
+          "skips" : 0,
+          "title" : "Phase Shift",
+          "track" : 3
+        },
+        {
+          "duration" : 324,
+          "lastPlayedDaysAgo" : 59.6,
+          "lastSkippedDaysAgo" : 6.4,
+          "path" : "/Halcyon Drift/Signal Bloom/04 Static Garden.m4a",
+          "plays" : 25,
+          "skips" : 3,
+          "title" : "Static Garden",
+          "track" : 4
+        },
+        {
+          "duration" : 338,
+          "lastPlayedDaysAgo" : 8,
+          "path" : "/Halcyon Drift/Signal Bloom/05 Afterglow.m4a",
+          "plays" : 10,
+          "skips" : 0,
+          "title" : "Afterglow",
+          "track" : 5
+        },
+        {
+          "duration" : 325,
+          "lastPlayedDaysAgo" : 55.8,
+          "lastSkippedDaysAgo" : 34.7,
+          "path" : "/Halcyon Drift/Signal Bloom/06 Return Path.m4a",
+          "plays" : 19,
+          "skips" : 3,
+          "title" : "Return Path",
+          "track" : 6
+        }
+      ],
+      "tint" : "#5B6D86",
+      "title" : "Signal Bloom",
+      "year" : 2024
+    },
+    {
+      "addedDaysAgo" : 89,
+      "artist" : "Halcyon Drift",
+      "colors" : [
+        "#05070F",
+        "#1F4E8C",
+        "#7FB3FF",
+        "#E8F1FF"
+      ],
+      "comments" : "Nightline Records [NLR-021]",
+      "cover" : "Covers/halcyon-drift-low-orbit.jpg",
+      "genre" : "Electronic",
+      "id" : "halcyon-drift-low-orbit",
+      "palette" : {
+        "background" : "#1F4D8A",
+        "primary" : "#E8F1FE",
+        "secondary" : "#7FB3FD"
+      },
+      "songs" : [
+        {
+          "duration" : 297,
+          "lastPlayedDaysAgo" : 27.2,
+          "lastSkippedDaysAgo" : 7.4,
+          "path" : "/Halcyon Drift/Low Orbit/01 Launch Window.m4a",
+          "plays" : 11,
+          "skips" : 3,
+          "title" : "Launch Window",
+          "track" : 1
+        },
+        {
+          "duration" : 323,
+          "lastPlayedDaysAgo" : 29.3,
+          "lastSkippedDaysAgo" : 103.3,
+          "path" : "/Halcyon Drift/Low Orbit/02 Low Orbit.m4a",
+          "plays" : 9,
+          "skips" : 4,
+          "title" : "Low Orbit",
+          "track" : 2
+        },
+        {
+          "duration" : 387,
+          "lastPlayedDaysAgo" : 60.3,
+          "path" : "/Halcyon Drift/Low Orbit/03 Perigee.m4a",
+          "plays" : 8,
+          "skips" : 0,
+          "title" : "Perigee",
+          "track" : 3
+        },
+        {
+          "duration" : 370,
+          "lastPlayedDaysAgo" : 138.9,
+          "path" : "/Halcyon Drift/Low Orbit/04 Telemetry.m4a",
+          "plays" : 9,
+          "skips" : 0,
+          "title" : "Telemetry",
+          "track" : 4
+        },
+        {
+          "duration" : 268,
+          "lastPlayedDaysAgo" : 46.1,
+          "lastSkippedDaysAgo" : 200.1,
+          "path" : "/Halcyon Drift/Low Orbit/05 Blackout.m4a",
+          "plays" : 4,
+          "skips" : 4,
+          "title" : "Blackout",
+          "track" : 5
+        },
+        {
+          "duration" : 243,
+          "lastPlayedDaysAgo" : 89.7,
+          "lastSkippedDaysAgo" : 74.3,
+          "path" : "/Halcyon Drift/Low Orbit/06 Reentry.m4a",
+          "plays" : 11,
+          "skips" : 1,
+          "title" : "Reentry",
+          "track" : 6
+        },
+        {
+          "duration" : 388,
+          "lastPlayedDaysAgo" : 58.6,
+          "path" : "/Halcyon Drift/Low Orbit/07 Splashdown.m4a",
+          "plays" : 10,
+          "skips" : 0,
+          "title" : "Splashdown",
+          "track" : 7
+        }
+      ],
+      "tint" : "#6984AC",
+      "title" : "Low Orbit",
+      "year" : 2017
+    },
+    {
+      "addedDaysAgo" : 523,
+      "artist" : "Marisol Vega",
+      "colors" : [
+        "#FFB6B9",
+        "#FAE3D9",
+        "#BBDED6",
+        "#61C0BF"
+      ],
+      "cover" : "Covers/marisol-vega-paper-moons.jpg",
+      "genre" : "Pop",
+      "id" : "marisol-vega-paper-moons",
+      "palette" : {
+        "background" : "#E8E4DB",
+        "primary" : "#000000",
+        "secondary" : "#464442"
+      },
+      "songs" : [
+        {
+          "duration" : 175,
+          "lastPlayedDaysAgo" : 38.2,
+          "path" : "/Marisol Vega/Paper Moons/01 Paper Moons.m4a",
+          "plays" : 33,
+          "skips" : 0,
+          "title" : "Paper Moons",
+          "track" : 1
+        },
+        {
+          "duration" : 230,
+          "lastPlayedDaysAgo" : 21.9,
+          "path" : "/Marisol Vega/Paper Moons/02 Cherry Soda.m4a",
+          "plays" : 28,
+          "skips" : 0,
+          "title" : "Cherry Soda",
+          "track" : 2
+        },
+        {
+          "duration" : 165,
+          "lastPlayedDaysAgo" : 31,
+          "path" : "/Marisol Vega/Paper Moons/03 Say It Twice.m4a",
+          "plays" : 24,
+          "skips" : 0,
+          "title" : "Say It Twice",
+          "track" : 3
+        },
+        {
+          "duration" : 201,
+          "lastPlayedDaysAgo" : 37.1,
+          "path" : "/Marisol Vega/Paper Moons/04 Polaroid.m4a",
+          "plays" : 14,
+          "skips" : 0,
+          "title" : "Polaroid",
+          "track" : 4
+        },
+        {
+          "duration" : 229,
+          "lastPlayedDaysAgo" : 63.7,
+          "path" : "/Marisol Vega/Paper Moons/05 Lemonade Sky.m4a",
+          "plays" : 13,
+          "skips" : 0,
+          "title" : "Lemonade Sky",
+          "track" : 5
+        },
+        {
+          "duration" : 194,
+          "lastPlayedDaysAgo" : 18.5,
+          "path" : "/Marisol Vega/Paper Moons/06 Slow Dance Kitchen.m4a",
+          "plays" : 24,
+          "skips" : 0,
+          "title" : "Slow Dance Kitchen",
+          "track" : 6
+        },
+        {
+          "duration" : 211,
+          "lastPlayedDaysAgo" : 14.4,
+          "path" : "/Marisol Vega/Paper Moons/07 Goodnight, Again.m4a",
+          "plays" : 9,
+          "skips" : 0,
+          "title" : "Goodnight, Again",
+          "track" : 7
+        }
+      ],
+      "tint" : "#DBDFD8",
+      "title" : "Paper Moons",
+      "year" : 2019
+    },
+    {
+      "addedDaysAgo" : 258,
+      "artist" : "Marisol Vega",
+      "colors" : [
+        "#FDF6E3",
+        "#7EC8E3",
+        "#0074B7",
+        "#003B73"
+      ],
+      "cover" : "Covers/marisol-vega-saltwater-hours.jpg",
+      "genre" : "Pop",
+      "id" : "marisol-vega-saltwater-hours",
+      "palette" : {
+        "background" : "#FCF6E3",
+        "primary" : "#013B73",
+        "secondary" : "#0274B7"
+      },
+      "songs" : [
+        {
+          "duration" : 213,
+          "lastPlayedDaysAgo" : 20.4,
+          "path" : "/Marisol Vega/Saltwater Hours/01 Undertow Heart.m4a",
+          "plays" : 13,
+          "skips" : 0,
+          "title" : "Undertow Heart",
+          "track" : 1
+        },
+        {
+          "duration" : 219,
+          "lastPlayedDaysAgo" : 21.6,
+          "path" : "/Marisol Vega/Saltwater Hours/02 Saltwater Hours.m4a",
+          "plays" : 39,
+          "skips" : 0,
+          "title" : "Saltwater Hours",
+          "track" : 2
+        },
+        {
+          "duration" : 184,
+          "lastPlayedDaysAgo" : 41,
+          "path" : "/Marisol Vega/Saltwater Hours/03 Sunburn.m4a",
+          "plays" : 9,
+          "skips" : 0,
+          "title" : "Sunburn",
+          "track" : 3
+        },
+        {
+          "duration" : 185,
+          "lastPlayedDaysAgo" : 8.3,
+          "path" : "/Marisol Vega/Saltwater Hours/04 Lighthouse Keeper.m4a",
+          "plays" : 32,
+          "skips" : 0,
+          "title" : "Lighthouse Keeper",
+          "track" : 4
+        },
+        {
+          "duration" : 226,
+          "lastPlayedDaysAgo" : 14.1,
+          "path" : "/Marisol Vega/Saltwater Hours/05 Riptide.m4a",
+          "plays" : 17,
+          "skips" : 0,
+          "title" : "Riptide",
+          "track" : 5
+        },
+        {
+          "duration" : 204,
+          "lastPlayedDaysAgo" : 42.8,
+          "path" : "/Marisol Vega/Saltwater Hours/06 Message in a Shell.m4a",
+          "plays" : 35,
+          "skips" : 0,
+          "title" : "Message in a Shell",
+          "track" : 6
+        },
+        {
+          "duration" : 176,
+          "lastPlayedDaysAgo" : 0.9,
+          "path" : "/Marisol Vega/Saltwater Hours/07 Low Tide.m4a",
+          "plays" : 30,
+          "skips" : 0,
+          "title" : "Low Tide",
+          "track" : 7
+        },
+        {
+          "duration" : 169,
+          "lastPlayedDaysAgo" : 6.4,
+          "path" : "/Marisol Vega/Saltwater Hours/08 Coastline.m4a",
+          "plays" : 17,
+          "skips" : 0,
+          "title" : "Coastline",
+          "track" : 8
+        }
+      ],
+      "tint" : "#88B1C4",
+      "title" : "Saltwater Hours",
+      "year" : 2023
+    },
+    {
+      "addedDaysAgo" : 24,
+      "artist" : "Marisol Vega",
+      "colors" : [
+        "#FFF1E6",
+        "#FFB4A2",
+        "#E5989B",
+        "#B5838D"
+      ],
+      "cover" : "Covers/marisol-vega-glow-season.jpg",
+      "genre" : "Pop",
+      "id" : "marisol-vega-glow-season",
+      "palette" : {
+        "background" : "#FCB7A7",
+        "primary" : "#000000",
+        "secondary" : "#4C3732"
+      },
+      "songs" : [
+        {
+          "audio" : "Audio/someone-real.m4a",
+          "credit" : {
+            "artist" : "Jenna Jay",
+            "license" : "CC0 1.0",
+            "title" : "Someone Real",
+            "url" : "https://freemusicarchive.org/music/jenna-jay/single/someone-real-jenna-jay/"
+          },
+          "duration" : 230,
+          "lastPlayedDaysAgo" : 18.6,
+          "lyrics" : "Lyrics/someone-real.lrc",
+          "path" : "/Marisol Vega/Glow Season/01 Glow Season.m4a",
+          "plays" : 76,
+          "skips" : 0,
+          "title" : "Glow Season",
+          "track" : 1
+        },
+        {
+          "duration" : 179,
+          "lastPlayedDaysAgo" : 8.9,
+          "path" : "/Marisol Vega/Glow Season/02 Golden Hour Again.m4a",
+          "plays" : 24,
+          "skips" : 0,
+          "title" : "Golden Hour Again",
+          "track" : 2
+        },
+        {
+          "duration" : 226,
+          "lastPlayedDaysAgo" : 15.6,
+          "path" : "/Marisol Vega/Glow Season/03 Fever Dream.m4a",
+          "plays" : 31,
+          "skips" : 0,
+          "title" : "Fever Dream",
+          "track" : 3
+        },
+        {
+          "duration" : 188,
+          "lastPlayedDaysAgo" : 4.1,
+          "path" : "/Marisol Vega/Glow Season/04 Neon Lullaby.m4a",
+          "plays" : 17,
+          "skips" : 0,
+          "title" : "Neon Lullaby",
+          "track" : 4
+        },
+        {
+          "duration" : 224,
+          "lastPlayedDaysAgo" : 10.6,
+          "path" : "/Marisol Vega/Glow Season/05 Firefly.m4a",
+          "plays" : 47,
+          "skips" : 0,
+          "title" : "Firefly",
+          "track" : 5
+        },
+        {
+          "duration" : 188,
+          "lastPlayedDaysAgo" : 6,
+          "path" : "/Marisol Vega/Glow Season/06 All Summer Long.m4a",
+          "plays" : 27,
+          "skips" : 0,
+          "title" : "All Summer Long",
+          "track" : 6
+        }
+      ],
+      "tint" : "#F1BEB6",
+      "title" : "Glow Season",
+      "year" : 2026
+    },
+    {
+      "addedDaysAgo" : 980,
+      "artist" : "The Glass Orchards",
+      "colors" : [
+        "#F2E8CF",
+        "#386641",
+        "#6A994E",
+        "#BC4749"
+      ],
+      "cover" : "Covers/the-glass-orchards-weather-systems.jpg",
+      "genre" : "Indie",
+      "id" : "the-glass-orchards-weather-systems",
+      "palette" : {
+        "background" : "#F2E8CF",
+        "primary" : "#386641",
+        "secondary" : "#BC4749"
+      },
+      "songs" : [
+        {
+          "duration" : 206,
+          "lastPlayedDaysAgo" : 1.1,
+          "lastSkippedDaysAgo" : 87.9,
+          "path" : "/The Glass Orchards/Weather Systems/01 Front Moving In.m4a",
+          "plays" : 16,
+          "skips" : 4,
+          "title" : "Front Moving In",
+          "track" : 1
+        },
+        {
+          "duration" : 230,
+          "lastPlayedDaysAgo" : 52.8,
+          "path" : "/The Glass Orchards/Weather Systems/02 Isobars.m4a",
+          "plays" : 10,
+          "skips" : 0,
+          "title" : "Isobars",
+          "track" : 2
+        },
+        {
+          "audio" : "Audio/creamy-snowflakes.m4a",
+          "credit" : {
+            "artist" : "Art Flower",
+            "license" : "CC0 1.0",
+            "title" : "Creamy Snowflakes",
+            "url" : "https://freemusicarchive.org/music/art-flower/lets-rock/art-flower-creamy-snowflakes/"
+          },
+          "duration" : 306,
+          "lastPlayedDaysAgo" : 106.9,
+          "path" : "/The Glass Orchards/Weather Systems/03 Weather Systems.m4a",
+          "plays" : 16,
+          "skips" : 0,
+          "title" : "Weather Systems",
+          "track" : 3
+        },
+        {
+          "duration" : 197,
+          "lastPlayedDaysAgo" : 15.6,
+          "path" : "/The Glass Orchards/Weather Systems/04 Hailstones.m4a",
+          "plays" : 9,
+          "skips" : 0,
+          "title" : "Hailstones",
+          "track" : 4
+        },
+        {
+          "duration" : 203,
+          "lastPlayedDaysAgo" : 91.6,
+          "lastSkippedDaysAgo" : 173.1,
+          "path" : "/The Glass Orchards/Weather Systems/05 Pressure Drop.m4a",
+          "plays" : 13,
+          "skips" : 2,
+          "title" : "Pressure Drop",
+          "track" : 5
+        },
+        {
+          "duration" : 261,
+          "lastPlayedDaysAgo" : 105.2,
+          "lastSkippedDaysAgo" : 47.4,
+          "path" : "/The Glass Orchards/Weather Systems/06 Clearing.m4a",
+          "plays" : 18,
+          "skips" : 4,
+          "title" : "Clearing",
+          "track" : 6
+        },
+        {
+          "duration" : 196,
+          "lastPlayedDaysAgo" : 73.7,
+          "path" : "/The Glass Orchards/Weather Systems/07 Indian Summer.m4a",
+          "plays" : 9,
+          "skips" : 0,
+          "title" : "Indian Summer",
+          "track" : 7
+        },
+        {
+          "duration" : 261,
+          "lastPlayedDaysAgo" : 118.6,
+          "path" : "/The Glass Orchards/Weather Systems/08 Forecast.m4a",
+          "plays" : 6,
+          "skips" : 0,
+          "title" : "Forecast",
+          "track" : 8
+        }
+      ],
+      "tint" : "#ABA386",
+      "title" : "Weather Systems",
+      "year" : 2014
+    },
+    {
+      "addedDaysAgo" : 249,
+      "artist" : "The Glass Orchards",
+      "colors" : [
+        "#F4EBD9",
+        "#E63946",
+        "#457B9D",
+        "#1D3557"
+      ],
+      "cover" : "Covers/the-glass-orchards-kite-season.jpg",
+      "genre" : "Indie",
+      "id" : "the-glass-orchards-kite-season",
+      "palette" : {
+        "background" : "#F4EBD9",
+        "primary" : "#1D3557",
+        "secondary" : "#457B9D"
+      },
+      "songs" : [
+        {
+          "duration" : 250,
+          "lastPlayedDaysAgo" : 49.5,
+          "path" : "/The Glass Orchards/Kite Season/01 Kite Season.m4a",
+          "plays" : 41,
+          "skips" : 0,
+          "title" : "Kite Season",
+          "track" : 1
+        },
+        {
+          "duration" : 238,
+          "lastPlayedDaysAgo" : 71.1,
+          "path" : "/The Glass Orchards/Kite Season/02 String Theory.m4a",
+          "plays" : 15,
+          "skips" : 0,
+          "title" : "String Theory",
+          "track" : 2
+        },
+        {
+          "duration" : 250,
+          "lastPlayedDaysAgo" : 41.1,
+          "lastSkippedDaysAgo" : 111.9,
+          "path" : "/The Glass Orchards/Kite Season/03 Updraft.m4a",
+          "plays" : 11,
+          "skips" : 3,
+          "title" : "Updraft",
+          "track" : 3
+        },
+        {
+          "duration" : 195,
+          "lastPlayedDaysAgo" : 66.3,
+          "path" : "/The Glass Orchards/Kite Season/04 Tangled Line.m4a",
+          "plays" : 21,
+          "skips" : 0,
+          "title" : "Tangled Line",
+          "track" : 4
+        },
+        {
+          "duration" : 184,
+          "lastPlayedDaysAgo" : 116,
+          "path" : "/The Glass Orchards/Kite Season/05 Open Field.m4a",
+          "plays" : 17,
+          "skips" : 0,
+          "title" : "Open Field",
+          "track" : 5
+        },
+        {
+          "duration" : 240,
+          "lastPlayedDaysAgo" : 5.9,
+          "path" : "/The Glass Orchards/Kite Season/06 Tailwind.m4a",
+          "plays" : 10,
+          "skips" : 0,
+          "title" : "Tailwind",
+          "track" : 6
+        },
+        {
+          "duration" : 228,
+          "lastPlayedDaysAgo" : 0.2,
+          "lastSkippedDaysAgo" : 69.2,
+          "path" : "/The Glass Orchards/Kite Season/07 Grounded.m4a",
+          "plays" : 9,
+          "skips" : 1,
+          "title" : "Grounded",
+          "track" : 7
+        }
+      ],
+      "tint" : "#BEB2B3",
+      "title" : "Kite Season",
+      "year" : 2018
+    },
+    {
+      "addedDaysAgo" : 260,
+      "artist" : "Otis Brennan Quartet",
+      "colors" : [
+        "#0A2342",
+        "#2CA58D",
+        "#F4B942",
+        "#F8F4E3"
+      ],
+      "cover" : "Covers/otis-brennan-quartet-blue-lantern.jpg",
+      "genre" : "Jazz",
+      "id" : "otis-brennan-quartet-blue-lantern",
+      "palette" : {
+        "background" : "#0A2342",
+        "primary" : "#2CA58D",
+        "secondary" : "#F4B942"
+      },
+      "songs" : [
+        {
+          "duration" : 347,
+          "lastPlayedDaysAgo" : 77,
+          "path" : "/Otis Brennan Quartet/Blue Lantern/01 Blue Lantern.m4a",
+          "plays" : 26,
+          "skips" : 0,
+          "title" : "Blue Lantern",
+          "track" : 1
+        },
+        {
+          "duration" : 340,
+          "lastPlayedDaysAgo" : 68.5,
+          "path" : "/Otis Brennan Quartet/Blue Lantern/02 Harbour Steps.m4a",
+          "plays" : 15,
+          "skips" : 0,
+          "title" : "Harbour Steps",
+          "track" : 2
+        },
+        {
+          "duration" : 307,
+          "lastPlayedDaysAgo" : 42.1,
+          "path" : "/Otis Brennan Quartet/Blue Lantern/03 Minor Errand.m4a",
+          "plays" : 9,
+          "skips" : 0,
+          "title" : "Minor Errand",
+          "track" : 3
+        },
+        {
+          "duration" : 323,
+          "lastPlayedDaysAgo" : 130.1,
+          "path" : "/Otis Brennan Quartet/Blue Lantern/04 Lamplighter.m4a",
+          "plays" : 11,
+          "skips" : 0,
+          "title" : "Lamplighter",
+          "track" : 4
+        },
+        {
+          "duration" : 290,
+          "lastPlayedDaysAgo" : 33.9,
+          "path" : "/Otis Brennan Quartet/Blue Lantern/05 Smoke Signals.m4a",
+          "plays" : 11,
+          "skips" : 0,
+          "title" : "Smoke Signals",
+          "track" : 5
+        },
+        {
+          "duration" : 376,
+          "lastPlayedDaysAgo" : 80.5,
+          "path" : "/Otis Brennan Quartet/Blue Lantern/06 Coda for Clara.m4a",
+          "plays" : 9,
+          "skips" : 0,
+          "title" : "Coda for Clara",
+          "track" : 6
+        }
+      ],
+      "tint" : "#576F5F",
+      "title" : "Blue Lantern",
+      "year" : 1961
+    },
+    {
+      "addedDaysAgo" : 179,
+      "artist" : "Otis Brennan Quartet",
+      "colors" : [
+        "#1B1B1E",
+        "#D8C99B",
+        "#A4243B",
+        "#273E47"
+      ],
+      "cover" : "Covers/otis-brennan-quartet-after-the-rain-comes.jpg",
+      "genre" : "Jazz",
+      "id" : "otis-brennan-quartet-after-the-rain-comes",
+      "palette" : {
+        "background" : "#263C45",
+        "primary" : "#D5C699",
+        "secondary" : "#A79A79"
+      },
+      "songs" : [
+        {
+          "duration" : 373,
+          "lastPlayedDaysAgo" : 120.1,
+          "path" : "/Otis Brennan Quartet/After the Rain Comes/01 After the Rain Comes.m4a",
+          "plays" : 5,
+          "skips" : 0,
+          "title" : "After the Rain Comes",
+          "track" : 1
+        },
+        {
+          "duration" : 400,
+          "lastPlayedDaysAgo" : 69.1,
+          "path" : "/Otis Brennan Quartet/After the Rain Comes/02 Puddle Jumper.m4a",
+          "plays" : 4,
+          "skips" : 0,
+          "title" : "Puddle Jumper",
+          "track" : 2
+        },
+        {
+          "duration" : 332,
+          "lastPlayedDaysAgo" : 138.9,
+          "path" : "/Otis Brennan Quartet/After the Rain Comes/03 Umbrella Blues.m4a",
+          "plays" : 8,
+          "skips" : 0,
+          "title" : "Umbrella Blues",
+          "track" : 3
+        },
+        {
+          "duration" : 293,
+          "lastPlayedDaysAgo" : 22.4,
+          "path" : "/Otis Brennan Quartet/After the Rain Comes/04 Grey Afternoon.m4a",
+          "plays" : 9,
+          "skips" : 0,
+          "title" : "Grey Afternoon",
+          "track" : 4
+        },
+        {
+          "duration" : 299,
+          "lastPlayedDaysAgo" : 69.1,
+          "path" : "/Otis Brennan Quartet/After the Rain Comes/05 Petrichor.m4a",
+          "plays" : 8,
+          "skips" : 0,
+          "title" : "Petrichor",
+          "track" : 5
+        }
+      ],
+      "tint" : "#634847",
+      "title" : "After the Rain Comes",
+      "year" : 1964
+    },
+    {
+      "addedDaysAgo" : 673,
+      "artist" : "Otis Brennan Quartet",
+      "colors" : [
+        "#111111",
+        "#E9C46A",
+        "#F4A261",
+        "#E76F51"
+      ],
+      "cover" : "Covers/otis-brennan-quartet-midnight-standards.jpg",
+      "genre" : "Jazz",
+      "id" : "otis-brennan-quartet-midnight-standards",
+      "palette" : {
+        "background" : "#151412",
+        "primary" : "#947D47",
+        "secondary" : "#B67A4B"
+      },
+      "songs" : [
+        {
+          "duration" : 387,
+          "lastPlayedDaysAgo" : 126.2,
+          "path" : "/Otis Brennan Quartet/Midnight Standards/01 Midnight Standard.m4a",
+          "plays" : 16,
+          "skips" : 0,
+          "title" : "Midnight Standard",
+          "track" : 1
+        },
+        {
+          "duration" : 319,
+          "lastPlayedDaysAgo" : 59.9,
+          "path" : "/Otis Brennan Quartet/Midnight Standards/02 Brushes.m4a",
+          "plays" : 10,
+          "skips" : 0,
+          "title" : "Brushes",
+          "track" : 2
+        },
+        {
+          "duration" : 400,
+          "lastPlayedDaysAgo" : 99.3,
+          "lastSkippedDaysAgo" : 194.3,
+          "path" : "/Otis Brennan Quartet/Midnight Standards/03 Walking Bass.m4a",
+          "plays" : 15,
+          "skips" : 2,
+          "title" : "Walking Bass",
+          "track" : 3
+        },
+        {
+          "duration" : 369,
+          "lastPlayedDaysAgo" : 76.2,
+          "path" : "/Otis Brennan Quartet/Midnight Standards/04 Closing Time.m4a",
+          "plays" : 6,
+          "skips" : 0,
+          "title" : "Closing Time",
+          "track" : 4
+        },
+        {
+          "duration" : 333,
+          "lastPlayedDaysAgo" : 64.1,
+          "lastSkippedDaysAgo" : 146.6,
+          "path" : "/Otis Brennan Quartet/Midnight Standards/05 Last Call Waltz.m4a",
+          "plays" : 18,
+          "skips" : 2,
+          "title" : "Last Call Waltz",
+          "track" : 5
+        },
+        {
+          "duration" : 291,
+          "lastPlayedDaysAgo" : 128.8,
+          "path" : "/Otis Brennan Quartet/Midnight Standards/06 One More Chorus.m4a",
+          "plays" : 17,
+          "skips" : 0,
+          "title" : "One More Chorus",
+          "track" : 6
+        }
+      ],
+      "tint" : "#4C3826",
+      "title" : "Midnight Standards",
+      "year" : 1966
+    },
+    {
+      "addedDaysAgo" : 653,
+      "artist" : "Ines Kaldera",
+      "colors" : [
+        "#E0EAF0",
+        "#9DB4C0",
+        "#5C6B73",
+        "#253237"
+      ],
+      "comments" : "Nightline Records [NLR-027]",
+      "cover" : "Covers/ines-kaldera-tidewater.jpg",
+      "genre" : "Ambient",
+      "id" : "ines-kaldera-tidewater",
+      "palette" : {
+        "background" : "#E0EAF0",
+        "primary" : "#253237",
+        "secondary" : "#5C6B73"
+      },
+      "songs" : [
+        {
+          "duration" : 408,
+          "lastPlayedDaysAgo" : 95.9,
+          "path" : "/Ines Kaldera/Tidewater/01 Slack Water.m4a",
+          "plays" : 14,
+          "skips" : 0,
+          "title" : "Slack Water",
+          "track" : 1
+        },
+        {
+          "audio" : "Audio/beyond.m4a",
+          "credit" : {
+            "artist" : "Pablo Perez",
+            "license" : "CC0 1.0",
+            "title" : "Beyond",
+            "url" : "https://freemusicarchive.org/music/pablo-perez/single/beyond-2/"
+          },
+          "duration" : 240,
+          "lastPlayedDaysAgo" : 14.1,
+          "path" : "/Ines Kaldera/Tidewater/02 Tidewater.m4a",
+          "plays" : 20,
+          "skips" : 0,
+          "title" : "Tidewater",
+          "track" : 2
+        },
+        {
+          "duration" : 323,
+          "lastPlayedDaysAgo" : 30.5,
+          "lastSkippedDaysAgo" : 43,
+          "path" : "/Ines Kaldera/Tidewater/03 Salt Marsh.m4a",
+          "plays" : 10,
+          "skips" : 2,
+          "title" : "Salt Marsh",
+          "track" : 3
+        },
+        {
+          "duration" : 518,
+          "lastPlayedDaysAgo" : 109.6,
+          "path" : "/Ines Kaldera/Tidewater/04 Brackish.m4a",
+          "plays" : 9,
+          "skips" : 0,
+          "title" : "Brackish",
+          "track" : 4
+        },
+        {
+          "duration" : 558,
+          "lastPlayedDaysAgo" : 109.8,
+          "path" : "/Ines Kaldera/Tidewater/05 Mudflats at Dawn.m4a",
+          "plays" : 6,
+          "skips" : 0,
+          "title" : "Mudflats at Dawn",
+          "track" : 5
+        },
+        {
+          "duration" : 402,
+          "lastPlayedDaysAgo" : 10.7,
+          "lastSkippedDaysAgo" : 193.3,
+          "path" : "/Ines Kaldera/Tidewater/06 Ebb.m4a",
+          "plays" : 12,
+          "skips" : 3,
+          "title" : "Ebb",
+          "track" : 6
+        }
+      ],
+      "tint" : "#97A5AC",
+      "title" : "Tidewater",
+      "year" : 2020
+    },
+    {
+      "addedDaysAgo" : 331,
+      "artist" : "Ines Kaldera",
+      "colors" : [
+        "#2B2D42",
+        "#8D99AE",
+        "#EDF2F4",
+        "#EF233C"
+      ],
+      "comments" : "Nightline Records [NLR-018]",
+      "cover" : "Covers/ines-kaldera-slow-light.jpg",
+      "genre" : "Ambient",
+      "id" : "ines-kaldera-slow-light",
+      "palette" : {
+        "background" : "#E7E6EA",
+        "primary" : "#000000",
+        "secondary" : "#63697E"
+      },
+      "songs" : [
+        {
+          "duration" : 521,
+          "lastPlayedDaysAgo" : 158.2,
+          "path" : "/Ines Kaldera/Slow Light/01 Slow Light.m4a",
+          "plays" : 10,
+          "skips" : 0,
+          "title" : "Slow Light",
+          "track" : 1
+        },
+        {
+          "duration" : 429,
+          "lastPlayedDaysAgo" : 114.6,
+          "path" : "/Ines Kaldera/Slow Light/02 Long Exposure.m4a",
+          "plays" : 3,
+          "skips" : 0,
+          "title" : "Long Exposure",
+          "track" : 2
+        },
+        {
+          "duration" : 369,
+          "lastPlayedDaysAgo" : 125.1,
+          "path" : "/Ines Kaldera/Slow Light/03 Dust Motes.m4a",
+          "plays" : 6,
+          "skips" : 0,
+          "title" : "Dust Motes",
+          "track" : 3
+        },
+        {
+          "duration" : 361,
+          "lastPlayedDaysAgo" : 61.4,
+          "path" : "/Ines Kaldera/Slow Light/04 Aperture.m4a",
+          "plays" : 6,
+          "skips" : 0,
+          "title" : "Aperture",
+          "track" : 4
+        },
+        {
+          "duration" : 417,
+          "lastPlayedDaysAgo" : 36.6,
+          "path" : "/Ines Kaldera/Slow Light/05 Half-Life.m4a",
+          "plays" : 6,
+          "skips" : 0,
+          "title" : "Half-Life",
+          "track" : 5
+        }
+      ],
+      "tint" : "#BFB7C2",
+      "title" : "Slow Light",
+      "year" : 2016
+    },
+    {
+      "addedDaysAgo" : 477,
+      "artist" : "Copperline",
+      "colors" : [
+        "#2D0B00",
+        "#9C2C00",
+        "#F26B1D",
+        "#FBD87F"
+      ],
+      "cover" : "Covers/copperline-highway-saints.jpg",
+      "genre" : "Rock",
+      "id" : "copperline-highway-saints",
+      "palette" : {
+        "background" : "#A83806",
+        "primary" : "#FFFFFF",
+        "secondary" : "#F7AB57"
+      },
+      "songs" : [
+        {
+          "audio" : "Audio/wide-open-spaces.m4a",
+          "credit" : {
+            "artist" : "HoliznaCC0",
+            "license" : "CC0 1.0",
+            "title" : "Wide Open Spaces",
+            "url" : "https://freemusicarchive.org/music/holiznacc0/washed-up/wide-open-spaces/"
+          },
+          "duration" : 265,
+          "lastPlayedDaysAgo" : 28.7,
+          "lastSkippedDaysAgo" : 133.6,
+          "lyrics" : "Lyrics/wide-open-spaces.lrc",
+          "path" : "/Copperline/Highway Saints/01 Highway Saints.m4a",
+          "plays" : 38,
+          "skips" : 3,
+          "title" : "Highway Saints",
+          "track" : 1
+        },
+        {
+          "duration" : 258,
+          "lastPlayedDaysAgo" : 65,
+          "path" : "/Copperline/Highway Saints/02 Gasoline Hymn.m4a",
+          "plays" : 14,
+          "skips" : 0,
+          "title" : "Gasoline Hymn",
+          "track" : 2
+        },
+        {
+          "duration" : 202,
+          "lastPlayedDaysAgo" : 61.1,
+          "path" : "/Copperline/Highway Saints/03 Rearview.m4a",
+          "plays" : 7,
+          "skips" : 0,
+          "title" : "Rearview",
+          "track" : 3
+        },
+        {
+          "duration" : 247,
+          "lastPlayedDaysAgo" : 95.2,
+          "path" : "/Copperline/Highway Saints/04 Mile Marker 40.m4a",
+          "plays" : 17,
+          "skips" : 0,
+          "title" : "Mile Marker 40",
+          "track" : 4
+        },
+        {
+          "duration" : 218,
+          "lastPlayedDaysAgo" : 24.4,
+          "path" : "/Copperline/Highway Saints/05 Burning Daylight.m4a",
+          "plays" : 22,
+          "skips" : 0,
+          "title" : "Burning Daylight",
+          "track" : 5
+        },
+        {
+          "duration" : 225,
+          "lastPlayedDaysAgo" : 28.7,
+          "lastSkippedDaysAgo" : 148.4,
+          "path" : "/Copperline/Highway Saints/06 Desert Prayer.m4a",
+          "plays" : 25,
+          "skips" : 1,
+          "title" : "Desert Prayer",
+          "track" : 6
+        },
+        {
+          "duration" : 292,
+          "lastPlayedDaysAgo" : 63.4,
+          "path" : "/Copperline/Highway Saints/07 Roadhouse.m4a",
+          "plays" : 17,
+          "skips" : 0,
+          "title" : "Roadhouse",
+          "track" : 7
+        }
+      ],
+      "tint" : "#A6531F",
+      "title" : "Highway Saints",
+      "year" : 1977
+    },
+    {
+      "addedDaysAgo" : 682,
+      "artist" : "Copperline",
+      "colors" : [
+        "#1A1A1A",
+        "#D4AF37",
+        "#8B0000",
+        "#F5F5F5"
+      ],
+      "cover" : "Covers/copperline-static-gold.jpg",
+      "genre" : "Rock",
+      "id" : "copperline-static-gold",
+      "palette" : {
+        "background" : "#1A1A1A",
+        "primary" : "#F5F5F5",
+        "secondary" : "#D4AF37"
+      },
+      "songs" : [
+        {
+          "duration" : 221,
+          "lastPlayedDaysAgo" : 111.4,
+          "path" : "/Copperline/Static Gold/01 Static Gold.m4a",
+          "plays" : 21,
+          "skips" : 0,
+          "title" : "Static Gold",
+          "track" : 1
+        },
+        {
+          "duration" : 204,
+          "lastPlayedDaysAgo" : 138.4,
+          "path" : "/Copperline/Static Gold/02 Amplifier.m4a",
+          "plays" : 7,
+          "skips" : 0,
+          "title" : "Amplifier",
+          "track" : 2
+        },
+        {
+          "duration" : 204,
+          "lastPlayedDaysAgo" : 53.5,
+          "lastSkippedDaysAgo" : 169.5,
+          "path" : "/Copperline/Static Gold/03 Feedback Loop.m4a",
+          "plays" : 6,
+          "skips" : 2,
+          "title" : "Feedback Loop",
+          "track" : 3
+        },
+        {
+          "duration" : 297,
+          "lastPlayedDaysAgo" : 54.1,
+          "path" : "/Copperline/Static Gold/04 Wildfire.m4a",
+          "plays" : 14,
+          "skips" : 0,
+          "title" : "Wildfire",
+          "track" : 4
+        },
+        {
+          "duration" : 198,
+          "lastPlayedDaysAgo" : 21.9,
+          "path" : "/Copperline/Static Gold/05 Six Strings.m4a",
+          "plays" : 14,
+          "skips" : 0,
+          "title" : "Six Strings",
+          "track" : 5
+        },
+        {
+          "duration" : 188,
+          "lastPlayedDaysAgo" : 61.6,
+          "path" : "/Copperline/Static Gold/06 Encore.m4a",
+          "plays" : 13,
+          "skips" : 0,
+          "title" : "Encore",
+          "track" : 6
+        }
+      ],
+      "tint" : "#7A5B42",
+      "title" : "Static Gold",
+      "year" : 1981
+    },
+    {
+      "addedDaysAgo" : 297,
+      "artist" : "Copperline",
+      "colors" : [
+        "#F6E7CB",
+        "#DD9787",
+        "#A53860",
+        "#3A0842"
+      ],
+      "cover" : "Covers/copperline-long-way-home.jpg",
+      "genre" : "Rock",
+      "id" : "copperline-long-way-home",
+      "palette" : {
+        "background" : "#F6E7CB",
+        "primary" : "#3A0842",
+        "secondary" : "#A53860"
+      },
+      "songs" : [
+        {
+          "duration" : 203,
+          "lastPlayedDaysAgo" : 205.4,
+          "path" : "/Copperline/Long Way Home/01 Long Way Home.m4a",
+          "plays" : 10,
+          "skips" : 0,
+          "title" : "Long Way Home",
+          "track" : 1
+        },
+        {
+          "duration" : 276,
+          "lastPlayedDaysAgo" : 97.1,
+          "lastSkippedDaysAgo" : 40.5,
+          "path" : "/Copperline/Long Way Home/02 County Line.m4a",
+          "plays" : 3,
+          "skips" : 4,
+          "title" : "County Line",
+          "track" : 2
+        },
+        {
+          "duration" : 283,
+          "lastPlayedDaysAgo" : 15.2,
+          "path" : "/Copperline/Long Way Home/03 Tailwind Blues.m4a",
+          "plays" : 3,
+          "skips" : 0,
+          "title" : "Tailwind Blues",
+          "track" : 3
+        },
+        {
+          "duration" : 248,
+          "lastPlayedDaysAgo" : 195,
+          "lastSkippedDaysAgo" : 268.1,
+          "path" : "/Copperline/Long Way Home/04 Porch Light.m4a",
+          "plays" : 5,
+          "skips" : 2,
+          "title" : "Porch Light",
+          "track" : 4
+        },
+        {
+          "duration" : 189,
+          "lastPlayedDaysAgo" : 97.1,
+          "path" : "/Copperline/Long Way Home/05 Homecoming.m4a",
+          "plays" : 6,
+          "skips" : 0,
+          "title" : "Homecoming",
+          "track" : 5
+        }
+      ],
+      "tint" : "#BE8D90",
+      "title" : "Long Way Home",
+      "year" : 1985
+    },
+    {
+      "addedDaysAgo" : 1057,
+      "artist" : "Juno Park",
+      "colors" : [
+        "#C9C9C9",
+        "#2B2B2B",
+        "#3FA34D",
+        "#F7F7F7"
+      ],
+      "cover" : "Covers/juno-park-concrete-garden.jpg",
+      "genre" : "Hip-Hop",
+      "id" : "juno-park-concrete-garden",
+      "palette" : {
+        "background" : "#C6C8C7",
+        "primary" : "#363636",
+        "secondary" : "#595959"
+      },
+      "songs" : [
+        {
+          "duration" : 35,
+          "lastPlayedDaysAgo" : 65,
+          "path" : "/Juno Park/Concrete Garden/01 Intro (Seeds).m4a",
+          "plays" : 4,
+          "skips" : 0,
+          "title" : "Intro (Seeds)",
+          "track" : 1
+        },
+        {
+          "audio" : "Audio/washed-up.m4a",
+          "credit" : {
+            "artist" : "HoliznaCC0",
+            "license" : "CC0 1.0",
+            "title" : "Washed Up",
+            "url" : "https://freemusicarchive.org/music/holiznacc0/ocean-memory-lo-fi-chill/washed-up/"
+          },
+          "duration" : 235,
+          "lastPlayedDaysAgo" : 25.5,
+          "path" : "/Juno Park/Concrete Garden/02 Concrete Garden.m4a",
+          "plays" : 38,
+          "skips" : 0,
+          "title" : "Concrete Garden",
+          "track" : 2
+        },
+        {
+          "duration" : 200,
+          "lastPlayedDaysAgo" : 32.2,
+          "path" : "/Juno Park/Concrete Garden/03 Cracks in the Pavement.m4a",
+          "plays" : 23,
+          "skips" : 0,
+          "title" : "Cracks in the Pavement",
+          "track" : 3
+        },
+        {
+          "duration" : 165,
+          "lastPlayedDaysAgo" : 51.7,
+          "path" : "/Juno Park/Concrete Garden/04 Window Box.m4a",
+          "plays" : 22,
+          "skips" : 0,
+          "title" : "Window Box",
+          "track" : 4
+        },
+        {
+          "duration" : 169,
+          "lastPlayedDaysAgo" : 10.4,
+          "path" : "/Juno Park/Concrete Garden/05 Rooftop Tomatoes.m4a",
+          "plays" : 12,
+          "skips" : 0,
+          "title" : "Rooftop Tomatoes",
+          "track" : 5
+        },
+        {
+          "duration" : 158,
+          "lastPlayedDaysAgo" : 41.9,
+          "path" : "/Juno Park/Concrete Garden/06 Weeds.m4a",
+          "plays" : 9,
+          "skips" : 0,
+          "title" : "Weeds",
+          "track" : 6
+        },
+        {
+          "duration" : 170,
+          "lastPlayedDaysAgo" : 55.4,
+          "path" : "/Juno Park/Concrete Garden/07 Bloom.m4a",
+          "plays" : 11,
+          "skips" : 0,
+          "title" : "Bloom",
+          "track" : 7
+        },
+        {
+          "duration" : 76,
+          "lastPlayedDaysAgo" : 0.5,
+          "path" : "/Juno Park/Concrete Garden/08 Outro (Harvest).m4a",
+          "plays" : 5,
+          "skips" : 0,
+          "title" : "Outro (Harvest)",
+          "track" : 8
+        }
+      ],
+      "tint" : "#A3AFA5",
+      "title" : "Concrete Garden",
+      "year" : 2022
+    },
+    {
+      "addedDaysAgo" : 31,
+      "artist" : "Juno Park",
+      "colors" : [
+        "#F2EBDD",
+        "#FF5F1F",
+        "#FFC300",
+        "#3D348B"
+      ],
+      "cover" : "Covers/juno-park-rooftop-static.jpg",
+      "genre" : "Hip-Hop",
+      "id" : "juno-park-rooftop-static",
+      "palette" : {
+        "background" : "#F2EBDD",
+        "primary" : "#3A2502",
+        "secondary" : "#3A3078"
+      },
+      "songs" : [
+        {
+          "duration" : 223,
+          "lastPlayedDaysAgo" : 34.5,
+          "path" : "/Juno Park/Rooftop Static/01 Rooftop Static.m4a",
+          "plays" : 85,
+          "skips" : 0,
+          "title" : "Rooftop Static",
+          "track" : 1
+        },
+        {
+          "duration" : 176,
+          "lastPlayedDaysAgo" : 37.8,
+          "path" : "/Juno Park/Rooftop Static/02 Antenna.m4a",
+          "plays" : 16,
+          "skips" : 0,
+          "title" : "Antenna",
+          "track" : 2
+        },
+        {
+          "duration" : 220,
+          "lastPlayedDaysAgo" : 33.5,
+          "path" : "/Juno Park/Rooftop Static/03 Pirate Radio.m4a",
+          "plays" : 40,
+          "skips" : 0,
+          "title" : "Pirate Radio",
+          "track" : 3
+        },
+        {
+          "duration" : 225,
+          "lastPlayedDaysAgo" : 9.6,
+          "path" : "/Juno Park/Rooftop Static/04 Late Night Call-In.m4a",
+          "plays" : 14,
+          "skips" : 0,
+          "title" : "Late Night Call-In",
+          "track" : 4
+        },
+        {
+          "duration" : 161,
+          "lastPlayedDaysAgo" : 0,
+          "path" : "/Juno Park/Rooftop Static/05 Frequency.m4a",
+          "plays" : 28,
+          "skips" : 0,
+          "title" : "Frequency",
+          "track" : 5
+        },
+        {
+          "duration" : 198,
+          "lastPlayedDaysAgo" : 8.7,
+          "path" : "/Juno Park/Rooftop Static/06 Dead Air.m4a",
+          "plays" : 34,
+          "skips" : 0,
+          "title" : "Dead Air",
+          "track" : 6
+        }
+      ],
+      "tint" : "#CEAA85",
+      "title" : "Rooftop Static",
+      "year" : 2025
+    },
+    {
+      "addedDaysAgo" : 645,
+      "artist" : "Nadia Okafor",
+      "colors" : [
+        "#3E1F0D",
+        "#8C4A1F",
+        "#E0A458",
+        "#FFE8C2"
+      ],
+      "cover" : "Covers/nadia-okafor-honey-and-smoke.jpg",
+      "genre" : "Soul",
+      "id" : "nadia-okafor-honey-and-smoke",
+      "palette" : {
+        "background" : "#87481E",
+        "primary" : "#F7D6A6",
+        "secondary" : "#D5AB7D"
+      },
+      "songs" : [
+        {
+          "duration" : 177,
+          "lastPlayedDaysAgo" : 17.9,
+          "path" : "/Nadia Okafor/Honey and Smoke/01 Honey and Smoke.m4a",
+          "plays" : 34,
+          "skips" : 0,
+          "title" : "Honey and Smoke",
+          "track" : 1
+        },
+        {
+          "duration" : 180,
+          "lastPlayedDaysAgo" : 30.2,
+          "path" : "/Nadia Okafor/Honey and Smoke/02 Sweet Talk.m4a",
+          "plays" : 8,
+          "skips" : 0,
+          "title" : "Sweet Talk",
+          "track" : 2
+        },
+        {
+          "duration" : 228,
+          "lastPlayedDaysAgo" : 73.9,
+          "path" : "/Nadia Okafor/Honey and Smoke/03 Velvet Rope.m4a",
+          "plays" : 15,
+          "skips" : 0,
+          "title" : "Velvet Rope",
+          "track" : 3
+        },
+        {
+          "duration" : 168,
+          "lastPlayedDaysAgo" : 24.1,
+          "path" : "/Nadia Okafor/Honey and Smoke/04 Candlelight.m4a",
+          "plays" : 20,
+          "skips" : 0,
+          "title" : "Candlelight",
+          "track" : 4
+        },
+        {
+          "duration" : 168,
+          "lastPlayedDaysAgo" : 31.9,
+          "path" : "/Nadia Okafor/Honey and Smoke/05 Don't Keep Me Waiting.m4a",
+          "plays" : 9,
+          "skips" : 0,
+          "title" : "Don't Keep Me Waiting",
+          "track" : 5
+        },
+        {
+          "duration" : 210,
+          "lastPlayedDaysAgo" : 59.1,
+          "path" : "/Nadia Okafor/Honey and Smoke/06 Slow Burn.m4a",
+          "plays" : 28,
+          "skips" : 0,
+          "title" : "Slow Burn",
+          "track" : 6
+        }
+      ],
+      "tint" : "#906037",
+      "title" : "Honey and Smoke",
+      "year" : 1972
+    },
+    {
+      "addedDaysAgo" : 920,
+      "artist" : "Nadia Okafor",
+      "colors" : [
+        "#2A0A0A",
+        "#A4161A",
+        "#E5383B",
+        "#F5D7D7"
+      ],
+      "cover" : "Covers/nadia-okafor-live-at-the-ember-room.jpg",
+      "genre" : "Soul",
+      "id" : "nadia-okafor-live-at-the-ember-room",
+      "palette" : {
+        "background" : "#A5171B",
+        "primary" : "#F5D6D6",
+        "secondary" : "#F2B9B9"
+      },
+      "songs" : [
+        {
+          "duration" : 38,
+          "lastPlayedDaysAgo" : 18.8,
+          "path" : "/Nadia Okafor/Live at the Ember Room/01 Introduction.m4a",
+          "plays" : 2,
+          "skips" : 0,
+          "title" : "Introduction",
+          "track" : 1
+        },
+        {
+          "duration" : 186,
+          "lastPlayedDaysAgo" : 79,
+          "path" : "/Nadia Okafor/Live at the Ember Room/02 Sweet Talk (Live).m4a",
+          "plays" : 11,
+          "skips" : 0,
+          "title" : "Sweet Talk (Live)",
+          "track" : 2
+        },
+        {
+          "duration" : 220,
+          "lastPlayedDaysAgo" : 11.1,
+          "lastSkippedDaysAgo" : 167.6,
+          "path" : "/Nadia Okafor/Live at the Ember Room/03 Ember Room.m4a",
+          "plays" : 6,
+          "skips" : 3,
+          "title" : "Ember Room",
+          "track" : 3
+        },
+        {
+          "duration" : 80,
+          "lastPlayedDaysAgo" : 14.8,
+          "path" : "/Nadia Okafor/Live at the Ember Room/04 Band Introductions.m4a",
+          "plays" : 2,
+          "skips" : 0,
+          "title" : "Band Introductions",
+          "track" : 4
+        },
+        {
+          "duration" : 191,
+          "lastPlayedDaysAgo" : 113.3,
+          "path" : "/Nadia Okafor/Live at the Ember Room/05 Slow Burn (Live).m4a",
+          "plays" : 8,
+          "skips" : 0,
+          "title" : "Slow Burn (Live)",
+          "track" : 5
+        },
+        {
+          "duration" : 188,
+          "lastPlayedDaysAgo" : 80.2,
+          "lastSkippedDaysAgo" : 194.5,
+          "path" : "/Nadia Okafor/Live at the Ember Room/06 Goodnight Everybody.m4a",
+          "plays" : 5,
+          "skips" : 2,
+          "title" : "Goodnight Everybody",
+          "track" : 6
+        }
+      ],
+      "tint" : "#A94A4C",
+      "title" : "Live at the Ember Room",
+      "year" : 1974
+    },
+    {
+      "addedDaysAgo" : 236,
+      "artist" : "Nadia Okafor",
+      "colors" : [
+        "#FFCB77",
+        "#FE6D73",
+        "#17C3B2",
+        "#227C9D"
+      ],
+      "cover" : "Covers/nadia-okafor-sunday-kind.jpg",
+      "genre" : "Soul",
+      "id" : "nadia-okafor-sunday-kind",
+      "palette" : {
+        "background" : "#FDA888",
+        "primary" : "#000000",
+        "secondary" : "#4C3229"
+      },
+      "songs" : [
+        {
+          "audio" : "Audio/garden-eyes.m4a",
+          "credit" : {
+            "artist" : "HoliznaCC0",
+            "license" : "CC0 1.0",
+            "title" : "Garden Eyes",
+            "url" : "https://freemusicarchive.org/music/holiznacc0/mouth-music/garden-eyes/"
+          },
+          "duration" : 184,
+          "lastPlayedDaysAgo" : 22.6,
+          "lyrics" : "Lyrics/garden-eyes.lrc",
+          "path" : "/Nadia Okafor/Sunday Kind/01 Sunday Kind.m4a",
+          "plays" : 32,
+          "skips" : 0,
+          "title" : "Sunday Kind",
+          "track" : 1
+        },
+        {
+          "duration" : 228,
+          "lastPlayedDaysAgo" : 101.5,
+          "path" : "/Nadia Okafor/Sunday Kind/02 Morning Coffee.m4a",
+          "plays" : 14,
+          "skips" : 0,
+          "title" : "Morning Coffee",
+          "track" : 2
+        },
+        {
+          "duration" : 182,
+          "lastPlayedDaysAgo" : 22.6,
+          "path" : "/Nadia Okafor/Sunday Kind/03 Lazy River.m4a",
+          "plays" : 5,
+          "skips" : 0,
+          "title" : "Lazy River",
+          "track" : 3
+        },
+        {
+          "duration" : 258,
+          "lastPlayedDaysAgo" : 18.5,
+          "lastSkippedDaysAgo" : 185.4,
+          "path" : "/Nadia Okafor/Sunday Kind/04 Church Bells.m4a",
+          "plays" : 18,
+          "skips" : 1,
+          "title" : "Church Bells",
+          "track" : 4
+        },
+        {
+          "duration" : 254,
+          "lastPlayedDaysAgo" : 21.2,
+          "path" : "/Nadia Okafor/Sunday Kind/05 Easy Like That.m4a",
+          "plays" : 18,
+          "skips" : 0,
+          "title" : "Easy Like That",
+          "track" : 5
+        },
+        {
+          "duration" : 218,
+          "lastPlayedDaysAgo" : 49.1,
+          "lastSkippedDaysAgo" : 143.6,
+          "path" : "/Nadia Okafor/Sunday Kind/06 Porch Swing.m4a",
+          "plays" : 18,
+          "skips" : 2,
+          "title" : "Porch Swing",
+          "track" : 6
+        },
+        {
+          "duration" : 225,
+          "lastPlayedDaysAgo" : 19.9,
+          "lastSkippedDaysAgo" : 35.3,
+          "path" : "/Nadia Okafor/Sunday Kind/07 Sundown.m4a",
+          "plays" : 10,
+          "skips" : 2,
+          "title" : "Sundown",
+          "track" : 7
+        }
+      ],
+      "tint" : "#93A59E",
+      "title" : "Sunday Kind",
+      "year" : 1975
+    },
+    {
+      "addedDaysAgo" : 730,
+      "artist" : "Field Notes Orchestra",
+      "colors" : [
+        "#F7F3E8",
+        "#C9B79C",
+        "#6B4F3A",
+        "#2E2018"
+      ],
+      "cover" : "Covers/field-notes-orchestra-nocturnes-for-small-rooms.jpg",
+      "genre" : "Classical",
+      "id" : "field-notes-orchestra-nocturnes-for-small-rooms",
+      "palette" : {
+        "background" : "#694D39",
+        "primary" : "#F6F2E7",
+        "secondary" : "#C8B69B"
+      },
+      "songs" : [
+        {
+          "duration" : 339,
+          "lastPlayedDaysAgo" : 185.6,
+          "path" : "/Field Notes Orchestra/Nocturnes for Small Rooms/01 Nocturne I: Kitchen.m4a",
+          "plays" : 3,
+          "skips" : 0,
+          "title" : "Nocturne I: Kitchen",
+          "track" : 1
+        },
+        {
+          "duration" : 234,
+          "lastPlayedDaysAgo" : 35.1,
+          "path" : "/Field Notes Orchestra/Nocturnes for Small Rooms/02 Nocturne II: Stairwell.m4a",
+          "plays" : 2,
+          "skips" : 0,
+          "title" : "Nocturne II: Stairwell",
+          "track" : 2
+        },
+        {
+          "duration" : 353,
+          "lastPlayedDaysAgo" : 67.6,
+          "path" : "/Field Notes Orchestra/Nocturnes for Small Rooms/03 Nocturne III: Attic.m4a",
+          "plays" : 2,
+          "skips" : 0,
+          "title" : "Nocturne III: Attic",
+          "track" : 3
+        },
+        {
+          "duration" : 247,
+          "lastPlayedDaysAgo" : 139,
+          "path" : "/Field Notes Orchestra/Nocturnes for Small Rooms/04 Nocturne IV: Hallway.m4a",
+          "plays" : 4,
+          "skips" : 0,
+          "title" : "Nocturne IV: Hallway",
+          "track" : 4
+        },
+        {
+          "duration" : 412,
+          "lastPlayedDaysAgo" : 101.3,
+          "path" : "/Field Notes Orchestra/Nocturnes for Small Rooms/05 Nocturne V: Bedroom.m4a",
+          "plays" : 4,
+          "skips" : 0,
+          "title" : "Nocturne V: Bedroom",
+          "track" : 5
+        }
+      ],
+      "tint" : "#988876",
+      "title" : "Nocturnes for Small Rooms",
+      "year" : 2012
+    },
+    {
+      "addedDaysAgo" : 550,
+      "artist" : "Wren and Willow",
+      "colors" : [
+        "#EDE6D6",
+        "#A3B18A",
+        "#588157",
+        "#344E41"
+      ],
+      "cover" : "Covers/wren-and-willow-cedar-smoke.jpg",
+      "genre" : "Folk",
+      "id" : "wren-and-willow-cedar-smoke",
+      "palette" : {
+        "background" : "#EDE6D6",
+        "primary" : "#344E41",
+        "secondary" : "#588157"
+      },
+      "songs" : [
+        {
+          "duration" : 189,
+          "lastPlayedDaysAgo" : 32.4,
+          "path" : "/Wren and Willow/Cedar Smoke/01 Cedar Smoke.m4a",
+          "plays" : 22,
+          "skips" : 0,
+          "title" : "Cedar Smoke",
+          "track" : 1
+        },
+        {
+          "duration" : 200,
+          "lastPlayedDaysAgo" : 55.9,
+          "path" : "/Wren and Willow/Cedar Smoke/02 Woodpile.m4a",
+          "plays" : 6,
+          "skips" : 0,
+          "title" : "Woodpile",
+          "track" : 2
+        },
+        {
+          "duration" : 161,
+          "lastPlayedDaysAgo" : 122.3,
+          "path" : "/Wren and Willow/Cedar Smoke/03 Banjo in the Barn.m4a",
+          "plays" : 13,
+          "skips" : 0,
+          "title" : "Banjo in the Barn",
+          "track" : 3
+        },
+        {
+          "duration" : 246,
+          "lastPlayedDaysAgo" : 145.7,
+          "path" : "/Wren and Willow/Cedar Smoke/04 Kindling.m4a",
+          "plays" : 11,
+          "skips" : 0,
+          "title" : "Kindling",
+          "track" : 4
+        },
+        {
+          "duration" : 169,
+          "lastPlayedDaysAgo" : 16,
+          "path" : "/Wren and Willow/Cedar Smoke/05 Winter Coat.m4a",
+          "plays" : 14,
+          "skips" : 0,
+          "title" : "Winter Coat",
+          "track" : 5
+        },
+        {
+          "duration" : 254,
+          "lastPlayedDaysAgo" : 120,
+          "path" : "/Wren and Willow/Cedar Smoke/06 Hearth Song.m4a",
+          "plays" : 10,
+          "skips" : 0,
+          "title" : "Hearth Song",
+          "track" : 6
+        },
+        {
+          "duration" : 164,
+          "lastPlayedDaysAgo" : 56.9,
+          "path" : "/Wren and Willow/Cedar Smoke/07 First Frost.m4a",
+          "plays" : 6,
+          "skips" : 0,
+          "title" : "First Frost",
+          "track" : 7
+        }
+      ],
+      "tint" : "#9FAB93",
+      "title" : "Cedar Smoke",
+      "year" : 2011
+    },
+    {
+      "addedDaysAgo" : 694,
+      "artist" : "Wren and Willow",
+      "colors" : [
+        "#EFE9DB",
+        "#7F5539",
+        "#B08968",
+        "#3D5A40"
+      ],
+      "cover" : "Covers/wren-and-willow-hollow-hill.jpg",
+      "genre" : "Folk",
+      "id" : "wren-and-willow-hollow-hill",
+      "palette" : {
+        "background" : "#EFE9DB",
+        "primary" : "#7F5539",
+        "secondary" : "#3D5A40"
+      },
+      "songs" : [
+        {
+          "duration" : 253,
+          "lastPlayedDaysAgo" : 62.1,
+          "path" : "/Wren and Willow/Hollow Hill/01 Hollow Hill.m4a",
+          "plays" : 9,
+          "skips" : 0,
+          "title" : "Hollow Hill",
+          "track" : 1
+        },
+        {
+          "duration" : 224,
+          "lastPlayedDaysAgo" : 55.4,
+          "path" : "/Wren and Willow/Hollow Hill/02 Badger's Song.m4a",
+          "plays" : 9,
+          "skips" : 0,
+          "title" : "Badger's Song",
+          "track" : 2
+        },
+        {
+          "duration" : 243,
+          "lastPlayedDaysAgo" : 81.2,
+          "path" : "/Wren and Willow/Hollow Hill/03 Old Oak.m4a",
+          "plays" : 3,
+          "skips" : 0,
+          "title" : "Old Oak",
+          "track" : 3
+        },
+        {
+          "duration" : 220,
+          "lastPlayedDaysAgo" : 125.2,
+          "path" : "/Wren and Willow/Hollow Hill/04 Ferns.m4a",
+          "plays" : 6,
+          "skips" : 0,
+          "title" : "Ferns",
+          "track" : 4
+        },
+        {
+          "duration" : 221,
+          "lastPlayedDaysAgo" : 118.4,
+          "path" : "/Wren and Willow/Hollow Hill/05 Lantern Walk.m4a",
+          "plays" : 6,
+          "skips" : 0,
+          "title" : "Lantern Walk",
+          "track" : 5
+        },
+        {
+          "duration" : 254,
+          "lastPlayedDaysAgo" : 68.2,
+          "path" : "/Wren and Willow/Hollow Hill/06 Path Home.m4a",
+          "plays" : 5,
+          "skips" : 0,
+          "title" : "Path Home",
+          "track" : 6
+        }
+      ],
+      "tint" : "#B4A58F",
+      "title" : "Hollow Hill",
+      "year" : 2015
+    },
+    {
+      "addedDaysAgo" : 319,
+      "artist" : "Koji Arata",
+      "colors" : [
+        "#14213D",
+        "#FF3C78",
+        "#FCA311",
+        "#7FDBFF"
+      ],
+      "comments" : "Nightline Records [NLR-024]",
+      "cover" : "Covers/koji-arata-neon-harbour.jpg",
+      "genre" : "Pop",
+      "id" : "koji-arata-neon-harbour",
+      "palette" : {
+        "background" : "#F84969",
+        "primary" : "#1A223E",
+        "secondary" : "#353139"
+      },
+      "songs" : [
+        {
+          "duration" : 226,
+          "lastPlayedDaysAgo" : 14.7,
+          "path" : "/Koji Arata/Neon Harbour/01 Neon Harbour.m4a",
+          "plays" : 50,
+          "skips" : 0,
+          "title" : "Neon Harbour",
+          "track" : 1
+        },
+        {
+          "duration" : 219,
+          "lastPlayedDaysAgo" : 47.9,
+          "path" : "/Koji Arata/Neon Harbour/02 Plastic Love Letter.m4a",
+          "plays" : 22,
+          "skips" : 0,
+          "title" : "Plastic Love Letter",
+          "track" : 2
+        },
+        {
+          "duration" : 235,
+          "lastPlayedDaysAgo" : 31.5,
+          "path" : "/Koji Arata/Neon Harbour/03 Seaside Drive.m4a",
+          "plays" : 18,
+          "skips" : 0,
+          "title" : "Seaside Drive",
+          "track" : 3
+        },
+        {
+          "duration" : 189,
+          "lastPlayedDaysAgo" : 21.1,
+          "path" : "/Koji Arata/Neon Harbour/04 Midnight Pool.m4a",
+          "plays" : 26,
+          "skips" : 0,
+          "title" : "Midnight Pool",
+          "track" : 4
+        },
+        {
+          "duration" : 212,
+          "lastPlayedDaysAgo" : 36.4,
+          "path" : "/Koji Arata/Neon Harbour/05 Telephone Tag.m4a",
+          "plays" : 18,
+          "skips" : 0,
+          "title" : "Telephone Tag",
+          "track" : 5
+        },
+        {
+          "duration" : 206,
+          "lastPlayedDaysAgo" : 9.9,
+          "path" : "/Koji Arata/Neon Harbour/06 Summer Static.m4a",
+          "plays" : 20,
+          "skips" : 0,
+          "title" : "Summer Static",
+          "track" : 6
+        },
+        {
+          "duration" : 235,
+          "lastPlayedDaysAgo" : 53.6,
+          "path" : "/Koji Arata/Neon Harbour/07 Last Ferry.m4a",
+          "plays" : 17,
+          "skips" : 0,
+          "title" : "Last Ferry",
+          "track" : 7
+        }
+      ],
+      "tint" : "#A36662",
+      "title" : "Neon Harbour",
+      "year" : 1984
+    },
+    {
+      "addedDaysAgo" : 1083,
+      "artist" : "Polar Static",
+      "colors" : [
+        "#0B132B",
+        "#5BC0BE",
+        "#E0FBFC",
+        "#FF006E"
+      ],
+      "comments" : "Nightline Records [NLR-003]",
+      "cover" : "Covers/polar-static-cold-fusion-disco.jpg",
+      "genre" : "Electronic",
+      "id" : "polar-static-cold-fusion-disco",
+      "palette" : {
+        "background" : "#16263B",
+        "primary" : "#8598A2",
+        "secondary" : "#667684"
+      },
+      "songs" : [
+        {
+          "duration" : 263,
+          "lastPlayedDaysAgo" : 29,
+          "path" : "/Polar Static/Cold Fusion Disco/01 Cold Fusion Disco.m4a",
+          "plays" : 25,
+          "skips" : 0,
+          "title" : "Cold Fusion Disco",
+          "track" : 1
+        },
+        {
+          "duration" : 289,
+          "lastPlayedDaysAgo" : 90.3,
+          "lastSkippedDaysAgo" : 133.1,
+          "path" : "/Polar Static/Cold Fusion Disco/02 Ice Rink.m4a",
+          "plays" : 5,
+          "skips" : 4,
+          "title" : "Ice Rink",
+          "track" : 2
+        },
+        {
+          "duration" : 361,
+          "lastPlayedDaysAgo" : 31.1,
+          "path" : "/Polar Static/Cold Fusion Disco/03 Strobe.m4a",
+          "plays" : 10,
+          "skips" : 0,
+          "title" : "Strobe",
+          "track" : 3
+        },
+        {
+          "duration" : 268,
+          "lastPlayedDaysAgo" : 101.5,
+          "lastSkippedDaysAgo" : 246.1,
+          "path" : "/Polar Static/Cold Fusion Disco/04 Frostbite.m4a",
+          "plays" : 8,
+          "skips" : 1,
+          "title" : "Frostbite",
+          "track" : 4
+        },
+        {
+          "duration" : 278,
+          "lastPlayedDaysAgo" : 6.3,
+          "path" : "/Polar Static/Cold Fusion Disco/05 Glacier Groove.m4a",
+          "plays" : 8,
+          "skips" : 0,
+          "title" : "Glacier Groove",
+          "track" : 5
+        },
+        {
+          "duration" : 343,
+          "lastPlayedDaysAgo" : 51,
+          "path" : "/Polar Static/Cold Fusion Disco/06 Permafrost.m4a",
+          "plays" : 4,
+          "skips" : 0,
+          "title" : "Permafrost",
+          "track" : 6
+        }
+      ],
+      "tint" : "#3C4259",
+      "title" : "Cold Fusion Disco",
+      "year" : 2008
+    },
+    {
+      "addedDaysAgo" : 31,
+      "artist" : "Sable Coast",
+      "colors" : [
+        "#F9C74F",
+        "#F8961E",
+        "#F3722C",
+        "#577590"
+      ],
+      "cover" : "Covers/sable-coast-sundowners.jpg",
+      "genre" : "Indie",
+      "id" : "sable-coast-sundowners",
+      "palette" : {
+        "background" : "#F8A734",
+        "primary" : "#000000",
+        "secondary" : "#4B3210"
+      },
+      "songs" : [
+        {
+          "duration" : 221,
+          "lastPlayedDaysAgo" : 65,
+          "path" : "/Sable Coast/Sundowners/01 Sundowners.m4a",
+          "plays" : 50,
+          "skips" : 0,
+          "title" : "Sundowners",
+          "track" : 1
+        },
+        {
+          "duration" : 188,
+          "lastPlayedDaysAgo" : 25.2,
+          "path" : "/Sable Coast/Sundowners/02 Beach Fire.m4a",
+          "plays" : 25,
+          "skips" : 0,
+          "title" : "Beach Fire",
+          "track" : 2
+        },
+        {
+          "duration" : 244,
+          "lastPlayedDaysAgo" : 66.6,
+          "path" : "/Sable Coast/Sundowners/03 Sandals.m4a",
+          "plays" : 20,
+          "skips" : 0,
+          "title" : "Sandals",
+          "track" : 3
+        },
+        {
+          "duration" : 206,
+          "lastPlayedDaysAgo" : 60.8,
+          "path" : "/Sable Coast/Sundowners/04 Long Shadows.m4a",
+          "plays" : 8,
+          "skips" : 0,
+          "title" : "Long Shadows",
+          "track" : 4
+        },
+        {
+          "duration" : 217,
+          "lastPlayedDaysAgo" : 44.2,
+          "lastSkippedDaysAgo" : 81.3,
+          "path" : "/Sable Coast/Sundowners/05 Ferris Wheel.m4a",
+          "plays" : 30,
+          "skips" : 4,
+          "title" : "Ferris Wheel",
+          "track" : 5
+        },
+        {
+          "duration" : 253,
+          "lastPlayedDaysAgo" : 25.4,
+          "path" : "/Sable Coast/Sundowners/06 Driftwood.m4a",
+          "plays" : 26,
+          "skips" : 0,
+          "title" : "Driftwood",
+          "track" : 6
+        },
+        {
+          "duration" : 230,
+          "lastPlayedDaysAgo" : 10,
+          "path" : "/Sable Coast/Sundowners/07 Dusk.m4a",
+          "plays" : 25,
+          "skips" : 0,
+          "title" : "Dusk",
+          "track" : 7
+        }
+      ],
+      "tint" : "#ED9647",
+      "title" : "Sundowners",
+      "year" : 2025
+    },
+    {
+      "addedDaysAgo" : 1042,
+      "artist" : "Theo Lindqvist",
+      "colors" : [
+        "#F2F2F2",
+        "#BDBDBD",
+        "#6E6E6E",
+        "#2B2B2B"
+      ],
+      "cover" : "Covers/theo-lindqvist-etudes-in-grey.jpg",
+      "genre" : "Classical",
+      "id" : "theo-lindqvist-etudes-in-grey",
+      "palette" : {
+        "background" : "#F2F2F2",
+        "primary" : "#373737",
+        "secondary" : "#848484"
+      },
+      "songs" : [
+        {
+          "audio" : "Audio/goldberg-aria.m4a",
+          "credit" : {
+            "artist" : "Kimiko Ishizaka",
+            "license" : "CC0 1.0",
+            "title" : "Goldberg Variations: Aria",
+            "url" : "https://freemusicarchive.org/music/Kimiko_Ishizaka/The_Open_Goldberg_Variations/KIMIKO_ISHIZAKA_-_Goldberg_Variations_BWV_988_-_01_-_Aria__44k-24b/"
+          },
+          "duration" : 300,
+          "lastPlayedDaysAgo" : 161.4,
+          "lastSkippedDaysAgo" : 310.6,
+          "path" : "/Theo Lindqvist/Etudes in Grey/01 Etude No. 1.m4a",
+          "plays" : 5,
+          "skips" : 1,
+          "title" : "Etude No. 1",
+          "track" : 1
+        },
+        {
+          "duration" : 196,
+          "lastPlayedDaysAgo" : 153.6,
+          "lastSkippedDaysAgo" : 62.7,
+          "path" : "/Theo Lindqvist/Etudes in Grey/02 Etude No. 2.m4a",
+          "plays" : 2,
+          "skips" : 3,
+          "title" : "Etude No. 2",
+          "track" : 2
+        },
+        {
+          "duration" : 244,
+          "lastPlayedDaysAgo" : 178.2,
+          "path" : "/Theo Lindqvist/Etudes in Grey/03 Etude No. 3.m4a",
+          "plays" : 5,
+          "skips" : 0,
+          "title" : "Etude No. 3",
+          "track" : 3
+        },
+        {
+          "duration" : 222,
+          "lastPlayedDaysAgo" : 11.4,
+          "path" : "/Theo Lindqvist/Etudes in Grey/04 Etude No. 4.m4a",
+          "plays" : 2,
+          "skips" : 0,
+          "title" : "Etude No. 4",
+          "track" : 4
+        },
+        {
+          "duration" : 338,
+          "lastPlayedDaysAgo" : 147.6,
+          "lastSkippedDaysAgo" : 227.2,
+          "path" : "/Theo Lindqvist/Etudes in Grey/05 Etude No. 5.m4a",
+          "plays" : 2,
+          "skips" : 4,
+          "title" : "Etude No. 5",
+          "track" : 5
+        },
+        {
+          "duration" : 328,
+          "lastPlayedDaysAgo" : 65.3,
+          "lastSkippedDaysAgo" : 131.5,
+          "path" : "/Theo Lindqvist/Etudes in Grey/06 Etude No. 6.m4a",
+          "plays" : 3,
+          "skips" : 4,
+          "title" : "Etude No. 6",
+          "track" : 6
+        }
+      ],
+      "tint" : "#B6B6B6",
+      "title" : "Etudes in Grey",
+      "year" : 2019
+    },
+    {
+      "addedDaysAgo" : 755,
+      "artist" : "Mojave Radio",
+      "colors" : [
+        "#E9D8A6",
+        "#CA6702",
+        "#9B2226",
+        "#001219"
+      ],
+      "cover" : "Covers/mojave-radio-dust-and-chrome.jpg",
+      "genre" : "Rock",
+      "id" : "mojave-radio-dust-and-chrome",
+      "palette" : {
+        "background" : "#E3CA99",
+        "primary" : "#000000",
+        "secondary" : "#686957"
+      },
+      "songs" : [
+        {
+          "duration" : 219,
+          "lastPlayedDaysAgo" : 121.3,
+          "lastSkippedDaysAgo" : 151.9,
+          "path" : "/Mojave Radio/Dust and Chrome/01 Dust and Chrome.m4a",
+          "plays" : 28,
+          "skips" : 2,
+          "title" : "Dust and Chrome",
+          "track" : 1
+        },
+        {
+          "duration" : 190,
+          "lastPlayedDaysAgo" : 111.3,
+          "path" : "/Mojave Radio/Dust and Chrome/02 Tumbleweed.m4a",
+          "plays" : 6,
+          "skips" : 0,
+          "title" : "Tumbleweed",
+          "track" : 2
+        },
+        {
+          "duration" : 280,
+          "lastPlayedDaysAgo" : 52.7,
+          "lastSkippedDaysAgo" : 166,
+          "path" : "/Mojave Radio/Dust and Chrome/03 Rattlesnake.m4a",
+          "plays" : 9,
+          "skips" : 3,
+          "title" : "Rattlesnake",
+          "track" : 3
+        },
+        {
+          "duration" : 204,
+          "lastPlayedDaysAgo" : 22.3,
+          "lastSkippedDaysAgo" : 113.5,
+          "path" : "/Mojave Radio/Dust and Chrome/04 Ghost Town.m4a",
+          "plays" : 14,
+          "skips" : 4,
+          "title" : "Ghost Town",
+          "track" : 4
+        },
+        {
+          "duration" : 294,
+          "lastPlayedDaysAgo" : 84.5,
+          "path" : "/Mojave Radio/Dust and Chrome/05 Heat Haze.m4a",
+          "plays" : 7,
+          "skips" : 0,
+          "title" : "Heat Haze",
+          "track" : 5
+        },
+        {
+          "duration" : 271,
+          "lastPlayedDaysAgo" : 118.3,
+          "path" : "/Mojave Radio/Dust and Chrome/06 Canyon.m4a",
+          "plays" : 11,
+          "skips" : 0,
+          "title" : "Canyon",
+          "track" : 6
+        }
+      ],
+      "tint" : "#D1AD7E",
+      "title" : "Dust and Chrome",
+      "year" : 1994
+    },
+    {
+      "addedDaysAgo" : 142,
+      "artist" : "Mojave Radio",
+      "colors" : [
+        "#3C1642",
+        "#086375",
+        "#1DD3B0",
+        "#FFFD82"
+      ],
+      "cover" : "Covers/mojave-radio-mirage-motel.jpg",
+      "genre" : "Rock",
+      "id" : "mojave-radio-mirage-motel",
+      "palette" : {
+        "background" : "#0B6676",
+        "primary" : "#99EA97",
+        "secondary" : "#B8F091"
+      },
+      "songs" : [
+        {
+          "duration" : 201,
+          "lastPlayedDaysAgo" : 29.8,
+          "path" : "/Mojave Radio/Mirage Motel/01 Vacancy.m4a",
+          "plays" : 6,
+          "skips" : 0,
+          "title" : "Vacancy",
+          "track" : 1
+        },
+        {
+          "duration" : 300,
+          "lastPlayedDaysAgo" : 23.4,
+          "path" : "/Mojave Radio/Mirage Motel/02 Mirage Motel.m4a",
+          "plays" : 15,
+          "skips" : 0,
+          "title" : "Mirage Motel",
+          "track" : 2
+        },
+        {
+          "duration" : 273,
+          "lastPlayedDaysAgo" : 16.5,
+          "lastSkippedDaysAgo" : 60.2,
+          "path" : "/Mojave Radio/Mirage Motel/03 Ice Machine.m4a",
+          "plays" : 7,
+          "skips" : 3,
+          "title" : "Ice Machine",
+          "track" : 3
+        },
+        {
+          "duration" : 300,
+          "lastPlayedDaysAgo" : 50,
+          "path" : "/Mojave Radio/Mirage Motel/04 Pool Closed.m4a",
+          "plays" : 7,
+          "skips" : 0,
+          "title" : "Pool Closed",
+          "track" : 4
+        },
+        {
+          "duration" : 256,
+          "lastPlayedDaysAgo" : 135.8,
+          "path" : "/Mojave Radio/Mirage Motel/05 Room 12.m4a",
+          "plays" : 13,
+          "skips" : 0,
+          "title" : "Room 12",
+          "track" : 5
+        },
+        {
+          "duration" : 203,
+          "lastPlayedDaysAgo" : 59.4,
+          "lastSkippedDaysAgo" : 144.3,
+          "path" : "/Mojave Radio/Mirage Motel/06 Checkout Time.m4a",
+          "plays" : 16,
+          "skips" : 4,
+          "title" : "Checkout Time",
+          "track" : 6
+        },
+        {
+          "duration" : 225,
+          "lastPlayedDaysAgo" : 114.1,
+          "path" : "/Mojave Radio/Mirage Motel/07 Neon Sign.m4a",
+          "plays" : 7,
+          "skips" : 0,
+          "title" : "Neon Sign",
+          "track" : 7
+        }
+      ],
+      "tint" : "#3E7A75",
+      "title" : "Mirage Motel",
+      "year" : 1997
+    },
+    {
+      "addedDaysAgo" : 684,
+      "artist" : "Lumen Assembly",
+      "colors" : [
+        "#1E1A2E",
+        "#F0EAD6",
+        "#C9A227",
+        "#7A4E2D"
+      ],
+      "comments" : "Nightline Records [NLR-005]",
+      "cover" : "Covers/lumen-assembly-cathedral-air.jpg",
+      "genre" : "Ambient",
+      "id" : "lumen-assembly-cathedral-air",
+      "palette" : {
+        "background" : "#F0EAD6",
+        "primary" : "#784D2D",
+        "secondary" : "#A47B2A"
+      },
+      "songs" : [
+        {
+          "duration" : 558,
+          "lastPlayedDaysAgo" : 21.7,
+          "path" : "/Lumen Assembly/Cathedral Air/01 Nave.m4a",
+          "plays" : 10,
+          "skips" : 0,
+          "title" : "Nave",
+          "track" : 1
+        },
+        {
+          "duration" : 314,
+          "lastPlayedDaysAgo" : 158.4,
+          "path" : "/Lumen Assembly/Cathedral Air/02 Cathedral Air.m4a",
+          "plays" : 6,
+          "skips" : 0,
+          "title" : "Cathedral Air",
+          "track" : 2
+        },
+        {
+          "duration" : 375,
+          "lastPlayedDaysAgo" : 120.3,
+          "path" : "/Lumen Assembly/Cathedral Air/03 Clerestory.m4a",
+          "plays" : 8,
+          "skips" : 0,
+          "title" : "Clerestory",
+          "track" : 3
+        },
+        {
+          "duration" : 509,
+          "lastPlayedDaysAgo" : 5.4,
+          "lastSkippedDaysAgo" : 265,
+          "path" : "/Lumen Assembly/Cathedral Air/04 Stained Glass.m4a",
+          "plays" : 3,
+          "skips" : 3,
+          "title" : "Stained Glass",
+          "track" : 4
+        },
+        {
+          "duration" : 411,
+          "lastPlayedDaysAgo" : 93.1,
+          "lastSkippedDaysAgo" : 186.2,
+          "path" : "/Lumen Assembly/Cathedral Air/05 Vespers.m4a",
+          "plays" : 8,
+          "skips" : 4,
+          "title" : "Vespers",
+          "track" : 5
+        }
+      ],
+      "tint" : "#A38B62",
+      "title" : "Cathedral Air",
+      "year" : 2009
+    },
+    {
+      "addedDaysAgo" : 751,
+      "artist" : "Lumen Assembly",
+      "colors" : [
+        "#0D1B2A",
+        "#1B263B",
+        "#415A77",
+        "#778DA9"
+      ],
+      "comments" : "Nightline Records [NLR-014]",
+      "cover" : "Covers/lumen-assembly-undertow.jpg",
+      "genre" : "Ambient",
+      "id" : "lumen-assembly-undertow",
+      "palette" : {
+        "background" : "#0D1B2A",
+        "primary" : "#778DA9",
+        "secondary" : "#647B97"
+      },
+      "songs" : [
+        {
+          "duration" : 378,
+          "lastPlayedDaysAgo" : 177,
+          "path" : "/Lumen Assembly/Undertow/01 Undertow.m4a",
+          "plays" : 9,
+          "skips" : 0,
+          "title" : "Undertow",
+          "track" : 1
+        },
+        {
+          "duration" : 552,
+          "lastPlayedDaysAgo" : 186.4,
+          "path" : "/Lumen Assembly/Undertow/02 Fathoms.m4a",
+          "plays" : 4,
+          "skips" : 0,
+          "title" : "Fathoms",
+          "track" : 2
+        },
+        {
+          "duration" : 319,
+          "lastPlayedDaysAgo" : 186.5,
+          "path" : "/Lumen Assembly/Undertow/03 Pressure.m4a",
+          "plays" : 1,
+          "skips" : 0,
+          "title" : "Pressure",
+          "track" : 3
+        },
+        {
+          "duration" : 456,
+          "lastPlayedDaysAgo" : 171,
+          "path" : "/Lumen Assembly/Undertow/04 Bioluminescence.m4a",
+          "plays" : 1,
+          "skips" : 0,
+          "title" : "Bioluminescence",
+          "track" : 4
+        },
+        {
+          "duration" : 306,
+          "lastPlayedDaysAgo" : 108.5,
+          "lastSkippedDaysAgo" : 293.8,
+          "path" : "/Lumen Assembly/Undertow/05 Surfacing.m4a",
+          "plays" : 2,
+          "skips" : 4,
+          "title" : "Surfacing",
+          "track" : 5
+        }
+      ],
+      "tint" : "#2E3F54",
+      "title" : "Undertow",
+      "year" : 2014
+    },
+    {
+      "addedDaysAgo" : 8,
+      "artist" : "Daisy Achterberg",
+      "colors" : [
+        "#FAF3E0",
+        "#D4A373",
+        "#CCD5AE",
+        "#5A5A3C"
+      ],
+      "cover" : "Covers/daisy-achterberg-small-hours.jpg",
+      "genre" : "Folk",
+      "id" : "daisy-achterberg-small-hours",
+      "palette" : {
+        "background" : "#FAF3E0",
+        "primary" : "#5A5A3C",
+        "secondary" : "#88856B"
+      },
+      "songs" : [
+        {
+          "audio" : "Audio/what-is-home.m4a",
+          "credit" : {
+            "artist" : "HoliznaCC0",
+            "license" : "CC0 1.0",
+            "title" : "What Is Home",
+            "url" : "https://freemusicarchive.org/music/holiznacc0/townies/what-is-home/"
+          },
+          "duration" : 232,
+          "lastPlayedDaysAgo" : 12.5,
+          "lyrics" : "Lyrics/what-is-home.lrc",
+          "path" : "/Daisy Achterberg/Small Hours/01 Small Hours.m4a",
+          "plays" : 34,
+          "skips" : 0,
+          "title" : "Small Hours",
+          "track" : 1
+        },
+        {
+          "duration" : 241,
+          "lastPlayedDaysAgo" : 1.1,
+          "lastSkippedDaysAgo" : 80.2,
+          "path" : "/Daisy Achterberg/Small Hours/02 Kettle On.m4a",
+          "plays" : 13,
+          "skips" : 2,
+          "title" : "Kettle On",
+          "track" : 2
+        },
+        {
+          "duration" : 193,
+          "lastPlayedDaysAgo" : 38.8,
+          "lastSkippedDaysAgo" : 44.2,
+          "path" : "/Daisy Achterberg/Small Hours/03 Moth.m4a",
+          "plays" : 18,
+          "skips" : 4,
+          "title" : "Moth",
+          "track" : 3
+        },
+        {
+          "duration" : 252,
+          "lastPlayedDaysAgo" : 34.2,
+          "path" : "/Daisy Achterberg/Small Hours/04 Insomnia Waltz.m4a",
+          "plays" : 23,
+          "skips" : 0,
+          "title" : "Insomnia Waltz",
+          "track" : 4
+        },
+        {
+          "duration" : 187,
+          "lastPlayedDaysAgo" : 22.6,
+          "lastSkippedDaysAgo" : 42.7,
+          "path" : "/Daisy Achterberg/Small Hours/05 Streetlamp.m4a",
+          "plays" : 21,
+          "skips" : 4,
+          "title" : "Streetlamp",
+          "track" : 5
+        },
+        {
+          "duration" : 246,
+          "lastPlayedDaysAgo" : 4.4,
+          "lastSkippedDaysAgo" : 44.5,
+          "path" : "/Daisy Achterberg/Small Hours/06 Before the Birds.m4a",
+          "plays" : 21,
+          "skips" : 4,
+          "title" : "Before the Birds",
+          "track" : 6
+        }
+      ],
+      "tint" : "#CBCBAF",
+      "title" : "Small Hours",
+      "year" : 2026
+    },
+    {
+      "addedDaysAgo" : 139,
+      "artist" : "Big Sky Collective",
+      "colors" : [
+        "#10002B",
+        "#5A189A",
+        "#9D4EDD",
+        "#E0AAFF"
+      ],
+      "cover" : "Covers/big-sky-collective-late-shift.jpg",
+      "genre" : "Jazz",
+      "id" : "big-sky-collective-late-shift",
+      "palette" : {
+        "background" : "#10012B",
+        "primary" : "#E0AAFE",
+        "secondary" : "#BE8EDB"
+      },
+      "songs" : [
+        {
+          "duration" : 307,
+          "lastPlayedDaysAgo" : 6.3,
+          "path" : "/Big Sky Collective/Late Shift/01 Clocking On.m4a",
+          "plays" : 5,
+          "skips" : 0,
+          "title" : "Clocking On",
+          "track" : 1
+        },
+        {
+          "duration" : 333,
+          "lastPlayedDaysAgo" : 93.3,
+          "path" : "/Big Sky Collective/Late Shift/02 Night Bus.m4a",
+          "plays" : 12,
+          "skips" : 0,
+          "title" : "Night Bus",
+          "track" : 2
+        },
+        {
+          "duration" : 292,
+          "lastPlayedDaysAgo" : 139.4,
+          "path" : "/Big Sky Collective/Late Shift/03 Diner Coffee.m4a",
+          "plays" : 10,
+          "skips" : 0,
+          "title" : "Diner Coffee",
+          "track" : 3
+        },
+        {
+          "audio" : "Audio/dancing-bee.m4a",
+          "credit" : {
+            "artist" : "Art Flower",
+            "license" : "CC0 1.0",
+            "title" : "Dancing Bee",
+            "url" : "https://freemusicarchive.org/music/art-flower/all-that-jazz/art-flower-dancing-bee/"
+          },
+          "duration" : 189,
+          "lastPlayedDaysAgo" : 40.4,
+          "path" : "/Big Sky Collective/Late Shift/04 Late Shift.m4a",
+          "plays" : 12,
+          "skips" : 0,
+          "title" : "Late Shift",
+          "track" : 4
+        },
+        {
+          "duration" : 309,
+          "lastPlayedDaysAgo" : 14.8,
+          "lastSkippedDaysAgo" : 237.9,
+          "path" : "/Big Sky Collective/Late Shift/05 Neon.m4a",
+          "plays" : 10,
+          "skips" : 3,
+          "title" : "Neon",
+          "track" : 5
+        },
+        {
+          "duration" : 328,
+          "lastPlayedDaysAgo" : 85.1,
+          "path" : "/Big Sky Collective/Late Shift/06 Clocking Off.m4a",
+          "plays" : 4,
+          "skips" : 0,
+          "title" : "Clocking Off",
+          "track" : 6
+        }
+      ],
+      "tint" : "#5C3383",
+      "title" : "Late Shift",
+      "year" : 2017
+    },
+    {
+      "addedDaysAgo" : 230,
+      "artist" : "Rafi Haddad",
+      "colors" : [
+        "#F4E1C1",
+        "#E07A5F",
+        "#81B29A",
+        "#3D405B"
+      ],
+      "comments" : "Nightline Records [NLR-011]",
+      "cover" : "Covers/rafi-haddad-desert-bloom.jpg",
+      "genre" : "Electronic",
+      "id" : "rafi-haddad-desert-bloom",
+      "palette" : {
+        "background" : "#E07A5F",
+        "primary" : "#000000",
+        "secondary" : "#3D405B"
+      },
+      "songs" : [
+        {
+          "duration" : 250,
+          "lastPlayedDaysAgo" : 130.3,
+          "path" : "/Rafi Haddad/Desert Bloom/01 Desert Bloom.m4a",
+          "plays" : 20,
+          "skips" : 0,
+          "title" : "Desert Bloom",
+          "track" : 1
+        },
+        {
+          "duration" : 241,
+          "lastPlayedDaysAgo" : 31.9,
+          "path" : "/Rafi Haddad/Desert Bloom/02 Oasis.m4a",
+          "plays" : 4,
+          "skips" : 0,
+          "title" : "Oasis",
+          "track" : 2
+        },
+        {
+          "duration" : 268,
+          "lastPlayedDaysAgo" : 140.8,
+          "path" : "/Rafi Haddad/Desert Bloom/03 Caravan.m4a",
+          "plays" : 4,
+          "skips" : 0,
+          "title" : "Caravan",
+          "track" : 3
+        },
+        {
+          "duration" : 335,
+          "lastPlayedDaysAgo" : 100.7,
+          "path" : "/Rafi Haddad/Desert Bloom/04 Sandstorm Lullaby.m4a",
+          "plays" : 5,
+          "skips" : 0,
+          "title" : "Sandstorm Lullaby",
+          "track" : 4
+        },
+        {
+          "duration" : 339,
+          "lastPlayedDaysAgo" : 174.5,
+          "path" : "/Rafi Haddad/Desert Bloom/05 Saffron.m4a",
+          "plays" : 5,
+          "skips" : 0,
+          "title" : "Saffron",
+          "track" : 5
+        },
+        {
+          "duration" : 297,
+          "lastPlayedDaysAgo" : 64.4,
+          "lastSkippedDaysAgo" : 98.6,
+          "path" : "/Rafi Haddad/Desert Bloom/06 Starfield.m4a",
+          "plays" : 7,
+          "skips" : 2,
+          "title" : "Starfield",
+          "track" : 6
+        }
+      ],
+      "tint" : "#A89082",
+      "title" : "Desert Bloom",
+      "year" : 2013
+    },
+    {
+      "addedDaysAgo" : 741,
+      "artist" : "Mono Lake",
+      "colors" : [
+        "#CAF0F8",
+        "#90E0EF",
+        "#00B4D8",
+        "#03045E"
+      ],
+      "cover" : "Covers/mono-lake-glass-weather.jpg",
+      "genre" : "Indie",
+      "id" : "mono-lake-glass-weather",
+      "palette" : {
+        "background" : "#A7E7F3",
+        "primary" : "#09458B",
+        "secondary" : "#196CA5"
+      },
+      "songs" : [
+        {
+          "duration" : 230,
+          "lastPlayedDaysAgo" : 178.3,
+          "path" : "/Mono Lake/Glass Weather/01 Glass Weather.m4a",
+          "plays" : 14,
+          "skips" : 0,
+          "title" : "Glass Weather",
+          "track" : 1
+        },
+        {
+          "duration" : 265,
+          "lastPlayedDaysAgo" : 125,
+          "path" : "/Mono Lake/Glass Weather/02 Snow Globe.m4a",
+          "plays" : 4,
+          "skips" : 0,
+          "title" : "Snow Globe",
+          "track" : 2
+        },
+        {
+          "duration" : 233,
+          "lastPlayedDaysAgo" : 163.4,
+          "lastSkippedDaysAgo" : 97.2,
+          "path" : "/Mono Lake/Glass Weather/03 Frost on the Window.m4a",
+          "plays" : 2,
+          "skips" : 3,
+          "title" : "Frost on the Window",
+          "track" : 3
+        },
+        {
+          "duration" : 225,
+          "lastPlayedDaysAgo" : 52.2,
+          "path" : "/Mono Lake/Glass Weather/04 Prism.m4a",
+          "plays" : 5,
+          "skips" : 0,
+          "title" : "Prism",
+          "track" : 4
+        },
+        {
+          "duration" : 254,
+          "lastPlayedDaysAgo" : 83.9,
+          "path" : "/Mono Lake/Glass Weather/05 Thaw.m4a",
+          "plays" : 5,
+          "skips" : 0,
+          "title" : "Thaw",
+          "track" : 5
+        }
+      ],
+      "tint" : "#65C6E0",
+      "title" : "Glass Weather",
+      "year" : 2006
+    },
+    {
+      "addedDaysAgo" : 359,
+      "artist" : "The Cassette Kids",
+      "colors" : [
+        "#2EC4B6",
+        "#FF9F1C",
+        "#E71D36",
+        "#FDFFFC"
+      ],
+      "comments" : "Nightline Records [NLR-033]",
+      "cover" : "Covers/the-cassette-kids-rewind-summer.jpg",
+      "genre" : "Pop",
+      "id" : "the-cassette-kids-rewind-summer",
+      "palette" : {
+        "background" : "#FE9F1C",
+        "primary" : "#000000",
+        "secondary" : "#4C3008"
+      },
+      "songs" : [
+        {
+          "audio" : "Audio/retro-synths.m4a",
+          "credit" : {
+            "artist" : "HoliznaCC0",
+            "license" : "CC0 1.0",
+            "title" : "Retro Synths",
+            "url" : "https://freemusicarchive.org/music/holiznacc0/power-pop/retro-synths/"
+          },
+          "duration" : 223,
+          "lastPlayedDaysAgo" : 42.3,
+          "path" : "/The Cassette Kids/Rewind Summer/01 Rewind Summer.m4a",
+          "plays" : 29,
+          "skips" : 0,
+          "title" : "Rewind Summer",
+          "track" : 1
+        },
+        {
+          "duration" : 181,
+          "lastPlayedDaysAgo" : 15.9,
+          "path" : "/The Cassette Kids/Rewind Summer/02 Mixtape.m4a",
+          "plays" : 15,
+          "skips" : 0,
+          "title" : "Mixtape",
+          "track" : 2
+        },
+        {
+          "duration" : 224,
+          "lastPlayedDaysAgo" : 57.4,
+          "path" : "/The Cassette Kids/Rewind Summer/03 Walkman.m4a",
+          "plays" : 21,
+          "skips" : 0,
+          "title" : "Walkman",
+          "track" : 3
+        },
+        {
+          "duration" : 204,
+          "lastPlayedDaysAgo" : 64,
+          "lastSkippedDaysAgo" : 176,
+          "path" : "/The Cassette Kids/Rewind Summer/04 Roller Rink.m4a",
+          "plays" : 16,
+          "skips" : 4,
+          "title" : "Roller Rink",
+          "track" : 4
+        },
+        {
+          "duration" : 188,
+          "lastPlayedDaysAgo" : 42.9,
+          "path" : "/The Cassette Kids/Rewind Summer/05 Pen and Pencil.m4a",
+          "plays" : 6,
+          "skips" : 0,
+          "title" : "Pen and Pencil",
+          "track" : 5
+        },
+        {
+          "duration" : 190,
+          "lastPlayedDaysAgo" : 77.9,
+          "path" : "/The Cassette Kids/Rewind Summer/06 Side B.m4a",
+          "plays" : 8,
+          "skips" : 0,
+          "title" : "Side B",
+          "track" : 6
+        }
+      ],
+      "tint" : "#AF9D7B",
+      "title" : "Rewind Summer",
+      "year" : 1988
+    },
+    {
+      "addedDaysAgo" : 240,
+      "artist" : "Ezra Vale",
+      "colors" : [
+        "#E5E5E5",
+        "#14213D",
+        "#FCA311",
+        "#000000"
+      ],
+      "cover" : "Covers/ezra-vale-northbound.jpg",
+      "genre" : "Hip-Hop",
+      "id" : "ezra-vale-northbound",
+      "palette" : {
+        "background" : "#E4E4E4",
+        "primary" : "#14213D",
+        "secondary" : "#030303"
+      },
+      "songs" : [
+        {
+          "duration" : 192,
+          "lastPlayedDaysAgo" : 80.6,
+          "path" : "/Ezra Vale/Northbound/01 Northbound.m4a",
+          "plays" : 29,
+          "skips" : 0,
+          "title" : "Northbound",
+          "track" : 1
+        },
+        {
+          "duration" : 158,
+          "lastPlayedDaysAgo" : 103.2,
+          "path" : "/Ezra Vale/Northbound/02 Compass.m4a",
+          "plays" : 17,
+          "skips" : 0,
+          "title" : "Compass",
+          "track" : 2
+        },
+        {
+          "duration" : 204,
+          "lastPlayedDaysAgo" : 86.2,
+          "path" : "/Ezra Vale/Northbound/03 Snowline.m4a",
+          "plays" : 5,
+          "skips" : 0,
+          "title" : "Snowline",
+          "track" : 3
+        },
+        {
+          "duration" : 182,
+          "lastPlayedDaysAgo" : 67.1,
+          "path" : "/Ezra Vale/Northbound/04 Black Ice.m4a",
+          "plays" : 13,
+          "skips" : 0,
+          "title" : "Black Ice",
+          "track" : 4
+        },
+        {
+          "duration" : 163,
+          "lastPlayedDaysAgo" : 81.3,
+          "path" : "/Ezra Vale/Northbound/05 Aurora.m4a",
+          "plays" : 8,
+          "skips" : 0,
+          "title" : "Aurora",
+          "track" : 5
+        },
+        {
+          "duration" : 236,
+          "lastPlayedDaysAgo" : 5.1,
+          "path" : "/Ezra Vale/Northbound/06 True North.m4a",
+          "plays" : 16,
+          "skips" : 0,
+          "title" : "True North",
+          "track" : 6
+        }
+      ],
+      "tint" : "#8B8479",
+      "title" : "Northbound",
+      "year" : 2018
+    },
+    {
+      "addedDaysAgo" : 20,
+      "artist" : "Ezra Vale",
+      "colors" : [
+        "#F1FAEE",
+        "#E63946",
+        "#A8DADC",
+        "#0A0A0A"
+      ],
+      "cover" : "Covers/ezra-vale-late-checkout.jpg",
+      "genre" : "Hip-Hop",
+      "id" : "ezra-vale-late-checkout",
+      "palette" : {
+        "background" : "#F1FAEE",
+        "primary" : "#0A0A0A",
+        "secondary" : "#E63946"
+      },
+      "songs" : [
+        {
+          "duration" : 230,
+          "lastPlayedDaysAgo" : 4.9,
+          "path" : "/Ezra Vale/Late Checkout/01 Do Not Disturb.m4a",
+          "plays" : 44,
+          "skips" : 0,
+          "title" : "Do Not Disturb",
+          "track" : 1
+        },
+        {
+          "duration" : 165,
+          "lastPlayedDaysAgo" : 5.5,
+          "path" : "/Ezra Vale/Late Checkout/02 Late Checkout.m4a",
+          "plays" : 39,
+          "skips" : 0,
+          "title" : "Late Checkout",
+          "track" : 2
+        },
+        {
+          "duration" : 230,
+          "lastPlayedDaysAgo" : 2.1,
+          "lastSkippedDaysAgo" : 3.5,
+          "path" : "/Ezra Vale/Late Checkout/03 Room Service.m4a",
+          "plays" : 17,
+          "skips" : 4,
+          "title" : "Room Service",
+          "track" : 3
+        },
+        {
+          "duration" : 204,
+          "lastPlayedDaysAgo" : 4.1,
+          "path" : "/Ezra Vale/Late Checkout/04 Minibar.m4a",
+          "plays" : 34,
+          "skips" : 0,
+          "title" : "Minibar",
+          "track" : 4
+        },
+        {
+          "duration" : 164,
+          "lastPlayedDaysAgo" : 5.4,
+          "path" : "/Ezra Vale/Late Checkout/05 Lobby Music.m4a",
+          "plays" : 50,
+          "skips" : 0,
+          "title" : "Lobby Music",
+          "track" : 5
+        },
+        {
+          "duration" : 232,
+          "lastPlayedDaysAgo" : 0.3,
+          "path" : "/Ezra Vale/Late Checkout/06 Valet.m4a",
+          "plays" : 29,
+          "skips" : 0,
+          "title" : "Valet",
+          "track" : 6
+        },
+        {
+          "duration" : 159,
+          "lastPlayedDaysAgo" : 3,
+          "path" : "/Ezra Vale/Late Checkout/07 Checkout.m4a",
+          "plays" : 20,
+          "skips" : 0,
+          "title" : "Checkout",
+          "track" : 7
+        }
+      ],
+      "tint" : "#A19794",
+      "title" : "Late Checkout",
+      "year" : 2026
+    }
+  ]
+}

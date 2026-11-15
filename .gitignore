@@ -4,3 +4,5 @@ DerivedData/
 .DS_Store
 xcuserdata/
 Config/Secrets.xcconfig
+.playwright-mcp/
+__pycache__/

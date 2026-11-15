@@ -111,6 +111,8 @@ For each release:
 | `Beat/DesignSystem` | Glass, artwork, backdrops, shadows |
 | `BeatTests` | Unit tests |
 | `Design/AppIcon` | App icon source and renderer |
+| `Design/Showcase` | A made-up library with generated covers, for the website and its screenshots |
+| `site` | The website, [beat.gouthaman.dev](https://beat.gouthaman.dev): Astro, built by Netlify (`netlify.toml`); `cd site && npm install && npm run dev` to work on it |
 | `Config` | Build settings; your Last.fm keys go in `Secrets.xcconfig` |
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for how the pieces fit together.
