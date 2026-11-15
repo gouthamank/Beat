@@ -102,13 +102,5 @@ Ideas:
 - Hosting: GitHub Pages from the repo (a `docs/` folder or a `gh-pages` branch) keeps it free and next to
   the code.
 
-## Search field half shown at launch on iPhone (noted Nov 2026)
-With the Library grids' search tucked away until pulled down (`SearchFieldPlacement.page` as
-`.navigationBarDrawer(displayMode: .automatic)`), it started half revealed at launch: an empty pill under the large
-title, gone after the first scroll. Ruled out: the status-bar spacing (`additionalSafeAreaInsets`), `remembersScroll`,
-a saved scroll offset (a fresh launch shows it too). Search is always shown (`.always`) for now. Next: a small
-Simulator test app (large title + hide-on-scroll search over a grid, adding Beat's grid modifiers one at a time:
-`tracksScrolling`, `remembersScroll`, `keyboardGrid`, `contentMargins`) to find what moves the list at launch.
-
 ## Tests (noted Nov 2026)
 Snapshot and UI tests, unit tests on iOS, and the seams they need: planned in phases in `TESTING.md`.

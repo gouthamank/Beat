@@ -81,9 +81,29 @@ var emptyLibraryHint: String {
 
 extension SearchFieldPlacement {
     /// A page's search field: under the title, since a toolbar field sits at the bottom of the screen, under the
-    /// now-playing bar. Always shown: tucked away (`.automatic`), it started half revealed at launch, an empty pill
-    /// under the title (cause not found yet; see TODO.md).
-    static var page: SearchFieldPlacement { .navigationBarDrawer(displayMode: .always) }
+    /// now-playing bar. Tucked away as the page scrolls, pulled down to search.
+    static var page: SearchFieldPlacement { .navigationBarDrawer(displayMode: .automatic) }
+}
+
+extension View {
+    /// The page's subtitle under its title ("368 albums · 41.2 GB"), from the page's second frame. Present from the
+    /// first, it squashed a search field that tucks away (`SearchFieldPlacement.page`) into an empty half-height pill
+    /// until the first scroll (iOS 26).
+    func pageSubtitle(_ text: String) -> some View { modifier(PageSubtitle(text: text)) }
+}
+
+private struct PageSubtitle: ViewModifier {
+    let text: String
+    @State private var shown = false
+
+    func body(content: Content) -> some View {
+        content
+            .navigationSubtitle(shown ? text : "")
+            .task {
+                await Task.yield()
+                shown = true
+            }
+    }
 }
 
 /// The key window's safe areas. A view's own safe area also counts bars the page puts at the bottom, which floated

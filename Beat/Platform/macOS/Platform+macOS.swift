@@ -90,6 +90,13 @@ extension SearchFieldPlacement {
     static var page: SearchFieldPlacement { .toolbar }
 }
 
+extension View {
+    /// The page's subtitle under its title ("368 albums · 41.2 GB").
+    func pageSubtitle(_ text: String) -> some View {
+        navigationSubtitle(text)
+    }
+}
+
 /// The window's bottom safe area, for the now-playing bar: none on the Mac.
 @MainActor
 func windowBottomInset() -> CGFloat { 0 }

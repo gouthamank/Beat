@@ -4,15 +4,9 @@ import SwiftUI
 // Platform/macOS/Platform+macOS.swift and Platform/iOS/Platform+iOS.swift (each target compiles one):
 // `PlatformImage`, `PlatformColor`, `Image(platformImage:)`, `openExternally`, `openPrivacySettings`,
 // `.appDidBecomeActive`, `windowToolbar`, `linkPointer`, `linkButtonStyle`, `sheetSize`, `systemReducesMotion`,
-// `Color.windowBackground`/`keyboardFocus`, `emptyLibraryHint`, `thisDevice`, `keepScreenAwake`, `SearchFieldPlacement.page`, `windowBottomInset`.
+// `Color.windowBackground`/`keyboardFocus`, `emptyLibraryHint`, `thisDevice`, `keepScreenAwake`, `SearchFieldPlacement.page`, `windowBottomInset`,
+// `pageSubtitle`.
 // What's the same on both lives here.
-
-extension View {
-    /// The page's subtitle under its title ("368 albums · 41.2 GB").
-    func pageSubtitle(_ text: String) -> some View {
-        navigationSubtitle(text)
-    }
-}
 
 extension EnvironmentValues {
     /// A phone-width layout: an iPhone, or an iPad in a narrow split. Views stack and shrink their Mac layouts when
