@@ -20,23 +20,18 @@ navigation container instead of `NavigationStack`:
 Deferred (Nov 2026) because it replaces the navigation foundation every page sits on; the system stack
 with the reverse album zoom and a non-interactive swipe was the smaller change.
 
-## Gapless playback (wanted, Nov 2026: the gap between tracks shows in everyday use)
-`AudioPlayer` is an `AVQueuePlayer` with one preloaded item: quick, but a short silence still falls between
-tracks. Proposal: move to `AVAudioEngine` with `AVAudioPlayerNode`, scheduling the next file to start on the
-exact sample the current one ends.
+## Crossfade (noted Nov 2026)
+Gapless is solved without a new player: the gap between tracks came from the visualizer giving every track its own
+audio tap, and one tap shared by all tracks fixed it (see the CLAUDE.md gotcha). A throwaway test played
+FABRICLIVE.50 through `AVAudioEngine` (gapless too) and through `AVQueuePlayer` with each tap variant.
 
-- AAC encoder padding is trimmed when the file is read; MP3 padding needs checking on real files.
-- Convert every track to one output format, so a change of sample rate between tracks doesn't leave a gap.
-- Rebuild elapsed time and seeking, end-of-track detection, volume, and the visualizer's feed (an engine
-  tap, simpler than `AudioTap`). Crossfade then becomes a small follow-up.
-- Pure, tested timing logic: which part of which file plays when, and where a seek lands.
-- **Risk: AirPlay.** `OutputRoute` routes the `AVPlayer`; an engine can't be handed to `AVRoutePickerView`.
-  AirPlay speakers are output devices on macOS, so AirPlay would likely become an output-device menu.
-  Build a throwaway test first (AirPlay through the engine, plus one gapless album) before replacing anything.
-- Fallback if AirPlay through the engine is bad: keep `AVPlayer` and join consecutive tracks into one
-  `AVComposition`. Keeps the picker; queue edits get harder.
+Crossfade would still need an engine (two tracks overlapping, each faded). What the test found about that:
 
-Open decision: engine test (AirPlay may become a device menu) or the composition fallback.
+- **AirPlay:** macOS lists AirPlay speakers as outputs only once one is the Mac's output (Control Center > Sound).
+  An engine can't offer them in Beat's own menu the way `AVRoutePickerView` does for `AVPlayer`; AirPlay would mean
+  the Mac's system output.
+- MP3s carrying encoder padding information (iTunes' `iTunSMPB`) are trimmed when read, so an engine joins them
+  exactly.
 
 ## Syncing plays to Music (on hold, Nov 2026)
 Beat's plays and skips live in `history.json` and are added to Music's counts only inside Beat

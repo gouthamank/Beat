@@ -57,7 +57,7 @@ struct SettingsView: View {
 }
 
 private enum SettingsSection: String, CaseIterable, Identifiable {
-    case general, elements, playback, lyrics, artistInfo, lastFM
+    case general, elements, lyrics, artistInfo, lastFM
 
     var id: Self { self }
 
@@ -70,7 +70,6 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
         switch self {
         case .general: "General"
         case .elements: "Elements"
-        case .playback: "Playback"
         case .lyrics: "Lyrics"
         case .artistInfo: "Artist Info"
         case .lastFM: "Last.fm"
@@ -81,7 +80,6 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
         switch self {
         case .general: Label(title, systemImage: "gearshape")
         case .elements: Label(title, systemImage: "rectangle.grid.1x2")
-        case .playback: Label(title, systemImage: "waveform")
         case .lyrics: Label(title, systemImage: "quote.bubble")
         case .artistInfo: Label(title, systemImage: "info.circle")
         case .lastFM: Label(title, systemImage: "dot.radiowaves.up.forward")
@@ -93,7 +91,6 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
         switch self {
         case .general: GeneralSettings().navigationTitle(title)
         case .elements: ElementSettings().navigationTitle(title)
-        case .playback: PlaybackSettings().navigationTitle(title)
         case .lyrics: LyricsSettings().navigationTitle(title)
         case .artistInfo: ArtistInfoSettingsPane().navigationTitle(title)
         case .lastFM: LastFMSettingsPane().navigationTitle(title)

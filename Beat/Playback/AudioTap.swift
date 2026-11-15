@@ -78,24 +78,31 @@ final class SampleBuffer: Sendable {
     }
 }
 
-/// Attaches an `MTAudioProcessingTap` to a player item. The tap passes audio through untouched and
-/// copies it into a `SampleBuffer`. The C callbacks reach the buffer through the tap's storage pointer.
+/// An `MTAudioProcessingTap` that passes audio through untouched and copies it into a `SampleBuffer`. The C callbacks
+/// reach the buffer through the tap's storage pointer.
+///
+/// One tap serves every item a player plays (`make` once, `attach` to each): a fresh tap per item stopped
+/// AVQueuePlayer joining tracks gaplessly, leaving a short silence between them, while one shared tap (or none) keeps
+/// the join seamless and still hears every track.
 enum AudioTap {
-    @MainActor
-    static func attach(to item: AVPlayerItem, buffer: SampleBuffer) async {
-        guard let track = try? await item.asset.loadTracks(withMediaType: .audio).first else { return }
-
+    static func make(buffer: SampleBuffer) -> MTAudioProcessingTap? {
         // Retained for the tap's lifetime; the finalize callback releases it.
         let clientInfo = Unmanaged.passRetained(buffer).toOpaque()
         var callbacks = makeCallbacks(clientInfo: clientInfo)
-
         var tap: MTAudioProcessingTap?
         guard MTAudioProcessingTapCreate(kCFAllocatorDefault, &callbacks, kMTAudioProcessingTapCreationFlag_PostEffects, &tap) == noErr,
               let tap else {
             Unmanaged<SampleBuffer>.fromOpaque(clientInfo).release()
-            return
+            return nil
         }
+        return tap
+    }
 
+    /// Puts `tap` on the item's audio track through an audio mix. Around a boundary two items can run through the same
+    /// tap at once; `SampleBuffer.write` never waits, so that's safe.
+    @MainActor
+    static func attach(_ tap: MTAudioProcessingTap, to item: AVPlayerItem) async {
+        guard let track = try? await item.asset.loadTracks(withMediaType: .audio).first else { return }
         let parameters = AVMutableAudioMixInputParameters(track: track)
         parameters.audioTapProcessor = tap
         let mix = AVMutableAudioMix()

@@ -157,21 +157,6 @@ struct ElementSettings: View {
     }
 }
 
-// MARK: Playback
-
-struct PlaybackSettings: View {
-    @AppStorage("visualizer.enabled") private var visualizerEnabled = true
-
-    var body: some View {
-        SettingsPane {
-            Section("Visualizer") {
-                Toggle("Enable visualizer", isOn: $visualizerEnabled)
-                Caption("Lets Beat read the audio it's playing to draw the visualizer. The sound itself isn't changed. Turn it off if you ever hear a glitch; it takes effect from the next song.")
-            }
-        }
-    }
-}
-
 // MARK: Lyrics
 
 struct LyricsSettings: View {

@@ -26,7 +26,6 @@ struct SettingsArchive: Codable {
         SongColumnWidths.key,
         "songs.albumArtWidth",
         "albums.artistList",
-        "visualizer.enabled",
         "visualizer.style",
         "nowPlaying.showLyrics",
         "nowPlaying.radial",

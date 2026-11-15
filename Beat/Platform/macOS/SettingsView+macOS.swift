@@ -8,7 +8,6 @@ struct SettingsView: View {
         TabView {
             Tab("General", systemImage: "gearshape") { GeneralSettings() }
             Tab("Elements", systemImage: "rectangle.grid.1x2") { ElementSettings() }
-            Tab("Playback", systemImage: "waveform") { PlaybackSettings() }
             Tab("Lyrics", systemImage: "quote.bubble") { LyricsSettings() }
             Tab("Artist Info", systemImage: "info.circle") { ArtistInfoSettingsPane() }
             // Only in builds with a Last.fm key (Config/Secrets.xcconfig); see README.

@@ -1,4 +1,5 @@
 import AVFoundation
+import MediaToolbox
 
 /// What `PlaybackQueue` drives: `AudioPlayer`, or a stand-in in tests that records what it was asked to do.
 @MainActor
@@ -39,6 +40,8 @@ final class AudioPlayer: AudioPlaying {
 
     /// What's playing, as samples, for the visualizer.
     let samples = SampleBuffer()
+    /// The one tap every item shares (see `AudioTap`), made when the visualizer first needs it.
+    private var tap: MTAudioProcessingTap?
     private var current: AVPlayerItem?
     private var upcoming: AVPlayerItem?
     /// Each item's tap attachment. Setting an audio mix on an item that's already playing rebuilds its
@@ -96,11 +99,12 @@ final class AudioPlayer: AudioPlaying {
         player.insert(item, after: current)
     }
 
-    /// Feeds the visualizer. Off in Settings, items play through exactly as before, with no tap.
+    /// Feeds the visualizer. Always on: with one shared tap, the tap no longer costs gapless playback (it was a Settings
+    /// switch while each item had its own).
     private func attachTap(_ item: AVPlayerItem) -> Task<Void, Never>? {
-        guard UserDefaults.standard.object(forKey: "visualizer.enabled") as? Bool ?? true else { return nil }
-        let samples = samples
-        return Task { await AudioTap.attach(to: item, buffer: samples) }
+        if tap == nil { tap = AudioTap.make(buffer: samples) }
+        guard let tap else { return nil }
+        return Task { await AudioTap.attach(tap, to: item) }
     }
 
     func play() {
