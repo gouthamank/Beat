@@ -183,6 +183,9 @@ struct CoverFlowElement: View {
         let isCentre = distance == 0
         // Sharp art for the centre and its neighbours, which are about to arrive there.
         return ArtworkView(albumID: album.id, size: abs(distance) <= 1 ? .large : .thumbnail, cornerRadius: 6)
+            // The placeholder's fill is translucent, and covers overlap here: back it so a cover with no art, or
+            // one still loading, hides the covers behind it.
+            .background(Color.windowBackground, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
             .background(ShapeShadow(shape: RoundedRectangle(cornerRadius: 6, style: .continuous),
                                     opacity: isCentre ? 0.3 : 0, radius: 14, y: 8))
             .keyboardHighlight(isCentre && focused, cornerRadius: 6)
