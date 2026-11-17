@@ -7,6 +7,8 @@ import Observation
 final class PlaybackQueue {
     private(set) var state = QueueState()
     private(set) var isPlaying = false
+    /// Playing, but waiting for the sound to start: the player filling its buffer.
+    private(set) var isLoading = false
     private(set) var currentTime: TimeInterval = 0
     /// Counts presses of Next on the last song. Full Now Playing closes on it; the track stays in the bar.
     private(set) var skippedPastEnd = 0
@@ -43,6 +45,8 @@ final class PlaybackQueue {
     @ObservationIgnored private let scrobbler: Scrobbler?
     /// Whether Last.fm has been told the current item is playing.
     @ObservationIgnored private var announcedCurrent = false
+    /// Songs that failed in a row; a lap of them stops playback rather than going round forever.
+    @ObservationIgnored private var failuresInARow = 0
 
     /// Tests pass a stand-in player and their own defaults, and turn off `publishesNowPlaying`.
     init(history: PlayHistoryStore, artwork: ArtworkCache, scrobbler: Scrobbler? = nil,
@@ -61,6 +65,8 @@ final class PlaybackQueue {
         player.onTime = { [weak self] in self?.timeChanged($0) }
         player.onAdvanced = { [weak self] in self?.advancedAutomatically() }
         player.onFinished = { [weak self] in self?.finished() }
+        player.onLoading = { [weak self] in self?.isLoading = $0 }
+        player.onFailed = { [weak self] in self?.failed() }
         guard publishesNowPlaying else { return }
         nowPlaying = NowPlayingController(artwork: artwork, handlers: .init(
             play: { [weak self] in self?.play() },
@@ -232,6 +238,19 @@ final class PlaybackQueue {
 
     private func finished() { rewindAtEnd() }
 
+    /// The current song couldn't be played (an unreadable file, say): on to the next, as at a song's
+    /// end. A whole lap of failures stops, so a queue with nothing playable doesn't go round forever.
+    private func failed() {
+        failuresInARow += 1
+        guard failuresInARow < state.items.count, let i = state.index,
+              let j = state.index(after: i, manual: false, isPlayable: Self.isPlayable), j != i else {
+            failuresInARow = 0
+            return rewindAtEnd()
+        }
+        state.move(to: j)
+        startCurrent(autoplay: true)
+    }
+
     /// The queue has run out: the last track stays, paused at its start.
     private func rewindAtEnd() {
         isPlaying = false
@@ -247,6 +266,7 @@ final class PlaybackQueue {
     private func timeChanged(_ seconds: TimeInterval) {
         guard seconds.isFinite else { return }
         currentTime = seconds
+        if seconds > 0 { failuresInARow = 0 }
         guard !countedCurrent, let track = state.current, track.duration > 0 else { return }
         if seconds >= min(track.duration * 0.5, 240) {
             countedCurrent = true

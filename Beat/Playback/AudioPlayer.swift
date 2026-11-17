@@ -7,6 +7,10 @@ protocol AudioPlaying: AnyObject {
     var onTime: ((TimeInterval) -> Void)? { get set }
     var onAdvanced: (() -> Void)? { get set }
     var onFinished: (() -> Void)? { get set }
+    /// Whether playback is waiting to start: the player filling its buffer.
+    var onLoading: ((Bool) -> Void)? { get set }
+    /// The current item couldn't be played: the queue moves on.
+    var onFailed: (() -> Void)? { get set }
     var volume: Float { get set }
     var outputPlayer: AVPlayer { get }
     var samples: SampleBuffer { get }
@@ -27,6 +31,8 @@ final class AudioPlayer: AudioPlaying {
     var onAdvanced: (() -> Void)?
     /// The current item finished (or failed) with nothing queued after it.
     var onFinished: (() -> Void)?
+    var onLoading: ((Bool) -> Void)?
+    var onFailed: (() -> Void)?
 
     var volume: Float {
         get { player.volume }
@@ -56,6 +62,13 @@ final class AudioPlayer: AudioPlaying {
     /// on made the progress bar jump back and forth between the old and new points after a tap to seek.
     private var pendingSeeks = 0
 
+    /// Whether play was asked for last rather than pause: buffering only counts as loading then.
+    private var wantsToPlay = false
+    private var statusObservation: NSKeyValueObservation?
+    private var itemObservation: NSKeyValueObservation?
+    /// What `onLoading` last said.
+    private var isLoading = false
+
     init() {
         player.actionAtItemEnd = .advance
         timeObserver = player.addPeriodicTimeObserver(
@@ -69,9 +82,43 @@ final class AudioPlayer: AudioPlaying {
         for name in [AVPlayerItem.didPlayToEndTimeNotification, AVPlayerItem.failedToPlayToEndTimeNotification] {
             observers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
                 let item = note.object as? AVPlayerItem
-                MainActor.assumeIsolated { self?.itemEnded(item) }
+                let failed = note.name == AVPlayerItem.failedToPlayToEndTimeNotification
+                MainActor.assumeIsolated { self?.itemEnded(item, failed: failed) }
             })
         }
+        statusObservation = Self.observeStatus(of: player, for: self)
+        itemObservation = Self.observeItem(of: player, for: self)
+    }
+
+    /// Made outside the main actor: KVO can call it on any queue.
+    private nonisolated static func observeStatus(of player: AVQueuePlayer, for owner: AudioPlayer) -> NSKeyValueObservation {
+        player.observe(\.timeControlStatus) { [weak owner] _, _ in
+            Task { @MainActor in owner?.updateLoading() }
+        }
+    }
+
+    private nonisolated static func observeItem(of player: AVQueuePlayer, for owner: AudioPlayer) -> NSKeyValueObservation {
+        player.observe(\.currentItem) { [weak owner] _, _ in
+            Task { @MainActor in owner?.currentItemChanged() }
+        }
+    }
+
+    /// The queue player moved on by itself. An item that fails to load (an unreadable file, say) is dropped
+    /// and the next one plays without either end-of-item notification, so the queue went on showing the failed song.
+    /// Read when the change arrives, so it sees the player as Beat left it: its own loads and stops never match.
+    private func currentItemChanged() {
+        guard let current, player.currentItem !== current else { return }
+        guard player.currentItem == nil || player.currentItem === upcoming else { return }
+        moveOn(failed: current.status == .failed)
+    }
+
+    /// Called whenever anything it reads changes: play and pause, the player's status.
+    private func updateLoading() {
+        let buffering = player.timeControlStatus == .waitingToPlayAtSpecifiedRate && player.reasonForWaitingToPlay != .noItemToPlay
+        let loading = wantsToPlay && buffering
+        guard loading != isLoading else { return }
+        isLoading = loading
+        onLoading?(loading)
     }
 
     func load(_ url: URL, upcoming upcomingURL: URL?, autoplay: Bool) {
@@ -85,7 +132,7 @@ final class AudioPlayer: AudioPlaying {
         setUpcoming(upcomingURL)
         // Without autoplay, paused: the queue player keeps its rate across items, so loading while playing
         // (Next on the last song) carried on playing while the queue showed it stopped.
-        if autoplay { play() } else { player.pause() }
+        if autoplay { play() } else { pause() }
     }
 
     func setUpcoming(_ url: URL?) {
@@ -109,6 +156,8 @@ final class AudioPlayer: AudioPlaying {
 
     func play() {
         cancelPendingPlay()
+        wantsToPlay = true
+        defer { updateLoading() }
         guard let tap = currentTap else { return player.play() }
         pendingPlay = Task { [weak self] in
             await tap.value
@@ -119,7 +168,9 @@ final class AudioPlayer: AudioPlaying {
 
     func pause() {
         cancelPendingPlay()
+        wantsToPlay = false
         player.pause()
+        updateLoading()
     }
 
     private func cancelPendingPlay() {
@@ -146,17 +197,33 @@ final class AudioPlayer: AudioPlaying {
 
     func stop() {
         cancelPendingPlay()
+        wantsToPlay = false
         player.pause()
         player.removeAllItems()
         current = nil
         upcoming = nil
         currentTap = nil
         upcomingTap = nil
+        updateLoading()
     }
 
-    private func itemEnded(_ item: AVPlayerItem?) {
+    private func itemEnded(_ item: AVPlayerItem?, failed: Bool) {
         guard let item, item === current else { return }
-        if let upcoming {
+        moveOn(failed: failed)
+    }
+
+    /// The current item is over, by ending, failing or being dropped; whichever of the notification and the player's
+    /// own change arrives first moves on, and the other then finds nothing to do.
+    /// `failed`: the current item failed rather than ended; with nothing after it, the queue moves past it as well.
+    private func moveOn(failed: Bool = false) {
+        if let upcoming, !player.items().contains(upcoming) {
+            // The next item failed too and was dropped: the queue moves to it, then past it.
+            self.upcoming = nil
+            upcomingTap = nil
+            current = nil
+            onAdvanced?()
+            onFailed?()
+        } else if let upcoming {
             current = upcoming
             currentTap = upcomingTap
             self.upcoming = nil
@@ -164,7 +231,7 @@ final class AudioPlayer: AudioPlaying {
             onAdvanced?()
         } else {
             current = nil
-            onFinished?()
+            failed ? onFailed?() : onFinished?()
         }
     }
 }

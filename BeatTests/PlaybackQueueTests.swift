@@ -161,4 +161,28 @@ final class PlaybackQueueTests: XCTestCase {
         queue.next()
         XCTAssertNil(history.stats[3], "listened long enough")
     }
+
+    func testASongThatCantPlayIsSkipped() {
+        queue.play(songs(1, 2, 3))
+        player.clear()
+        player.onFailed?()
+        XCTAssertEqual(queue.current?.id, 2)
+        XCTAssertEqual(player.calls, [.load(Self.url(2), upcoming: Self.url(3), autoplay: true)])
+    }
+
+    func testAQueueWhereNothingPlaysStopsAfterALap() {
+        queue.cycleRepeat()  // Off to All: the case that could go round forever.
+        queue.play(songs(1, 2, 3))
+        for _ in 0..<5 { player.onFailed?() }
+        XCTAssertFalse(queue.isPlaying, "it gave up rather than going round forever")
+    }
+
+    func testLoadingFollowsThePlayer() {
+        queue.play(songs(1))
+        XCTAssertFalse(queue.isLoading)
+        player.onLoading?(true)
+        XCTAssertTrue(queue.isLoading)
+        player.onLoading?(false)
+        XCTAssertFalse(queue.isLoading)
+    }
 }

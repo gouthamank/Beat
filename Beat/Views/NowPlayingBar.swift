@@ -69,9 +69,7 @@ struct NowPlayingBar: View {
                 }
                 .buttonStyle(.plain)
                 Button(action: queue.togglePlayPause) {
-                    Image(systemName: queue.isPlaying ? "pause.fill" : "play.fill")
-                        .font(.system(size: 24))
-                        .contentTransition(.symbolEffect(.replace))
+                    PlayPauseSymbol(size: 24)
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
                 }
@@ -245,9 +243,7 @@ struct TransportControls: View {
             Button(action: queue.previous) { Image(systemName: "backward.fill") }
                 .help("Previous")
             Button(action: queue.togglePlayPause) {
-                Image(systemName: queue.isPlaying ? "pause.fill" : "play.fill")
-                    .font(.system(size: 22))
-                    .contentTransition(.symbolEffect(.replace))
+                PlayPauseSymbol(size: 22)
                     .frame(width: 26)
             }
             .help(queue.isPlaying ? "Pause" : "Play")
@@ -256,6 +252,33 @@ struct TransportControls: View {
         }
         .font(.system(size: 15))
         .buttonStyle(.plain)
+    }
+}
+
+/// Play or pause; while playback waits to start for more than a moment (the player filling its buffer), a spinner.
+/// The wait keeps a local file's instant start from flashing it.
+private struct PlayPauseSymbol: View {
+    let size: CGFloat
+    @Environment(PlaybackQueue.self) private var queue
+    @State private var showsLoading = false
+
+    var body: some View {
+        Group {
+            if showsLoading {
+                ProgressView()
+                    .controlSize(.small)
+                    .help("Loading")
+            } else {
+                Image(systemName: queue.isPlaying ? "pause.fill" : "play.fill")
+                    .font(.system(size: size))
+                    .contentTransition(.symbolEffect(.replace))
+            }
+        }
+        .task(id: queue.isLoading) {
+            guard queue.isLoading else { showsLoading = false; return }
+            try? await Task.sleep(for: .milliseconds(400))
+            if !Task.isCancelled { showsLoading = true }
+        }
     }
 }
 
@@ -523,7 +546,7 @@ private struct BarProgress: View {
     @Environment(PlaybackQueue.self) private var queue
 
     var body: some View {
-        BarProgressLayers(elapsed: queue.currentTime, duration: duration, isPlaying: queue.isPlaying, color: color,
+        BarProgressLayers(elapsed: queue.currentTime, duration: duration, isPlaying: queue.isPlaying && !queue.isLoading, color: color,
                           chapterStarts: chapterStarts, thick: thick)
     }
 }

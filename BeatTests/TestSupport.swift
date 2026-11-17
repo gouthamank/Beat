@@ -64,6 +64,8 @@ final class FakePlayer: AudioPlaying {
     var onTime: ((TimeInterval) -> Void)?
     var onAdvanced: (() -> Void)?
     var onFinished: (() -> Void)?
+    var onLoading: ((Bool) -> Void)?
+    var onFailed: (() -> Void)?
     var volume: Float = 1
     let outputPlayer = AVPlayer()
     let samples = SampleBuffer()
