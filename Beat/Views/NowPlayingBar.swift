@@ -291,7 +291,7 @@ struct Scrubber: View {
     @State private var dragValue: Double?
 
     var body: some View {
-        let shown = dragValue ?? queue.currentTime
+        let shown = dragValue ?? queue.elapsed
         HStack(spacing: 8) {
             TimeLabel(shown.trackTime, duration: duration, alignment: .trailing)
             if !chapters.isEmpty {
@@ -434,9 +434,9 @@ private struct BarTimes: View {
 
     var body: some View {
         HStack {
-            TimeLabel(queue.currentTime.trackTime, duration: duration, alignment: .leading)
+            TimeLabel(queue.elapsed.trackTime, duration: duration, alignment: .leading)
             Spacer(minLength: 12)
-            TimeLabel("-" + max(duration - queue.currentTime, 0).trackTime, duration: duration, alignment: .trailing)
+            TimeLabel("-" + max(duration - queue.elapsed, 0).trackTime, duration: duration, alignment: .trailing)
         }
         .frame(maxWidth: 220)
         .font(.caption2.monospacedDigit())
@@ -546,7 +546,7 @@ private struct BarProgress: View {
     @Environment(PlaybackQueue.self) private var queue
 
     var body: some View {
-        BarProgressLayers(elapsed: queue.currentTime, duration: duration, isPlaying: queue.isPlaying && !queue.isLoading, color: color,
+        BarProgressLayers(elapsed: queue.elapsed, duration: duration, isPlaying: queue.isPlaying && !queue.isLoading, color: color,
                           chapterStarts: chapterStarts, thick: thick)
     }
 }

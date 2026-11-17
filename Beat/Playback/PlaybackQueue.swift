@@ -9,7 +9,22 @@ final class PlaybackQueue {
     private(set) var isPlaying = false
     /// Playing, but waiting for the sound to start: the player filling its buffer.
     private(set) var isLoading = false
-    private(set) var currentTime: TimeInterval = 0
+    /// Where playback is, to the quarter second; not watched. Views read `elapsed`: every SwiftUI update, however
+    /// small, re-checks the whole window's accessibility while an accessibility client is connected (VoiceOver,
+    /// window managers and the like), and four a second for the clock cost ~9% CPU just playing.
+    @ObservationIgnored private(set) var currentTime: TimeInterval = 0 {
+        didSet { if Int(currentTime) != elapsedSecond { elapsedSecond = Int(currentTime) } }
+    }
+    /// The playing second, which views watch through `elapsed`.
+    private var elapsedSecond = 0
+    /// Counts seeks, which can land within the same second but must still move what's shown.
+    private var seeks = 0
+    /// Where playback is, for views: exact when read, but they're told of changes once a second, and on a seek.
+    var elapsed: TimeInterval {
+        _ = elapsedSecond
+        _ = seeks
+        return currentTime
+    }
     /// Counts presses of Next on the last song. Full Now Playing closes on it; the track stays in the bar.
     private(set) var skippedPastEnd = 0
     var volume: Float {
@@ -181,6 +196,7 @@ final class PlaybackQueue {
     func seek(to seconds: TimeInterval) {
         player.seek(to: seconds)
         currentTime = seconds
+        seeks &+= 1
         publishNowPlaying()
     }
 

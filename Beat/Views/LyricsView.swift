@@ -51,9 +51,16 @@ struct LyricsView: View {
 
     // MARK: Synced
 
+    /// Lines change between seconds, so while lyrics show and play (and only then) they follow the clock four times a
+    /// second on their own, rather than the queue telling every view (see `PlaybackQueue.elapsed`).
     private func synced(_ lines: [LyricLine]) -> some View {
-        let current = LRC.currentIndex(in: lines, at: queue.currentTime)
-        return ScrollViewReader { proxy in
+        TimelineView(.animation(minimumInterval: 0.25, paused: !queue.isPlaying)) { _ in
+            syncedLines(lines, current: LRC.currentIndex(in: lines, at: queue.elapsed))
+        }
+    }
+
+    private func syncedLines(_ lines: [LyricLine], current: Int?) -> some View {
+        ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     ForEach(Array(lines.enumerated()), id: \.offset) { index, line in

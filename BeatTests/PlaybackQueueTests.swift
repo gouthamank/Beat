@@ -177,6 +177,26 @@ final class PlaybackQueueTests: XCTestCase {
         XCTAssertFalse(queue.isPlaying, "it gave up rather than going round forever")
     }
 
+    /// Whether reading `elapsed` would update a view after `change`.
+    private func elapsedChanges(after change: () -> Void) -> Bool {
+        let changed = Flag()
+        withObservationTracking { _ = queue.elapsed } onChange: { changed.isSet = true }
+        change()
+        return changed.isSet
+    }
+
+    /// Set from observation's change handler, which Swift treats as possibly running elsewhere.
+    private final class Flag: @unchecked Sendable { var isSet = false }
+
+    func testViewsHearTheClockOnceASecondAndOnSeeks() {
+        queue.play(songs(1, 2))
+        player.onTime?(0.25)
+        XCTAssertFalse(elapsedChanges { player.onTime?(0.5) }, "still the same second")
+        XCTAssertEqual(queue.elapsed, 0.5, "but exact when read")
+        XCTAssertTrue(elapsedChanges { player.onTime?(1.0) }, "a new second")
+        XCTAssertTrue(elapsedChanges { queue.seek(to: 1.4) }, "a seek within the second still moves what's shown")
+    }
+
     func testLoadingFollowsThePlayer() {
         queue.play(songs(1))
         XCTAssertFalse(queue.isLoading)
