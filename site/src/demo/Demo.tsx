@@ -320,7 +320,7 @@ export default function Demo({ albums, pool }: { albums: DemoAlbum[]; pool: Borr
       } },
       // A new page at the end of the sidebar: named, then empty, inviting its first element.
       { title: 'Make a page', icon: 'plus', run: () => { toHome(); onSidebar({ kind: 'new', folder: false }); } },
-      { title: 'Edit a smart filter', icon: 'slider.horizontal.3', run: () => {
+      { id: 'smart-filter', title: 'Edit a smart filter', icon: 'slider.horizontal.3', run: () => {
         toHome();
         const home = findNode(tree, 'home');
         const element = home?.kind === 'page' ? home.elements.find((e) => e.filter.name === 'Recently Played') ?? home.elements[0] : undefined;
@@ -369,13 +369,16 @@ export default function Demo({ albums, pool }: { albums: DemoAlbum[]; pool: Borr
             </div>
           </div>
         )}
-        <div className="mb-6 flex flex-wrap justify-center gap-2" aria-label="Try">
-          {tour.map((chip) => (
-            <button key={chip.title} onClick={chip.run}
-                    className="flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-raised px-3.5 py-1.5 text-[13px] font-medium shadow-sm transition-colors hover:border-[var(--site-accent)] hover:text-[var(--site-accent)]">
-              <Icon name={chip.icon} className="size-4" /> {chip.title}
-            </button>
-          ))}
+        <div className="mx-auto mb-6 max-w-3xl rounded-2xl border border-line bg-raised px-5 py-4 text-center">
+          <p id="demo-tour" className="mb-3 text-sm text-soft">Or try one of these:</p>
+          <div className="flex flex-wrap justify-center gap-2" aria-labelledby="demo-tour">
+            {tour.map((chip) => (
+              <button key={chip.title} onClick={chip.run}
+                      className="flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-bg px-3.5 py-1.5 text-[13px] font-medium shadow-sm transition-colors hover:border-[var(--site-accent)] hover:text-[var(--site-accent)]">
+                <Icon name={chip.icon} className="size-4" /> {chip.title}
+              </button>
+            ))}
+          </div>
         </div>
 
         {shown === 'mac' ? (

@@ -12,19 +12,19 @@ const cover = (await getImage({ src: album.image, width: 800, height: 800, forma
 ---
 
 <div data-morph-static class="mx-auto mt-12 max-w-6xl">
-  <Shot name="home-mac" alt="Home on the Mac" />
+  <Shot tilt={false} name="home-mac" alt="Home on the Mac" />
   <div class="mx-auto mt-10 grid max-w-xl grid-cols-2 gap-4 sm:gap-8">
-    <Shot name="home-iphone" alt="Home on iPhone, playing Glow Season" aspect="9 / 19.5" class="rounded-[1.4rem]! sm:rounded-[1.9rem]!" />
-    <Shot name="now-playing-iphone" alt="Now Playing on iPhone" aspect="9 / 19.5" class="rounded-[1.4rem]! sm:rounded-[1.9rem]!" />
+    <Shot tilt={false} name="home-iphone" alt="Home on iPhone, playing Glow Season" aspect="9 / 19.5" class="rounded-[1.4rem]! sm:rounded-[1.9rem]!" />
+    <Shot tilt={false} name="now-playing-iphone" alt="Now Playing on iPhone" aspect="9 / 19.5" class="rounded-[1.4rem]! sm:rounded-[1.9rem]!" />
   </div>
 </div>
 
 <div data-morph hidden class="morph relative">
   <div class="stage sticky">
     <div data-frame class="frame absolute overflow-hidden bg-raised shadow-[0_20px_60px_rgb(0_0_0/0.22)] ring-1 ring-line">
-      <div data-layer="mac" class="layer free"><Shot name="home-mac" alt="Home on the Mac" class="rounded-none! shadow-none! ring-0!" /></div>
-      <div data-layer="home" class="layer free"><Shot name="home-iphone" alt="Home on iPhone, playing Glow Season" class="rounded-none! shadow-none! ring-0!" /></div>
-      <div data-layer="playing" class="layer"><Shot name="now-playing-iphone" alt="Now Playing on iPhone" class="rounded-none! shadow-none! ring-0!" /></div>
+      <div data-layer="mac" class="layer free"><Shot tilt={false} name="home-mac" alt="Home on the Mac" class="rounded-none! shadow-none! ring-0!" /></div>
+      <div data-layer="home" class="layer free"><Shot tilt={false} name="home-iphone" alt="Home on iPhone, playing Glow Season" class="rounded-none! shadow-none! ring-0!" /></div>
+      <div data-layer="playing" class="layer"><Shot tilt={false} name="now-playing-iphone" alt="Now Playing on iPhone" class="rounded-none! shadow-none! ring-0!" /></div>
       <img data-cover src={cover} alt="" class="cover absolute" />
     </div>
   </div>

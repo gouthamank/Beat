@@ -11,9 +11,11 @@ interface Props {
   /** Width over height of the shot: a Mac window by default. */
   aspect?: string;
   class?: string;
+  /** Tilts towards the pointer on hover (see the script below); off where something else moves the shot. */
+  tilt?: boolean;
 }
 
-const { name, alt, aspect = '16 / 10', class: className } = Astro.props;
+const { name, alt, aspect = '16 / 10', class: className, tilt = true } = Astro.props;
 const shots = import.meta.glob<ImageMetadata>('../assets/shots/*.png', { eager: true, import: 'default' });
 const light = shots[`../assets/shots/${name}-light.png`];
 const dark = shots[`../assets/shots/${name}-dark.png`];
@@ -23,7 +25,9 @@ const sizes = '(max-width: 1024px) 100vw, 960px';
 async function sources(image: ImageMetadata | undefined) {
   if (!image) return undefined;
   const set = async (format: 'avif' | 'webp') =>
-    (await Promise.all(widths.filter((w) => w <= image.width).map(async (w) =>
+    // Every standard width the shot covers, plus its own: a narrow capture (a sheet, say) would otherwise offer only
+    // 640 and look soft on a Retina screen.
+    (await Promise.all([...widths.filter((w) => w < image.width), Math.min(image.width, widths.at(-1)!)].map(async (w) =>
       `${(await getImage({ src: image, width: w, format })).src} ${w}w`))).join(', ');
   return { avif: await set('avif'), webp: await set('webp'), fallback: (await getImage({ src: image, width: Math.min(1280, image.width), format: 'webp' })).src, image };
 }
@@ -33,7 +37,7 @@ const darkSet = light && dark ? await sources(dark) : undefined;
 ---
 
 {lightSet ? (
-  <picture class:list={['block overflow-hidden rounded-xl shadow-[0_20px_60px_rgb(0_0_0/0.22)] ring-1 ring-line', className]}>
+  <picture data-tilt={tilt ? '' : undefined} class:list={['block overflow-hidden rounded-xl shadow-[0_20px_60px_rgb(0_0_0/0.22)] ring-1 ring-line', className]}>
     {darkSet && <source media="(prefers-color-scheme: dark)" type="image/avif" srcset={darkSet.avif} sizes={sizes} />}
     {darkSet && <source media="(prefers-color-scheme: dark)" type="image/webp" srcset={darkSet.webp} sizes={sizes} />}
     <source type="image/avif" srcset={lightSet.avif} sizes={sizes} />
@@ -47,3 +51,30 @@ const darkSet = light && dark ? await sources(dark) : undefined;
     <span>Screenshot to come: <code>{name}</code><br />{alt}</span>
   </div>
 )}
+
+<script>
+  // Screenshots (and anything else marked data-tilt) lean a few degrees towards the pointer, like a card picked up off
+  // a table. Mouse and trackpad only, and never with Reduce Motion; nothing runs until the pointer is over one.
+  const hover = window.matchMedia('(hover: hover) and (pointer: fine)');
+  const lessMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const maxDegrees = 2;
+  for (const el of document.querySelectorAll<HTMLElement>('[data-tilt]')) {
+    let frame = 0;
+    el.addEventListener('pointermove', (e) => {
+      if (!hover.matches || lessMotion.matches) return;
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const r = el.getBoundingClientRect();
+        const x = (e.clientX - r.left) / r.width - 0.5;
+        const y = (e.clientY - r.top) / r.height - 0.5;
+        el.style.transition = 'transform 120ms ease-out';
+        el.style.transform = `perspective(1400px) rotateX(${(-y * maxDegrees * 2).toFixed(2)}deg) rotateY(${(x * maxDegrees * 2).toFixed(2)}deg) scale(1.005)`;
+      });
+    });
+    el.addEventListener('pointerleave', () => {
+      cancelAnimationFrame(frame);
+      el.style.transition = 'transform 500ms cubic-bezier(0.2, 0.8, 0.2, 1)';
+      el.style.transform = '';
+    });
+  }
+</script>

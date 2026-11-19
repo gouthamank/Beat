@@ -18,12 +18,12 @@ const first = layouts[0].key;
     {layouts.map(({ key, title }) => (
       <button type="button" role="tab" aria-selected={key === first ? 'true' : 'false'} aria-controls={`layout-${key}`}
               data-layout={key}
-              class="cursor-pointer rounded-full border border-line bg-raised px-4 py-1.5 text-sm transition-colors hover:border-ink/30 aria-selected:border-accent aria-selected:bg-accent aria-selected:text-accent-ink">
+              class="cursor-pointer rounded-full border border-line bg-bg px-4 py-1.5 text-sm transition-colors hover:border-ink/30 aria-selected:border-accent aria-selected:bg-accent aria-selected:text-accent-ink">
         {title}
       </button>
     ))}
   </div>
-  <p class="mt-3 text-sm text-faint">Each element picks its own look, and rules can use any song field, including Beat's own play and skip counts.</p>
+  <p class="mt-3 text-sm text-faint">Each page picks its own look. Cover Flow for LPs, grid or list for EPs and singles, or whatever suits you.</p>
   <div class="mt-10 grid">
     {layouts.map(({ key, title }) => (
       <div id={`layout-${key}`} role="tabpanel" data-layout-panel={key} aria-hidden={key !== first ? 'true' : undefined} inert={key !== first}
