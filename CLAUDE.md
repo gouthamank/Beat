@@ -2,13 +2,13 @@
 
 Music player for Mac, iPad and iPhone on top of the music you already have: the Music app's library on the Mac, songs synced to the device on iOS. It reads the library read-only, shows album art, and plays local files itself. The headline feature is a **sidebar of folders and pages**: each page holds elements, and each element owns a **smart filter** (Filter → Sort → Limit) plus its own appearance. Liquid Glass on macOS/iOS 26, frosted materials on macOS 15.
 
-See `ARCHITECTURE.md` for how the pieces fit together (including the platform split), and `TESTING.md` for the test suites and their plan.
+See `ARCHITECTURE.md` for how the pieces fit together (including the platform split), `TESTING.md` for the test suites and their plan, and `RELEASING.md` for publishing a release.
 
 ## Hard rules
 - **Never write to the Music library.** Reading goes through `iTunesLibrary.framework` (Mac) and MediaPlayer (iOS). Beat's own plays and skips go to `PlayHistoryStore` (`Application Support/Beat/history.json`), never to Music.
 - **Liquid Glass branching lives only in `Beat/DesignSystem/Glass.swift`** (`beatGlass(in:)`, `beatGlassButtonStyle()`, `BeatGlassContainer`); no `#available(macOS 26, *)` in views. The Mac target is macOS 15.0 and the dev machine runs 15.x, so every glass call needs a material fallback.
 - **Online features are opt-in only.** Lyrics (`lyrics.online`), Discogs artist info (`artistInfo.online` plus the user's token in the Keychain) and Last.fm (`lastfm.enabled`, session in the Keychain) are off by default; off, Beat makes no network requests. Lyrics are never written back to files or Music.
-- **No secrets in the repo.** The Last.fm key and secret and the iOS team ID come from the git-ignored `Config/Secrets.xcconfig` (included by `Config/Beat.xcconfig`). User credentials live in the Keychain.
+- **No secrets in the repo.** The Last.fm key and secret, the iOS team ID and the bundle ID prefix (`BEAT_BUNDLE_PREFIX`, required, no default: `make project` stops without it; the Makefile reads it to launch apps by ID, and `release.yml` sets `dev.gouthaman` so releases keep their identity) come from the git-ignored `Config/Secrets.xcconfig` (included by `Config/Beat.xcconfig`). User credentials live in the Keychain.
 - **Local, DRM-free files only.** Streaming and cloud-only tracks are out of scope; tracks without a playable file are skipped at load.
 
 ## Build and test

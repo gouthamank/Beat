@@ -2,7 +2,7 @@
 # "Beat Local Signing" certificate (not notarised), and drafts a GitHub Release with Beat.dmg attached. Publish the
 # draft by hand once its notes read right. iPad and iPhone builds are from source only.
 #
-# Secrets (Settings > Secrets and variables > Actions; see README > Releasing):
+# Secrets (Settings > Secrets and variables > Actions; see RELEASING.md):
 #   MAC_CERTIFICATE_P12        "Beat Local Signing" exported from Keychain Access as .p12, base64-encoded
 #   MAC_CERTIFICATE_PASSWORD   the password the .p12 was exported with
 #   LASTFM_API_KEY, LASTFM_SHARED_SECRET   optional: without them the release builds with scrobbling off
@@ -49,11 +49,13 @@ jobs:
           LASTFM_SHARED_SECRET: ${{ secrets.LASTFM_SHARED_SECRET }}
         run: |
           # Secrets pasted on GitHub's website can pick up a trailing newline; $(...) strips it.
-          printf 'LASTFM_API_KEY = %s\nLASTFM_SHARED_SECRET = %s\n' \
+          # Released builds keep the bundle ID existing installs have (dev.gouthaman.Beat), so settings and Keychain
+          # entries carry over from one release to the next.
+          printf 'BEAT_BUNDLE_PREFIX = dev.gouthaman\nLASTFM_API_KEY = %s\nLASTFM_SHARED_SECRET = %s\n' \
             "$(printf '%s' "$LASTFM_API_KEY")" "$(printf '%s' "$LASTFM_SHARED_SECRET")" > Config/Secrets.xcconfig
 
       # A temporary keychain holding only the signing identity, unlocked for codesign without a prompt. The certificate
-      # is self-signed, so it's trusted for code signing on this runner as on the Mac it came from (README > Signing).
+      # is self-signed, so it's trusted for code signing on this runner as on the Mac it came from (README > Building > On the Mac).
       - name: Import the signing certificate
         env:
           P12: ${{ secrets.MAC_CERTIFICATE_P12 }}

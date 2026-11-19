@@ -65,6 +65,7 @@ snapshot-record: ## Re-record changed snapshots: Mac, iOS, or Mac UI screenshots
 
 # Regenerate Beat.xcodeproj from project.yml.
 project: ## Regenerate Beat.xcodeproj from project.yml
+	@test -n "$(BUNDLE_PREFIX)" || { echo "Set BEAT_BUNDLE_PREFIX in Config/Secrets.xcconfig (e.g. com.yourname): copy Config/Secrets.xcconfig.example and see README > Building."; exit 1; }
 	xcodegen generate
 
 # Delete build products (the installed app is left alone).
@@ -148,13 +149,16 @@ mac-test-run-fixtures: project ## The UI-test build on the fixture songs (KEEP=1
 # build/showcase once; each fresh run writes the history into the home and clears the UI-test build's settings, rather
 # than -BeatFreshStart, which would delete the history. `make mac-run-showcase KEEP=1` reopens it as it was left.
 SHOWCASE_LIBRARY := build/showcase/Library
+# The bundle ID prefix, BEAT_BUNDLE_PREFIX in Config/Secrets.xcconfig (there's no default; `project` checks for it).
+# Needed to launch, uninstall or find the app's container by ID.
+BUNDLE_PREFIX := $(shell sed -n 's/^[[:space:]]*BEAT_BUNDLE_PREFIX[[:space:]]*=[[:space:]]*//p' Config/Secrets.xcconfig 2>/dev/null | tail -1)
 SHOWCASE_HOME := /tmp/beat-showcase-home
 mac-run-showcase: project ## The UI-test build on the made-up showcase library (KEEP=1: as left)
 	$(XCODEBUILD) -configuration UITest build
 	test -d "$(SHOWCASE_LIBRARY)" || swift Design/Showcase/render.swift --library "$(SHOWCASE_LIBRARY)"
 	$(if $(KEEP),,rm -rf "$(SHOWCASE_HOME)" && mkdir -p "$(SHOWCASE_HOME)")
 	$(if $(KEEP),,swift Design/Showcase/render.swift --history "$(SHOWCASE_HOME)/Library/Application Support/Beat/history.json")
-	$(if $(KEEP),,defaults delete dev.gouthaman.Beat.uitest 2>/dev/null || true)
+	$(if $(KEEP),,defaults delete $(BUNDLE_PREFIX).Beat.uitest 2>/dev/null || true)
 	CFFIXED_USER_HOME="$(SHOWCASE_HOME)" "build/Build/Products/UITest/Beat.app/Contents/MacOS/Beat" \
 		-BeatFixtureLibrary "$(CURDIR)/$(SHOWCASE_LIBRARY)"
 
@@ -181,7 +185,7 @@ define ios_sim
 	xcrun simctl boot "$(1)" 2>/dev/null || true
 	open -a Simulator
 	xcrun simctl install "$(1)" build/ios/Build/Products/Debug-iphonesimulator/Beat.app
-	xcrun simctl launch "$(1)" dev.gouthaman.Beat
+	xcrun simctl launch "$(1)" $(BUNDLE_PREFIX).Beat
 endef
 
 # Debug build, installed and launched in the iPad Simulator.
@@ -200,10 +204,10 @@ ios-sim-showcase: project ## The UI-test build in the iPhone Simulator on the sh
 	$(IOS_BUILD) -configuration UITest -destination "platform=iOS Simulator,name=$(IOS_IPHONE)" build
 	xcrun simctl bootstatus "$(IOS_IPHONE)" -b
 	open -a Simulator
-	$(if $(KEEP),,xcrun simctl uninstall "$(IOS_IPHONE)" dev.gouthaman.Beat.uitest || true)
+	$(if $(KEEP),,xcrun simctl uninstall "$(IOS_IPHONE)" $(BUNDLE_PREFIX).Beat.uitest || true)
 	xcrun simctl install "$(IOS_IPHONE)" build/ios/Build/Products/UITest-iphonesimulator/Beat.app
-	$(if $(KEEP),,swift Design/Showcase/render.swift --history "$$(xcrun simctl get_app_container "$(IOS_IPHONE)" dev.gouthaman.Beat.uitest data)/Library/Application Support/Beat/history.json")
-	xcrun simctl launch "$(IOS_IPHONE)" dev.gouthaman.Beat.uitest -BeatFixtureLibrary "$(CURDIR)/$(SHOWCASE_LIBRARY)"
+	$(if $(KEEP),,swift Design/Showcase/render.swift --history "$$(xcrun simctl get_app_container "$(IOS_IPHONE)" $(BUNDLE_PREFIX).Beat.uitest data)/Library/Application Support/Beat/history.json")
+	xcrun simctl launch "$(IOS_IPHONE)" $(BUNDLE_PREFIX).Beat.uitest -BeatFixtureLibrary "$(CURDIR)/$(SHOWCASE_LIBRARY)"
 
 # Run the unit tests (Debug) inside the iOS app on the iPhone Simulator: the shared tests plus BeatTests/iOS.
 ios-test: project ## Unit and snapshot tests in the iPhone Simulator

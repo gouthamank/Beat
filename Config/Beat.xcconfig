@@ -9,4 +9,8 @@ LASTFM_SHARED_SECRET =
 // "Beat Local Signing" identity instead (project.yml), and Simulator builds need no team.
 DEVELOPMENT_TEAM =
 
+// The start of every bundle ID (<prefix>.Beat, …), set by whoever builds in Secrets.xcconfig: bundle IDs belong to
+// whoever registered them, so there's no shared default. `make` stops if it's missing; releases set their own (release.yml).
+BEAT_BUNDLE_PREFIX =
+
 #include? "Secrets.xcconfig"

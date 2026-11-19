@@ -1,49 +1,99 @@
 # Beat
 
-A native macOS music player for the library you already keep in the Music app. Beat reads that library (never changing it), plays your local files itself, and organises them into a sidebar of folders and pages built from smart filters.
+A music player for Mac, iPhone and iPad, for the music you already have: the Music app's library on the Mac, and the
+songs synced to your device on iPhone and iPad.
+
+Apple's Music app is great for tagging, but listening on the desktop felt clunky. I needed a way to browse record
+labels' discographies, and there was no easy way short of making a playlist for each label. So I built Beat.
 
 <p align="center"><img src="Design/AppIcon/AppIcon.svg" width="128" alt="Beat's app icon"></p>
 
+See it, and try a live demo, at [beat.gouthaman.dev](https://beat.gouthaman.dev).
+
 ## Features
 
-- **Pages and folders.** A free-form sidebar of folders and pages. Each page holds elements, and each element is a smart filter (Filter → Sort → Limit) with its own look: grid, shelf or list, with columns you choose.
-- **Smart filters.** Rules on any track field, including Beat's own play and skip counts, with a live preview while you edit.
-- **Library browsing.** Albums, Artists, Genres and Songs, with cover-coloured album and artist pages and a zoom from cover to page.
-- **Playback.** Plays local files with a queue, shuffle and repeat, media keys, Now Playing in Control Centre, and AirPlay.
-- **Now Playing.** Full-window view with synced lyrics and a visualizer.
-- **Lyrics.** Embedded lyrics, `.lrc` files beside the track, and optional lookups on [LRCLIB](https://lrclib.net). Timestamped tracklists in DJ mixes work too.
+- **Pages and folders.** A free-form sidebar of folders and pages, in any order. Each page holds elements, and each
+  element is a smart filter with its own look: shelf, grid, list, Cover Flow or timeline.
+- **Smart filters.** Steps that run in order (filter, sort, limit) over albums, songs, artists or genres. Rules use any
+  track field, including Beat's own play and skip counts, in groups that match all, any or none and nest inside each
+  other, with a live preview while you edit.
+- **Custom fields.** Pull a value out of a tag you already have, such as a catalog number in brackets after the album
+  title, and sort by it.
+- **Library browsing.** Albums, Artists, Genres and Songs, with cover-coloured album and artist pages and a zoom from
+  cover to page.
+- **Quick Open.** Find any page, album, artist, genre or song from anywhere: ⌘K on the Mac, the search button in the
+  sidebar on iPad and iPhone.
+- **Playback.** Gapless, with a queue, shuffle and repeat, media keys, Now Playing in Control Centre, and AirPlay.
+- **Now Playing.** Coloured by the album's cover (or not, if you turn it off), with synced lyrics and eight
+  visualizers.
+- **Lyrics.** `.lrc` files beside the song, lyrics saved in the file, and optional lookups on
+  [LRCLIB](https://lrclib.net). A DJ mix with a timestamped tracklist gets each track marked on the progress bar.
 - **Artist info.** Optional bios and photos from [Discogs](https://www.discogs.com), using your own Discogs token.
-- **Last.fm scrobbling.** Optional: shows what's playing on your profile and scrobbles every song you play past halfway, including plays made offline.
-- **Liquid Glass** on macOS 26, with frosted materials on macOS 15.
+- **Last.fm scrobbling.** Optional: shows what's playing on your profile and scrobbles what you play, including plays
+  made offline.
+- **Library Health** (Mac). Finds duplicates, missing tags and artwork, missing files and albums split in two, and
+  shows you each one to fix in Music.
+- **Settings export.** Your pages and preferences in one file, to back up or move to another device.
+- **Liquid Glass** on macOS and iOS 26, with frosted materials on macOS 15.
 
 ## Privacy
 
-- **Your Music library is read-only.** Beat reads it through Apple's `iTunesLibrary` framework and never writes to it. Play counts and skips are kept in Beat's own file (`~/Library/Application Support/Beat`).
-- **No network by default.** Lyrics, artist lookups and Last.fm scrobbling are off until you turn them on in Settings. With them off, Beat makes no network requests.
+- **Your Music library is read-only.** On the Mac, Beat reads it through Apple's `iTunesLibrary` framework and never
+  writes to it. Play counts and skips are kept in Beat's own file (`~/Library/Application Support/Beat`).
+- **No network by default.** Lyrics, artist info and Last.fm scrobbling are off until you turn them on in Settings.
+  With them off, Beat makes no network requests. There's no analytics or data collection of any kind.
 - **Local, DRM-free files only.** Apple Music streaming and cloud-only tracks are skipped.
 
 ## Requirements
 
-- macOS 15 or later
-- A Music library with local, DRM-free files
-- To build: Xcode 26 (Swift 6.2) and [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`)
+- **Mac:** macOS 15 or later, and a Music library with local, DRM-free files.
+- **iPhone and iPad:** iOS or iPadOS 26, with songs synced from a Mac (in Finder).
+- **To build:** a Mac with Xcode 26 (Swift 6.2) and [XcodeGen](https://github.com/yonaskolb/XcodeGen)
+  (`brew install xcodegen`).
 
 ## Installing
 
-On the Mac, download `Beat.dmg` from the [latest release](https://github.com/gouthamank/Beat/releases/latest), open it
+**Mac:** download `Beat.dmg` from the [latest release](https://github.com/gouthamank/Beat/releases/latest), open it
 and drag Beat to Applications. Beat isn't notarised by Apple, so the first time you open it macOS says it can't check
 it: choose **Done**, then **System Settings ▸ Privacy & Security ▸ Open Anyway**.
 
-On iPad and iPhone, build from source (below). With a free Apple ID, an installed build stops opening after 7 days;
-install it again to renew it.
+**iPhone and iPad:** Beat isn't on the App Store. Build it yourself, as below.
 
 ## Building
 
-The Xcode project is generated from `project.yml` and isn't checked in.
+The Xcode project is generated from `project.yml` by XcodeGen and isn't checked in; the `make` targets generate it for
+you. To work in Xcode instead, run `xcodegen generate` and open `Beat.xcodeproj`.
 
-### Signing
+### Setup
 
-Beat is signed with a self-signed certificate named **Beat Local Signing**, so macOS keeps its Music and Keychain permissions across rebuilds. Create one once:
+Every build needs a bundle ID prefix of your own. Copy `Config/Secrets.xcconfig.example` to `Config/Secrets.xcconfig`
+(git-ignored) and set `BEAT_BUNDLE_PREFIX`, such as `com.yourname` for `com.yourname.Beat`. `make` stops and says so
+if it's missing.
+
+### On iPhone and iPad
+
+You need an Apple ID (free works too) signed in to Xcode (**Xcode ▸ Settings ▸ Accounts**).
+
+1. In `Config/Secrets.xcconfig`, set `DEVELOPMENT_TEAM` to your team ID. In **Xcode ▸ Settings ▸ Accounts**, select
+   your Apple ID.
+2. Connect the iPhone or iPad by cable, unlock it and tap **Trust** for this Mac.
+3. On the device, turn on **Settings ▸ Privacy & Security ▸ Developer Mode** and let it restart.
+4. Run `make install on=ios`. It builds for that device and installs Beat on it.
+5. The first time, the device won't open an app from an unknown developer: in **Settings ▸ General ▸ VPN & Device
+   Management**, trust your Apple ID. Then open Beat and allow access to **Apple Music**.
+
+With a free Apple ID, the installed build stops opening after 7 days: run `make install on=ios` again to renew it. Your
+pages and settings stay. A free account can also only have 3 apps of its own on a device at once. A paid developer
+account lifts both limits (builds last a year).
+
+No device? `make sim on=iphone` (or `on=ipad`) runs Beat in the Simulator with just the setup above: no team ID or
+device steps. The Simulator has no music library: drag audio files onto it and save them to **Files ▸ On My iPhone ▸
+Beat ▸ Music**.
+
+### On the Mac
+
+Beat is signed with a self-signed certificate named **Beat Local Signing**, so macOS keeps its Music and Keychain
+permissions across rebuilds. Create one once:
 
 1. In Keychain Access, choose **Certificate Assistant ▸ Create a Certificate…**
 2. Name it `Beat Local Signing`, with Identity Type **Self Signed Root** and Certificate Type **Code Signing**.
@@ -51,17 +101,21 @@ Beat is signed with a self-signed certificate named **Beat Local Signing**, so m
 
 Or use a certificate you already have by changing `CODE_SIGN_IDENTITY` in `project.yml`.
 
+Then `make install on=mac` builds a Release, copies it to `/Applications` and opens it. On first launch, allow access
+to **Media & Apple Music**.
+
 ### Last.fm (optional)
 
 Scrobbling needs a Last.fm API account of your own. It's kept out of the repository:
 
 1. Create an API account at [last.fm/api/account/create](https://www.last.fm/api/account/create).
-2. Copy `Config/Secrets.xcconfig.example` to `Config/Secrets.xcconfig` (git-ignored) and fill in the API key and shared secret.
+2. In `Config/Secrets.xcconfig` (see Setup), fill in the API key and shared secret.
 3. Build, then turn it on in **Settings ▸ Last.fm** and click **Connect**.
 
-Without a key (or with the example's placeholder values) Beat builds and runs normally, with scrobbling off and no Last.fm tab in Settings.
+Without a key (or with the example's placeholder values) Beat builds and runs normally, with scrobbling off and no
+Last.fm tab in Settings.
 
-### Build and install
+### Make targets
 
 ```sh
 make                   # lists every target
@@ -75,47 +129,29 @@ make clean             # delete build/
 Each menu also takes its choice up front, e.g. `make install on=mac`, and the targets they lead to run directly too
 (`make mac-install`, `make ios-test`, …): see `TESTING.md` for the tests.
 
-To work in Xcode instead, run `xcodegen generate` and open `Beat.xcodeproj`.
-
-On first launch, allow access to **Media & Apple Music**.
-
-### Releasing
-
-Pushing a version tag drafts a GitHub Release with a signed `Beat.dmg` (`.github/workflows/release.yml`). The DMG is
-built by `make mac-release` (needs `brew install create-dmg`), which also runs locally to try one first.
-
-Once, add these repository secrets (**Settings ▸ Secrets and variables ▸ Actions**):
-
-1. In Keychain Access, under **My Certificates**, right-click **Beat Local Signing ▸ Export**, save it as a `.p12`
-   with a password, then `base64 -i Beat.p12 | gh secret set MAC_CERTIFICATE_P12`,
-   `gh secret set MAC_CERTIFICATE_PASSWORD` (it asks for the password) and delete the `.p12`.
-2. Optional, for scrobbling in released builds: `gh secret set LASTFM_API_KEY` and `gh secret set LASTFM_SHARED_SECRET`.
-   These end up readable inside the downloaded app, as in any desktop Last.fm client.
-
-For each release:
-
-1. Raise `CFBundleShortVersionString` in `project.yml` (both targets) and commit.
-2. `git tag v1.4.0 && git push origin v1.4.0`. The workflow stops if the tag doesn't match the version.
-3. When it finishes, check the draft on GitHub's Releases page and publish it.
-
 ## Project layout
 
 | Folder | What's in it |
 | --- | --- |
-| `Beat/Library` | Reading the Music library, artwork, play history |
+| `Beat/Library` | Reading the library, artwork, play history, Library Health |
 | `Beat/SmartFilters`, `Beat/Pages` | Smart-filter engine, the page tree, settings export |
 | `Beat/Playback` | Queue, audio, Now Playing, AirPlay, visualizer analysis |
 | `Beat/Lyrics`, `Beat/ArtistInfo` | Lyrics and Discogs artist info |
 | `Beat/Scrobbling` | Last.fm sign-in, requests and the scrobble queue |
-| `Beat/Views` | SwiftUI views |
+| `Beat/Views` | SwiftUI views shared by every device |
+| `Beat/Platform` | What differs between the Mac (`macOS/`) and iPad and iPhone (`iOS/`) |
 | `Beat/DesignSystem` | Glass, artwork, backdrops, shadows |
 | `BeatTests` | Unit tests |
+| `BeatUITests`, `BeatiOSUITests` | UI tests on the Mac and in the iOS Simulator |
+| `Fixtures` | A small tagged library the tests and UI tests run on |
 | `Design/AppIcon` | App icon source and renderer |
 | `Design/Showcase` | A made-up library with generated covers, for the website and its screenshots |
 | `site` | The website, [beat.gouthaman.dev](https://beat.gouthaman.dev): Astro, built by Netlify (`netlify.toml`); `cd site && npm install && npm run dev` to work on it |
-| `Config` | Build settings; your Last.fm keys go in `Secrets.xcconfig` |
+| `Config` | Build settings; your bundle ID prefix, team ID and Last.fm keys go in `Secrets.xcconfig` |
+| `Scripts` | Helpers for `make`'s menus and saving UI test screenshots |
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for how the pieces fit together.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for how the pieces fit together, [TESTING.md](TESTING.md) for the tests and
+[RELEASING.md](RELEASING.md) for publishing a release.
 
 ## License
 
